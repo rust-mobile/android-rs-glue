@@ -7,9 +7,7 @@
 #[phase(plugin)] extern crate compile_msg;
 extern crate libc;
 
-pub use ffi::NativeWindowType;
-
-mod ffi;
+pub mod ffi;
 
 static mut native_window: Option<ffi::NativeWindowType> = None;
 
@@ -21,6 +19,7 @@ macro_rules! android_start(
     ($main: ident) => (
         pub mod __android_start {
             extern crate android_glue;
+            extern crate libc;
 
             /// This is the entry point of the Android application
             #[no_mangle]
