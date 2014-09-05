@@ -6,9 +6,11 @@
 #[phase(plugin)] extern crate compile_msg;
 extern crate libc;
 
+pub use ffi::NativeWindowType;
+
 mod ffi;
 
-static mut native_window: ffi::NativeWindowType = 0 as ffi::NativeWindowType;
+static mut native_window: Option<ffi::NativeWindowType> = None;
 
 #[cfg(not(target_os = "android"))]
 compile_note!("You are not compiling for Android")
@@ -51,10 +53,14 @@ macro_rules! android_start(
     )
 )
 
+pub fn get_native_window() -> ffi::NativeWindowType {
+    unsafe { native_window.unwrap() }
+}
+
 #[doc(hidden)]
 #[allow(visible_private_types)]
 pub extern fn native_onnativewindowcreated(_: *mut ffi::ANativeActivity, window: *const ffi::ANativeWindow) {
-    unsafe { native_window = window; }
+    unsafe { native_window = Some(window); }
 }
 
 #[doc(hidden)]
