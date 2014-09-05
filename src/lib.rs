@@ -1,5 +1,6 @@
 #![feature(macro_rules)]
 #![feature(phase)]
+#![macro_escape]
 
 #![unstable]
 
@@ -15,7 +16,7 @@ static mut native_window: Option<ffi::NativeWindowType> = None;
 #[cfg(not(target_os = "android"))]
 compile_note!("You are not compiling for Android")
 
-
+#[macro_export]
 macro_rules! android_start(
     ($main: ident) => (
         pub mod __android_start {
