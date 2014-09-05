@@ -62,6 +62,15 @@ pub struct ANativeActivityCallbacks {
 }
 
 /**
+ * log.h
+ */
+#[link(name = "log")]
+extern {
+    pub fn __android_log_write(prio: libc::c_int, tag: *const libc::c_char,
+        text: *const libc::c_char) -> libc::c_int;
+}
+
+/**
  * looper.h
  */
 pub type ALooper = ();

@@ -55,8 +55,22 @@ macro_rules! android_start(
     )
 )
 
+/**
+ * Returns a handle to the native window.
+ */
 pub fn get_native_window() -> ffi::NativeWindowType {
     unsafe { native_window.unwrap() }
+}
+
+/**
+ *
+ */
+pub fn write_log(message: &str) {
+    message.with_c_str(|message| {
+        b"RustAndroidGlue".with_c_str(|tag| {
+            unsafe { ffi::__android_log_write(3, tag, message) };
+        });
+    });
 }
 
 #[doc(hidden)]
