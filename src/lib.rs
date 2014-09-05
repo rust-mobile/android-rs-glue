@@ -32,6 +32,8 @@ macro_rules! android_start(
                 use std::mem;
                 use std::task::TaskBuilder;
 
+                android_glue::write_log("ANativeActivity_onCreate has been called");
+
                 let mut activity = unsafe { &mut *activity };
                 let mut callbacks = unsafe { &mut *activity.callbacks };
 
