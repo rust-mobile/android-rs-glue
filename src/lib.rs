@@ -20,13 +20,15 @@ macro_rules! android_start(
         pub mod __android_start {
             extern crate android_glue;
             extern crate libc;
+            extern crate native;
 
             /// This is the entry point of the Android application
             #[no_mangle]
             #[allow(non_snake_case)]
-            pub extern "C" fn ANativeActivity_onCreate(activity: *mut ffi::ANativeActivity,
+            pub extern "C" fn ANativeActivity_onCreate(activity: *mut android_glue::ffi::ANativeActivity,
                 _saved_state: *mut libc::c_void, _saved_state_size: libc::size_t)
             {
+                use self::native::NativeTaskBuilder;
                 use std::mem;
                 use std::task::TaskBuilder;
 
@@ -46,7 +48,7 @@ macro_rules! android_start(
                 callbacks.onNativeWindowDestroyed = android_glue::native_onnativewindowdestroyed;
 
                 TaskBuilder::new().native().spawn(proc() {
-                    $main()
+                    super::$main()
                 });
             }
         }
