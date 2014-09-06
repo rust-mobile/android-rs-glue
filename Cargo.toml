@@ -6,3 +6,9 @@ authors = ["tomaka <pierre.krieger1708@gmail.com>"]
 
 [dependencies.compile_msg]
 git = "https://github.com/huonw/compile_msg"
+
+[dependencies.docopt]
+git = "https://github.com/docopt/docopt.rs"
+
+[dependencies.docopt_macros]
+git = "https://github.com/docopt/docopt.rs"
