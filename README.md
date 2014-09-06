@@ -37,3 +37,9 @@ Preliminary steps:
 
  - Download and unzip [the Android SDK](http://developer.android.com/sdk/index.html) (under *SDK tools* in *VIEW ALL DOWNLOADS AND SIZES*)
  - Update the SDK: `./android-sdk-linux/tools/android update sdk -u`
+
+Building:
+ - In `apk-builder`: `cargo build`
+ - In `glue`: `cargo build --target=arm-linux-androideabi`
+ - `rustc examples/basic.rs -C linker=/opt/ndk_standalone/bin/arm-linux-androideabi-gcc --crate-name example --crate-type dylib -o libexample.so --target arm-linux-androideabi -L glue/target/arm-linux-androideabi`
+ - `apk-builder/target/apk-builder --sdk /home/user/android-sdk-linux -o example.apk libexample.so`

@@ -1,0 +1,21 @@
+[root]
+name = "apk-builder"
+version = "0.0.1"
+dependencies = [
+ "docopt 0.6.3 (git+https://github.com/docopt/docopt.rs#652c165c6c05629dee8a19af6c62103082582a99)",
+ "docopt_macros 0.6.3 (git+https://github.com/docopt/docopt.rs#652c165c6c05629dee8a19af6c62103082582a99)",
+]
+
+[[package]]
+name = "docopt"
+version = "0.6.3"
+source = "git+https://github.com/docopt/docopt.rs#652c165c6c05629dee8a19af6c62103082582a99"
+
+[[package]]
+name = "docopt_macros"
+version = "0.6.3"
+source = "git+https://github.com/docopt/docopt.rs#652c165c6c05629dee8a19af6c62103082582a99"
+dependencies = [
+ "docopt 0.6.3 (git+https://github.com/docopt/docopt.rs#652c165c6c05629dee8a19af6c62103082582a99)",
+]
+

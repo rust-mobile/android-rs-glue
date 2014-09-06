@@ -1,11 +1,8 @@
 [package]
 
-name = "android_glue"
+name = "apk-builder"
 version = "0.0.1"
-authors = ["tomaka <pierre.krieger1708@gmail.com>"]
-
-[dependencies.compile_msg]
-git = "https://github.com/huonw/compile_msg"
+authors = ["Pierre Krieger <pierre.krieger1708@gmail.com>"]
 
 [dependencies.docopt]
 git = "https://github.com/docopt/docopt.rs"
