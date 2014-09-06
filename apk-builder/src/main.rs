@@ -32,7 +32,6 @@ fn main() {
         .status().unwrap() != std::io::process::ExitStatus(0)
     {
         println!("Error while executing ant debug");
-    directory.unwrap();     // FIXME: remove
         return;
     }
 
@@ -71,7 +70,7 @@ fn build_directory(library: &Path, sdk_dir: &Path) -> TempDir {
             .join("native_activity");
         fs::mkdir_recursive(&src_path, std::io::UserRWX).unwrap();
         File::create(&src_path.join("MyNativeActivity.java")).unwrap()
-            .write_str(build_java_class(library.filename_str().unwrap().slice_from(3)).as_slice())
+            .write_str(build_java_class(library.filestem_str().unwrap().slice_from(3)).as_slice())
             .unwrap();
     }
 
