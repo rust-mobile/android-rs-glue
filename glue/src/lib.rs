@@ -24,10 +24,20 @@ macro_rules! android_start(
             extern crate libc;
             extern crate native;
 
-            #[link_args="-Wl,-E"]
-            extern {}
+            /// This function is never called, it's just used so we can force
+            ///  the linkage of ANativeActivity_onCreate
+            #[start]
+            fn start(argc: int, argv: *const *const u8) -> int {
+                use std::mem;
+                unsafe {
+                    ANativeActivity_onCreate(mem::uninitialized(), mem::uninitialized(),
+                        mem::uninitialized());
+                }
+                fail!("This function is not supposed to be called");
+            }
 
             #[no_mangle]
+            #[inline(never)]
             #[allow(non_snake_case)]
             pub extern "C" fn ANativeActivity_onCreate(activity: *mut android_glue::ffi::ANativeActivity,
                 _saved_state: *mut libc::c_void, _saved_state_size: libc::size_t)
@@ -80,6 +90,7 @@ pub fn write_log(message: &str) {
 #[doc(hidden)]
 #[allow(visible_private_types)]
 pub extern fn native_onnativewindowcreated(_: *mut ffi::ANativeActivity, window: *const ffi::ANativeWindow) {
+    write_log("native_onnativewindowcreated has been called");
     unsafe { native_window = Some(window); }
 }
 
