@@ -8,7 +8,6 @@
 extern crate compile_msg;
 
 extern crate libc;
-extern crate native;
 
 pub mod ffi;
 
@@ -23,62 +22,53 @@ macro_rules! android_start(
         pub mod __android_start {
             extern crate android_glue;
             extern crate libc;
+            extern crate native;
+
+            #[link_args="-Wl,-E"]
+            extern {}
 
             #[no_mangle]
-            pub extern "C" fn android_main() {
-                super::$main();
+            #[allow(non_snake_case)]
+            pub extern "C" fn ANativeActivity_onCreate(activity: *mut android_glue::ffi::ANativeActivity,
+                _saved_state: *mut libc::c_void, _saved_state_size: libc::size_t)
+            {
+                use self::native::NativeTaskBuilder;
+                use std::mem;
+                use std::task::TaskBuilder;
+
+                android_glue::write_log("ANativeActivity_onCreate has been called");
+
+                let mut activity = unsafe { &mut *activity };
+                let mut callbacks = unsafe { &mut *activity.callbacks };
+
+                callbacks.onDestroy = android_glue::native_ondestroy;
+                callbacks.onStart = android_glue::native_onstart;
+                callbacks.onResume = android_glue::native_onresume;
+                callbacks.onSaveInstanceState = android_glue::native_onsaveinstancestate;
+                callbacks.onPause = android_glue::native_onpause;
+                callbacks.onStop = android_glue::native_onstop;
+                callbacks.onConfigurationChanged = android_glue::native_onconfigurationchanged;
+                callbacks.onLowMemory = android_glue::native_onlowmemory;
+                callbacks.onWindowFocusChanged = android_glue::native_onwindowfocuschanged;
+                callbacks.onNativeWindowCreated = android_glue::native_onnativewindowcreated;
+                callbacks.onNativeWindowDestroyed = android_glue::native_onnativewindowdestroyed;
+
+                native::start(1, &b"".as_ptr(), proc() {
+                    TaskBuilder::new().native().spawn(proc() {
+                        unsafe { super::$main() };
+                    });
+                });
             }
         }
     )
 )
 
-extern "C" {
-    fn android_main();
-}
-
-#[no_mangle]
-#[allow(non_snake_case)]
-pub extern "C" fn ANativeActivity_onCreate(activity: *mut ffi::ANativeActivity,
-    _saved_state: *mut libc::c_void, _saved_state_size: libc::size_t)
-{
-    use native::NativeTaskBuilder;
-    use std::mem;
-    use std::task::TaskBuilder;
-
-    write_log("ANativeActivity_onCreate has been called");
-
-    let mut activity = unsafe { &mut *activity };
-    let mut callbacks = unsafe { &mut *activity.callbacks };
-
-    callbacks.onDestroy = native_ondestroy;
-    callbacks.onStart = native_onstart;
-    callbacks.onResume = native_onresume;
-    callbacks.onSaveInstanceState = native_onsaveinstancestate;
-    callbacks.onPause = native_onpause;
-    callbacks.onStop = native_onstop;
-    callbacks.onConfigurationChanged = native_onconfigurationchanged;
-    callbacks.onLowMemory = native_onlowmemory;
-    callbacks.onWindowFocusChanged = native_onwindowfocuschanged;
-    callbacks.onNativeWindowCreated = native_onnativewindowcreated;
-    callbacks.onNativeWindowDestroyed = native_onnativewindowdestroyed;
-
-    native::start(1, &b"".as_ptr(), proc() {
-        TaskBuilder::new().native().spawn(proc() {
-            unsafe { android_main() };
-        });
-    });
-}
-
-/**
- * Returns a handle to the native window.
- */
+/// Returns a handle to the native window.
 pub fn get_native_window() -> ffi::NativeWindowType {
     unsafe { native_window.unwrap() }
 }
 
-/**
- *
- */
+/// 
 pub fn write_log(message: &str) {
     message.with_c_str(|message| {
         b"RustAndroidGlue".with_c_str(|tag| {
