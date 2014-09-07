@@ -1,6 +1,5 @@
 #![feature(macro_rules)]
 #![feature(phase)]
-#![macro_escape]
 
 #![unstable]
 
@@ -27,7 +26,7 @@ macro_rules! android_start(
             /// This function is never called, it's just used so we can force
             ///  the linkage of ANativeActivity_onCreate
             #[start]
-            fn start(argc: int, argv: *const *const u8) -> int {
+            fn start(_argc: int, _argv: *const *const u8) -> int {
                 use std::mem;
                 unsafe {
                     ANativeActivity_onCreate(mem::uninitialized(), mem::uninitialized(),
@@ -43,13 +42,12 @@ macro_rules! android_start(
                 _saved_state: *mut libc::c_void, _saved_state_size: libc::size_t)
             {
                 use self::native::NativeTaskBuilder;
-                use std::mem;
                 use std::task::TaskBuilder;
 
                 android_glue::write_log("ANativeActivity_onCreate has been called");
 
-                let mut activity = unsafe { &mut *activity };
-                let mut callbacks = unsafe { &mut *activity.callbacks };
+                let activity = unsafe { &mut *activity };
+                let callbacks = unsafe { &mut *activity.callbacks };
 
                 callbacks.onDestroy = android_glue::native_ondestroy;
                 callbacks.onStart = android_glue::native_onstart;
@@ -65,7 +63,7 @@ macro_rules! android_start(
 
                 native::start(1, &b"".as_ptr(), proc() {
                     TaskBuilder::new().native().spawn(proc() {
-                        unsafe { super::$main() };
+                        super::$main();
                     });
                 });
             }
