@@ -27,11 +27,9 @@ macro_rules! android_start(
             ///  the linkage of ANativeActivity_onCreate
             #[start]
             fn start(_argc: int, _argv: *const *const u8) -> int {
-                use std::mem;
-                unsafe {
-                    ANativeActivity_onCreate(mem::uninitialized(), mem::uninitialized(),
-                        mem::uninitialized());
-                }
+                let p = ANativeActivity_onCreate as *const ();
+                println!("{}", p);
+
                 fail!("This function is not supposed to be called");
             }
 
