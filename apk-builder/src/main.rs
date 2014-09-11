@@ -21,7 +21,7 @@ fn main() {
         .map(|(_, v)| Path::new(v)).unwrap_or(Path::new("/opt/ndk_standalone"));
 
     // creating the build directory that will contain all the necessary files to create teh apk
-    let directory = build_directory(&sdk_path);
+    let directory = build_directory(&sdk_path, args.output.filestem_str().unwrap());
 
     // compiling android_native_app_glue.c
     if Command::new(standalone_path.join("bin").join("arm-linux-androideabi-gcc"))
@@ -76,7 +76,7 @@ fn main() {
 
     // copying apk file to the requested output
     fs::copy(&directory.path().join("bin").join("rust-android-debug.apk"),
-        &Path::new(args.output)).unwrap();
+        &args.output).unwrap();
 }
 
 struct Args {
@@ -110,14 +110,14 @@ fn parse_arguments() -> (Args, Vec<String>) {
     }
 }
 
-fn build_directory(sdk_dir: &Path) -> TempDir {
+fn build_directory(sdk_dir: &Path, crate_name: &str) -> TempDir {
     use std::io::fs;
 
     let build_directory = TempDir::new("android-rs-glue-rust-to-apk")
         .ok().expect("Could not create temporary build directory");
 
     File::create(&build_directory.path().join("AndroidManifest.xml")).unwrap()
-        .write_str(build_manifest().as_slice())
+        .write_str(build_manifest(crate_name).as_slice())
         .unwrap();
 
     File::create(&build_directory.path().join("build.xml")).unwrap()
@@ -149,7 +149,7 @@ fn build_directory(sdk_dir: &Path) -> TempDir {
     build_directory
 }
 
-fn build_manifest() -> String {
+fn build_manifest(crate_name: &str) -> String {
     format!(r#"<?xml version="1.0" encoding="utf-8"?>
 <!-- BEGIN_INCLUDE(manifest) -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
@@ -159,9 +159,9 @@ fn build_manifest() -> String {
 
     <uses-sdk android:minSdkVersion="18" />
 
-    <application android:label="NativeActivity" android:hasCode="true">
+    <application android:label="{0}" android:hasCode="true">
         <activity android:name="com.example.native_activity.MyNativeActivity"
-                android:label="NativeActivity"
+                android:label="{0}"
                 android:configChanges="orientation|keyboardHidden">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -172,7 +172,7 @@ fn build_manifest() -> String {
 
 </manifest> 
 <!-- END_INCLUDE(manifest) -->
-"#)
+"#, crate_name)
 }
 
 fn build_build_xml() -> String {

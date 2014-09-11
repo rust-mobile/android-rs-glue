@@ -97,4 +97,4 @@ adb install -r target/your_crate
 
 This will install your application on the emulator.
 
-For the moment, your application's name is always `NativeActivity`. This will be customizable in the future.
+For the moment, your application's name is always the name of your crate. This will be customizable in the future.
