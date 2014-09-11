@@ -26,6 +26,14 @@ macro_rules! android_start(
             extern crate libc;
             extern crate native;
 
+            // this function is here because we are sure that it will be included by the linker
+            // so we call app_dummy in it, in order to be sure that the native glue will be included
+            #[start]
+            pub fn start(_: int, _: *const *const u8) -> int {
+                unsafe { android_glue::ffi::app_dummy() };
+                1
+            }
+
             #[no_mangle]
             #[inline(never)]
             #[allow(non_snake_case)]
