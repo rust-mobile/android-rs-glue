@@ -59,7 +59,7 @@ macro_rules! android_start(
 
 /// This is the function that must be called by `android_main`
 #[doc(hidden)]
-pub fn android_main2(app: *mut (), main_function: proc()) {
+pub fn android_main2(app: *mut (), main_function: proc(): Send) {
     use native::NativeTaskBuilder;
     use std::task::TaskBuilder;
     use std::{mem, ptr};
@@ -76,28 +76,28 @@ pub fn android_main2(app: *mut (), main_function: proc()) {
         app.userData = unsafe { std::mem::transmute(&context) };
         app.onAppCmd = commands_callback;
 
-        // polling for events in parallel
-        TaskBuilder::new().native().spawn(proc() {
-            unsafe {
-                loop {
-                    let mut events = mem::uninitialized();
-                    let mut source = mem::uninitialized();
+        // executing the main function in parallel
+        TaskBuilder::new().native().spawn(main_function);
 
-                    // passing -1 means that we are blocking
-                    let ident = ffi::ALooper_pollAll(-1, ptr::mut_null(), &mut events,
-                        &mut source);
+        // polling for events forever
+        // note that this must be done in the same thread as android_main because ALooper are
+        //  thread-local
+        unsafe {
+            loop {
+                let mut events = mem::uninitialized();
+                let mut source = mem::uninitialized();
 
-                    // processing the event
-                    if !source.is_null() {
-                        let source: *mut ffi::android_poll_source = mem::transmute(source);
-                        ((*source).process)(ANDROID_APP, source);
-                    }
+                // passing -1 means that we are blocking
+                let ident = ffi::ALooper_pollAll(-1, ptr::mut_null(), &mut events,
+                    &mut source);
+
+                // processing the event
+                if !source.is_null() {
+                    let source: *mut ffi::android_poll_source = mem::transmute(source);
+                    ((*source).process)(ANDROID_APP, source);
                 }
             }
-        });
-
-        // let's go
-        main_function();
+        }
     });
 
     // terminating the application
