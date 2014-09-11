@@ -18,13 +18,18 @@ pub type NativeWindowType = *const ANativeWindow;
 pub type ANativeWindow = ();
 
 /**
+ * input.h
+ */
+pub type AInputEvent = ();
+
+/**
  * android_native_app_glue.h
  */
 #[repr(C)]
 pub struct android_app {
     pub userData: *mut libc::c_void,
     pub onAppCmd: extern fn(*mut android_app, libc::int32_t),
-    pub onInputEvent: extern fn(*mut android_app, *const ()/* FIXME: AInputEvent */) -> libc::int32_t,
+    pub onInputEvent: extern fn(*mut android_app, *const AInputEvent) -> libc::int32_t,
     pub activity: *const ANativeActivity,
     pub config: *const (), // FIXME: AConfiguration,
     pub savedState: *mut libc::c_void,
@@ -68,6 +73,34 @@ pub struct android_app {
     ANativeWindow* pendingWindow;
     ARect pendingContentRect;*/
 }
+
+#[repr(C)]
+pub struct android_poll_source {
+    pub id: libc::int32_t,      // can be LOOPER_ID_MAIN, LOOPER_ID_INPUT or LOOPER_ID_USER
+    pub app: *mut android_app,
+    pub process: extern fn(*mut android_app, *mut android_poll_source),
+}
+
+pub static LOOPER_ID_MAIN: libc::int32_t = 1;
+pub static LOOPER_ID_INPUT: libc::int32_t = 1;
+pub static LOOPER_ID_USER: libc::int32_t = 1;
+
+pub static APP_CMD_INPUT_CHANGED: libc::int32_t = 0;
+pub static APP_CMD_INIT_WINDOW: libc::int32_t = 1;
+pub static APP_CMD_TERM_WINDOW: libc::int32_t = 2;
+pub static APP_CMD_WINDOW_RESIZED: libc::int32_t = 3;
+pub static APP_CMD_WINDOW_REDRAW_NEEDED: libc::int32_t = 4;
+pub static APP_CMD_CONTENT_RECT_CHANGED: libc::int32_t = 5;
+pub static APP_CMD_GAINED_FOCUS: libc::int32_t = 6;
+pub static APP_CMD_LOST_FOCUS: libc::int32_t = 7;
+pub static APP_CMD_CONFIG_CHANGED: libc::int32_t = 8;
+pub static APP_CMD_LOW_MEMORY: libc::int32_t = 9;
+pub static APP_CMD_START: libc::int32_t = 10;
+pub static APP_CMD_RESUME: libc::int32_t = 11;
+pub static APP_CMD_SAVE_STATE: libc::int32_t = 12;
+pub static APP_CMD_PAUSE: libc::int32_t = 13;
+pub static APP_CMD_STOP: libc::int32_t = 14;
+pub static APP_CMD_DESTROY: libc::int32_t = 15;
 
 extern {
     pub fn app_dummy();

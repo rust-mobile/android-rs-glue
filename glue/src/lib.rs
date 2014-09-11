@@ -7,17 +7,28 @@
 extern crate compile_msg;
 
 extern crate libc;
+extern crate native;
+
+use std::sync::Mutex;
 
 #[doc(hidden)]
 pub mod ffi;
 
-/// This static variable is public because it needs to be accessible from the
-///  macros in user code.
-///
-/// It will store the android_app* on creation, and set it back to 0 at destruction.
+/// This static variable  will store the android_app* on creation, and set it back to 0 at
+///  destruction.
 /// Apart from this, the static is never written, so there is no risk of race condition.
+static mut ANDROID_APP: *mut ffi::android_app = 0 as *mut ffi::android_app;
+
+/// This is the structure that serves as user data in the android_app*
 #[doc(hidden)]
-pub static mut android_app: *mut ffi::android_app = 0 as *mut ffi::android_app;
+struct Context {
+    senders: Mutex<Vec<Sender<Event>>>,
+}
+
+/// An event triggered by the Android environment.
+pub enum Event {
+
+}
 
 #[cfg(not(target_os = "android"))]
 compile_note!("You are not compiling for Android")
@@ -27,8 +38,6 @@ macro_rules! android_start(
     ($main: ident) => (
         pub mod __android_start {
             extern crate android_glue;
-            extern crate libc;
-            extern crate native;
 
             // this function is here because we are sure that it will be included by the linker
             // so we call app_dummy in it, in order to be sure that the native glue will be included
@@ -41,33 +50,100 @@ macro_rules! android_start(
             #[no_mangle]
             #[inline(never)]
             #[allow(non_snake_case)]
-            pub extern "C" fn android_main(app: *mut android_glue::ffi::android_app) {
-                use self::native::NativeTaskBuilder;
-                use std::task::TaskBuilder;
-
-                unsafe { android_glue::android_app = app };
-
-                android_glue::write_log("ANativeActivity_onCreate has been called");
-
-                unsafe { android_glue::ffi::app_dummy() };
-
-                native::start(1, &b"".as_ptr(), proc() {
-                    super::$main();
-                });
-
-                unsafe { android_glue::android_app = 0 as *mut android_glue::ffi::android_app };
+            pub extern "C" fn android_main(app: *mut ()) {
+                android_glue::android_main2(app, proc() super::$main());
             }
         }
     )
 )
 
+/// This is the function that must be called by `android_main`
+#[doc(hidden)]
+pub fn android_main2(app: *mut (), main_function: proc()) {
+    use native::NativeTaskBuilder;
+    use std::task::TaskBuilder;
+    use std::{mem, ptr};
+
+    write_log("Entering android_main");
+
+    unsafe { ANDROID_APP = std::mem::transmute(app) };
+    let app: &mut ffi::android_app = unsafe { std::mem::transmute(app) };
+
+    // starting the runtime
+    native::start(1, &b"".as_ptr(), proc() {
+        // creating the context that will be passed to the callback
+        let context = Context { senders: Mutex::new(Vec::new()) };
+        app.userData = unsafe { std::mem::transmute(&context) };
+        app.onAppCmd = commands_callback;
+
+        // polling for events in parallel
+        TaskBuilder::new().native().spawn(proc() {
+            unsafe {
+                loop {
+                    let mut events = mem::uninitialized();
+                    let mut source = mem::uninitialized();
+
+                    // passing -1 means that we are blocking
+                    let ident = ffi::ALooper_pollAll(-1, ptr::mut_null(), &mut events,
+                        &mut source);
+
+                    // processing the event
+                    if !source.is_null() {
+                        let source: *mut ffi::android_poll_source = mem::transmute(source);
+                        ((*source).process)(ANDROID_APP, source);
+                    }
+                }
+            }
+        });
+
+        // let's go
+        main_function();
+    });
+
+    // terminating the application
+    unsafe { ANDROID_APP = 0 as *mut ffi::android_app };
+}
+
+/// The callback for commands.
+#[doc(hidden)]
+pub extern fn commands_callback(context: *mut ffi::android_app, command: libc::int32_t) {
+    let context = get_context();
+
+    match command {
+        ffi::APP_CMD_INIT_WINDOW => {
+
+        },
+        _ => ()
+    }
+}
+
+/// Returns the current Context
+#[doc(hidden)]
+pub fn get_context() -> &'static Context {
+    let context = unsafe { (*ANDROID_APP).userData };
+    unsafe { std::mem::transmute(context) }
+}
+
+/// Adds a sender where events will be sent to.
+pub fn add_sender(sender: Sender<Event>) {
+    get_context().senders.lock().push(sender);
+}
+
 /// Returns a handle to the native window.
 pub unsafe fn get_native_window() -> ffi::NativeWindowType {
-    if android_app.is_null() {
+    if ANDROID_APP.is_null() {
         fail!("The application was not initialized from android_main");
     }
 
-    (*android_app).window
+    loop {
+        let value = (*ANDROID_APP).window;
+        if !value.is_null() {
+            return value;
+        }
+
+        // spin-locking
+        std::io::timer::sleep(std::time::Duration::milliseconds(10));
+    }
 }
 
 /// 
