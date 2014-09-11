@@ -20,7 +20,7 @@ fn main() {
     let standalone_path = std::os::env().move_iter().find(|&(ref k, _)| k.as_slice() == "NDK_STANDALONE")
         .map(|(_, v)| Path::new(v)).unwrap_or(Path::new("/opt/ndk_standalone"));
 
-    // creating the build directory
+    // creating the build directory that will contain all the necessary files to create teh apk
     let directory = build_directory(&sdk_path);
 
     // compiling android_native_app_glue.c
@@ -36,7 +36,7 @@ fn main() {
         return;
     }
     
-    // calling gcc
+    // calling gcc to link to an executable
     if Command::new(standalone_path.join("bin").join("arm-linux-androideabi-gcc"))
         .args(passthrough.as_slice())
         .arg(directory.path().join("android_native_app_glue.o"))
@@ -51,7 +51,7 @@ fn main() {
         return;
     }
 
-    // calling elfedit
+    // calling elfedit to turn our executable into a shared object
     if Command::new(standalone_path.join("bin").join("arm-linux-androideabi-elfedit"))
         .arg("--output-type").arg("dyn")
         .arg(directory.path().join("libs").join("armeabi").join("libmain.so"))
@@ -74,17 +74,17 @@ fn main() {
         return;
     }
 
-    // copying apk file to OUTPUT
+    // copying apk file to the requested output
     fs::copy(&directory.path().join("bin").join("rust-android-debug.apk"),
-        &Path::new("output")).unwrap();     // FIXME
+        &Path::new(args.output)).unwrap();
 }
 
 struct Args {
-    shared: bool,
+    output: Path,
 }
 
 fn parse_arguments() -> (Args, Vec<String>) {
-    let mut result_args = Args { shared: false };
+    let mut result_output = None;
     let mut result_passthrough = Vec::new();
 
     let args = std::os::args();
@@ -92,13 +92,21 @@ fn parse_arguments() -> (Args, Vec<String>) {
 
     loop {
         let arg = match args.next() {
-            None => return (result_args, result_passthrough),
+            None => return (
+                Args {
+                    output: result_output.expect("Could not find -o argument")
+                },
+                result_passthrough
+            ),
             Some(arg) => arg
         };
 
         match arg.as_slice() {
-            _ => result_passthrough.push(arg.clone())
-        }
+            "-o" => {
+                result_output = Some(Path::new(args.next().expect("-o must be followed by the output name")));
+            },
+            _ => result_passthrough.push(arg)
+        };
     }
 }
 
