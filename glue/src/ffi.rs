@@ -22,7 +22,51 @@ pub type ANativeWindow = ();
  */
 #[repr(C)]
 pub struct android_app {
-    userData: *mut libc::c_void,
+    pub userData: *mut libc::c_void,
+    pub onAppCmd: extern fn(*mut android_app, libc::int32_t),
+    pub onInputEvent: extern fn(*mut android_app, *const ()/* FIXME: AInputEvent */) -> libc::int32_t,
+    pub activity: *const ANativeActivity,
+    pub config: *const (), // FIXME: AConfiguration,
+    pub savedState: *mut libc::c_void,
+    pub savedStateSize: libc::size_t,
+    pub looper: *const ALooper,
+    pub inputQueue: *const (), // FIXME: AInputQueue,
+    pub window: *const ANativeWindow,
+
+    // TODO: add the following elements:
+    /*// Current content rectangle of the window; this is the area where the
+    // window's content should be placed to be seen by the user.
+    ARect contentRect;
+
+    // Current state of the app's activity.  May be either APP_CMD_START,
+    // APP_CMD_RESUME, APP_CMD_PAUSE, or APP_CMD_STOP; see below.
+    int activityState;
+
+    // This is non-zero when the application's NativeActivity is being
+    // destroyed and waiting for the app thread to complete.
+    int destroyRequested;
+
+    // -------------------------------------------------
+    // Below are "private" implementation of the glue code.
+
+    pthread_mutex_t mutex;
+    pthread_cond_t cond;
+
+    int msgread;
+    int msgwrite;
+
+    pthread_t thread;
+
+    struct android_poll_source cmdPollSource;
+    struct android_poll_source inputPollSource;
+
+    int running;
+    int stateSaved;
+    int destroyed;
+    int redrawNeeded;
+    AInputQueue* pendingInputQueue;
+    ANativeWindow* pendingWindow;
+    ARect pendingContentRect;*/
 }
 
 extern {

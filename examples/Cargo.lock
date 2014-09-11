@@ -8,4 +8,12 @@ dependencies = [
 [[package]]
 name = "android_glue"
 version = "0.0.1"
+dependencies = [
+ "compile_msg 0.1.0 (git+https://github.com/huonw/compile_msg#de280134208e6ac6b54be81c7ffa0341ff665009)",
+]
+
+[[package]]
+name = "compile_msg"
+version = "0.1.0"
+source = "git+https://github.com/huonw/compile_msg#de280134208e6ac6b54be81c7ffa0341ff665009"
 
