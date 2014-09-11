@@ -11,7 +11,11 @@ extern crate libc;
 #[doc(hidden)]
 pub mod ffi;
 
-/// 
+/// This static variable is public because it needs to be accessible from the
+///  macros in user code.
+///
+/// It will store the android_app* on creation, and set it back to 0 at destruction.
+/// Apart from this, the static is never written, so there is no risk of race condition.
 #[doc(hidden)]
 pub static mut android_app: *mut ffi::android_app = 0 as *mut ffi::android_app;
 
@@ -48,18 +52,22 @@ macro_rules! android_start(
                 unsafe { android_glue::ffi::app_dummy() };
 
                 native::start(1, &b"".as_ptr(), proc() {
-                    TaskBuilder::new().native().spawn(proc() {
-                        super::$main();
-                    });
+                    super::$main();
                 });
+
+                unsafe { android_glue::android_app = 0 as *mut android_glue::ffi::android_app };
             }
         }
     )
 )
 
 /// Returns a handle to the native window.
-pub fn get_native_window() -> ffi::NativeWindowType {
-    unsafe { (*android_app).window }
+pub unsafe fn get_native_window() -> ffi::NativeWindowType {
+    if android_app.is_null() {
+        fail!("The application was not initialized from android_main");
+    }
+
+    (*android_app).window
 }
 
 /// 
