@@ -40,12 +40,16 @@ cd apk-builder/apk-builder
 cargo build
 ```
 
-Finally, add a file named [`.cargo/config`](http://crates.io/config.html) in your main repository in order to ask Cargo to use `apk-builder`:
+Finally, add a file named [`.cargo/config`](http://crates.io/config.html) in your main repository in order to ask rustc to use `apk-builder`:
 
 ```toml
 [target.arm-linux-androideabi]
 linker = "apk-builder/apk-builder/target/apk-builder"
 ```
+
+Instead of a regular binary, compiling with `cargo build --target=arm-linux-androideabi` will produce an APK that can be installed on an Android device. See `How to compile` below.
+
+One important thing to notice is that this doesn't break your existing build. Calling `cargo build` or `cargo build --target=something-something-something` will produce the exact same thing as before.
 
 # Usage
 
@@ -55,7 +59,7 @@ The library provides other unsafe low-level functions, but they should only be u
 
 # How to compile
 
-## Setting up your environment:
+## Setting up your environment
 
  - If you are on Linux 64 bits, install the 32 bits binaries (`apt-get install libc6-i386 lib32z1 lib32stdc++6`)
 
@@ -81,7 +85,7 @@ Building your project is done in one single step:
 
 (Note: the SDK installer should automatically set `ANDROID_HOME`, in which case you don't need to pass it. The NDK standalone may be by-passed in the future, making `NDK_HOME` the only environment variable that will need to be passed).
 
-This will generate a file named `target/arm-linux-androideabi/your_crate` or `target/arm-linux-androideabi/your_crate.exe`. Even though it has the wrong extension, this file is an Android package that can be installed on an Android device.
+This will generate a file named `target/arm-linux-androideabi/your_crate` or `target/arm-linux-androideabi/your_crate.exe`. Even though it has the wrong extension, this file is an Android package (`.apk`) that can be installed on an Android device.
 
 # Testing on an Android emulator
 
