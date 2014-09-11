@@ -1,30 +1,68 @@
-#![feature(phase)]
-
-#[phase(plugin)]
-extern crate docopt_macros;
-
-extern crate docopt;
 extern crate serialize;
 
 use std::io::process::Command;
 use std::io::{File, TempDir};
 
-docopt!(Args, "
-Usage: rust-to-apk --sdk SDKPATH -o OUTPUT INPUT
-
-Options:
-    -h          Print this message
-")
-
 fn main() {
     use std::io::fs;
 
-    let args: Args = docopt::FlagParser::parse().unwrap_or_else(|e| e.exit());
+    let (args, passthrough) = parse_arguments();
 
-    // TODO: check sdk path in ANDROID_HOME if no command line option
-    let sdk_path = Path::new(args.arg_SDKPATH);
+    // getting the path from the ANDROID_HOME env
+    let sdk_path = std::os::env().move_iter().find(|&(ref k, _)| k.as_slice() == "ANDROID_HOME")
+        .map(|(_, v)| Path::new(v)).expect("Please set the ANDROID_HOME environment variable");
 
-    let directory = build_directory(&Path::new(args.arg_INPUT), &sdk_path);
+    // hardcoding ndk path
+    let ndk_path = std::os::env().move_iter().find(|&(ref k, _)| k.as_slice() == "NDK_HOME")
+        .map(|(_, v)| Path::new(v)).expect("Please set the NDK_HOME environment variable");
+
+    // hardcoding ndk path
+    let standalone_path = std::os::env().move_iter().find(|&(ref k, _)| k.as_slice() == "NDK_STANDALONE")
+        .map(|(_, v)| Path::new(v)).unwrap_or(Path::new("/opt/ndk_standalone"));
+
+    // creating the build directory
+    let directory = build_directory(&sdk_path);
+
+    // compiling android_native_app_glue.c
+    if Command::new(standalone_path.join("bin").join("arm-linux-androideabi-gcc"))
+        .arg(ndk_path.join("sources").join("android").join("native_app_glue").join("android_native_app_glue.c"))
+        .arg("-c")
+        .arg("-o").arg(directory.path().join("android_native_app_glue.o"))
+        .stdout(std::io::process::InheritFd(1)).stderr(std::io::process::InheritFd(2))
+        .status().unwrap() != std::io::process::ExitStatus(0)
+    {
+        println!("Error while executing gcc");
+        std::os::set_exit_status(1);
+        return;
+    }
+    
+    // calling gcc
+    if Command::new(standalone_path.join("bin").join("arm-linux-androideabi-gcc"))
+        .args(passthrough.as_slice())
+        .arg(directory.path().join("android_native_app_glue.o"))
+        .arg("-o").arg(directory.path().join("libs").join("armeabi").join("libmain.so"))
+        .arg("-Wl,-E")
+        .stdout(std::io::process::InheritFd(1))
+        .stderr(std::io::process::InheritFd(2))//.cwd(directory.path())
+        .status().unwrap() != std::io::process::ExitStatus(0)
+    {
+        println!("Error while executing gcc");
+        std::os::set_exit_status(1);
+        return;
+    }
+
+    // calling elfedit
+    if Command::new(standalone_path.join("bin").join("arm-linux-androideabi-elfedit"))
+        .arg("--output-type").arg("dyn")
+        .arg(directory.path().join("libs").join("armeabi").join("libmain.so"))
+        .stdout(std::io::process::InheritFd(1))
+        .stderr(std::io::process::InheritFd(2))
+        .status().unwrap() != std::io::process::ExitStatus(0)
+    {
+        println!("Error while executing elfedit");
+        std::os::set_exit_status(1);
+        return;
+    }
 
     // executing ant
     if Command::new("ant").arg("debug").stdout(std::io::process::InheritFd(1))
@@ -32,20 +70,43 @@ fn main() {
         .status().unwrap() != std::io::process::ExitStatus(0)
     {
         println!("Error while executing ant debug");
+        std::os::set_exit_status(1);
         return;
     }
 
     // copying apk file to OUTPUT
     fs::copy(&directory.path().join("bin").join("rust-android-debug.apk"),
-        &Path::new(args.arg_OUTPUT)).unwrap();
+        &Path::new("output")).unwrap();     // FIXME
 }
 
-fn build_directory(library: &Path, sdk_dir: &Path) -> TempDir {
+struct Args {
+    shared: bool,
+}
+
+fn parse_arguments() -> (Args, Vec<String>) {
+    let mut result_args = Args { shared: false };
+    let mut result_passthrough = Vec::new();
+
+    let args = std::os::args();
+    let mut args = args.move_iter().skip(1);
+
+    loop {
+        let arg = match args.next() {
+            None => return (result_args, result_passthrough),
+            Some(arg) => arg
+        };
+
+        match arg.as_slice() {
+            _ => result_passthrough.push(arg.clone())
+        }
+    }
+}
+
+fn build_directory(sdk_dir: &Path) -> TempDir {
     use std::io::fs;
-    use std::os;
 
     let build_directory = TempDir::new("android-rs-glue-rust-to-apk")
-        .expect("Could not create temporary build directory");
+        .ok().expect("Could not create temporary build directory");
 
     File::create(&build_directory.path().join("AndroidManifest.xml")).unwrap()
         .write_str(build_manifest().as_slice())
@@ -74,9 +135,7 @@ fn build_directory(library: &Path, sdk_dir: &Path) -> TempDir {
 
     {
         let libs_path = build_directory.path().join("libs").join("armeabi");
-
         fs::mkdir_recursive(&libs_path, std::io::UserRWX).unwrap();
-        fs::copy(library, &libs_path.join("libmain.so")).unwrap();
     }
 
     build_directory

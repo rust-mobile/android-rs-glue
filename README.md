@@ -40,7 +40,4 @@ Preliminary steps:
 
 Building:
  - In `apk-builder`: `cargo build`
- - In `glue`: `cargo build --target=arm-linux-androideabi`
- - `rustc examples/basic.rs -C linker=/opt/ndk_standalone/bin/arm-linux-androideabi-gcc --crate-name example --crate-type bin -o example --target arm-linux-androideabi -L glue/target/arm-linux-androideabi`
- - `/opt/ndk_standalone/bin/arm-linux-androideabi-elfedit --output-type dyn example`
- - `apk-builder/target/apk-builder --sdk /home/user/android-sdk-linux -o example.apk example`
+ - In `examples`: `ANDROID_HOME=/path/to/android/sdk NDK_HOME=/path/to/ndk NDK_STANDALONE=/opt/ndk_standalone cargo build --target=arm-linux-androideabi`

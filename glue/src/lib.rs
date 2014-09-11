@@ -3,8 +3,8 @@
 
 #![unstable]
 
-#[phase(plugin)]
-extern crate compile_msg;
+//#[phase(plugin)]
+//extern crate compile_msg;
 
 extern crate libc;
 
@@ -12,8 +12,8 @@ pub mod ffi;
 
 static mut native_window: Option<ffi::NativeWindowType> = None;
 
-#[cfg(not(target_os = "android"))]
-compile_note!("You are not compiling for Android")
+//#[cfg(not(target_os = "android"))]
+//compile_note!("You are not compiling for Android")
 
 #[macro_export]
 macro_rules! android_start(
@@ -23,41 +23,16 @@ macro_rules! android_start(
             extern crate libc;
             extern crate native;
 
-            /// This function is never called, it's just used so we can force
-            ///  the linkage of ANativeActivity_onCreate
-            #[start]
-            fn start(_argc: int, _argv: *const *const u8) -> int {
-                let p = ANativeActivity_onCreate as *const ();
-                println!("{}", p);
-
-                fail!("This function is not supposed to be called");
-            }
-
             #[no_mangle]
             #[inline(never)]
             #[allow(non_snake_case)]
-            pub extern "C" fn ANativeActivity_onCreate(activity: *mut android_glue::ffi::ANativeActivity,
-                _saved_state: *mut libc::c_void, _saved_state_size: libc::size_t)
-            {
+            pub extern "C" fn android_main(app: *mut android_glue::ffi::android_app) {
                 use self::native::NativeTaskBuilder;
                 use std::task::TaskBuilder;
 
                 android_glue::write_log("ANativeActivity_onCreate has been called");
 
-                let activity = unsafe { &mut *activity };
-                let callbacks = unsafe { &mut *activity.callbacks };
-
-                callbacks.onDestroy = android_glue::native_ondestroy;
-                callbacks.onStart = android_glue::native_onstart;
-                callbacks.onResume = android_glue::native_onresume;
-                callbacks.onSaveInstanceState = android_glue::native_onsaveinstancestate;
-                callbacks.onPause = android_glue::native_onpause;
-                callbacks.onStop = android_glue::native_onstop;
-                callbacks.onConfigurationChanged = android_glue::native_onconfigurationchanged;
-                callbacks.onLowMemory = android_glue::native_onlowmemory;
-                callbacks.onWindowFocusChanged = android_glue::native_onwindowfocuschanged;
-                callbacks.onNativeWindowCreated = android_glue::native_onnativewindowcreated;
-                callbacks.onNativeWindowDestroyed = android_glue::native_onnativewindowdestroyed;
+                unsafe { android_glue::ffi::app_dummy() };
 
                 native::start(1, &b"".as_ptr(), proc() {
                     TaskBuilder::new().native().spawn(proc() {

@@ -18,6 +18,18 @@ pub type NativeWindowType = *const ANativeWindow;
 pub type ANativeWindow = ();
 
 /**
+ * android_native_app_glue.h
+ */
+#[repr(C)]
+pub struct android_app {
+    userData: *mut libc::c_void,
+}
+
+extern {
+    pub fn app_dummy();
+}
+
+/**
  * native_activity.h
  */
 pub type JavaVM = ();

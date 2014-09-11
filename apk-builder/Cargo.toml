@@ -3,9 +3,3 @@
 name = "apk-builder"
 version = "0.0.1"
 authors = ["Pierre Krieger <pierre.krieger1708@gmail.com>"]
-
-[dependencies.docopt]
-git = "https://github.com/docopt/docopt.rs"
-
-[dependencies.docopt_macros]
-git = "https://github.com/docopt/docopt.rs"
