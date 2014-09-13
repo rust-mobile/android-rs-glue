@@ -73,8 +73,8 @@ pub fn android_main2(app: *mut (), main_function: proc(): Send) {
     native::start(1, &b"".as_ptr(), proc() {
         // creating the context that will be passed to the callback
         let context = Context { senders: Mutex::new(Vec::new()) };
-        app.userData = unsafe { std::mem::transmute(&context) };
         app.onAppCmd = commands_callback;
+        app.onInputEvent = inputs_callback;
 
         // executing the main function in parallel
         TaskBuilder::new().native().spawn(main_function);
@@ -104,15 +104,40 @@ pub fn android_main2(app: *mut (), main_function: proc(): Send) {
     unsafe { ANDROID_APP = 0 as *mut ffi::android_app };
 }
 
+/// The callback for inputs.
+pub extern fn inputs_callback(_: *mut ffi::android_app, event: *const ffi::AInputEvent)
+    -> libc::int32_t
+{
+    let context = get_context();
+    0
+}
+
 /// The callback for commands.
 #[doc(hidden)]
-pub extern fn commands_callback(context: *mut ffi::android_app, command: libc::int32_t) {
+pub extern fn commands_callback(_: *mut ffi::android_app, command: libc::int32_t) {
     let context = get_context();
 
     match command {
         ffi::APP_CMD_INIT_WINDOW => {
 
         },
+
+        ffi::APP_CMD_SAVE_STATE => {
+
+        },
+
+        ffi::APP_CMD_TERM_WINDOW => {
+
+        },
+
+        ffi::APP_CMD_GAINED_FOCUS => {
+
+        },
+
+        ffi::APP_CMD_LOST_FOCUS => {
+
+        },
+
         _ => ()
     }
 }
