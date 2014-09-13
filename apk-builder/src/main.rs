@@ -65,7 +65,8 @@ fn main() {
     }
 
     // calling objdump to make sure that our object has `ANativeActivity_onCreate`
-    {
+    // TODO: not working
+    /*{
         let mut process =
             Command::new(standalone_path.join("bin").join("arm-linux-androideabi-objdump"))
             .arg("-x").arg(directory.path().join("libs").join("armeabi").join("libmain.so"))
@@ -85,7 +86,7 @@ fn main() {
             std::os::set_exit_status(1);
             return;
         }
-    }
+    }*/
 
     // executing ant
     if Command::new("ant").arg("debug").stdout(std::io::process::InheritFd(1))
