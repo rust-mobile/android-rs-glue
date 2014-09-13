@@ -64,6 +64,29 @@ fn main() {
         return;
     }
 
+    // calling objdump to make sure that our object has `ANativeActivity_onCreate`
+    {
+        let mut process =
+            Command::new(standalone_path.join("bin").join("arm-linux-androideabi-objdump"))
+            .arg("-x").arg(directory.path().join("libs").join("armeabi").join("libmain.so"))
+            .stderr(std::io::process::InheritFd(2))
+            .spawn().unwrap();
+
+        // TODO: use UFCS instead
+        fn by_ref<'a, T: Reader>(r: &'a mut T) -> std::io::RefReader<'a, T> { r.by_ref() };
+
+        let stdout = process.stdout.as_mut().unwrap();
+        let mut stdout = std::io::BufferedReader::new(by_ref(stdout));
+
+        if stdout.lines().filter_map(|l| l.ok())
+            .find(|line| line.as_slice().contains("ANativeActivity_onCreate")).is_none()
+        {
+            println!("Error: the output file doesn't contain ANativeActivity_onCreate");
+            std::os::set_exit_status(1);
+            return;
+        }
+    }
+
     // executing ant
     if Command::new("ant").arg("debug").stdout(std::io::process::InheritFd(1))
         .stderr(std::io::process::InheritFd(2)).cwd(directory.path())
