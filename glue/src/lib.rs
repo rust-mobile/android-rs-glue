@@ -142,9 +142,8 @@ pub extern fn commands_callback(_: *mut ffi::android_app, command: libc::int32_t
     }
 }
 
-/// Returns the current Context
-#[doc(hidden)]
-pub fn get_context() -> &'static Context {
+/// Returns the current Context.
+fn get_context() -> &'static Context {
     let context = unsafe { (*ANDROID_APP).userData };
     unsafe { std::mem::transmute(context) }
 }
