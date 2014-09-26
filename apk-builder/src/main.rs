@@ -181,7 +181,7 @@ fn build_manifest(crate_name: &str) -> String {
         android:versionCode="1"
         android:versionName="1.0">
 
-    <uses-sdk android:minSdkVersion="18" />
+    <uses-sdk android:minSdkVersion="9" />
 
     <application android:label="{0}" android:hasCode="true">
         <activity android:name="com.example.native_activity.MyNativeActivity"
