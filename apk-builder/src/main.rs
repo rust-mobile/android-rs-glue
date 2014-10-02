@@ -157,15 +157,6 @@ fn build_directory(sdk_dir: &Path, crate_name: &str) -> TempDir {
         .unwrap();
 
     {
-        let src_path = build_directory.path().join("src").join("com").join("example")
-            .join("native_activity");
-        fs::mkdir_recursive(&src_path, std::io::UserRWX).unwrap();
-        File::create(&src_path.join("MyNativeActivity.java")).unwrap()
-            .write_str(build_java_class().as_slice())
-            .unwrap();
-    }
-
-    {
         let libs_path = build_directory.path().join("libs").join("armeabi");
         fs::mkdir_recursive(&libs_path, std::io::UserRWX).unwrap();
     }
@@ -183,8 +174,8 @@ fn build_manifest(crate_name: &str) -> String {
 
     <uses-sdk android:minSdkVersion="9" />
 
-    <application android:label="{0}" android:hasCode="true">
-        <activity android:name="com.example.native_activity.MyNativeActivity"
+    <application android:label="{0}" android:hasCode="false">
+        <activity android:name="android.app.NativeActivity"
                 android:label="{0}"
                 android:configChanges="orientation|keyboardHidden">
             <intent-filter>
@@ -217,25 +208,4 @@ fn build_local_properties(sdk_dir: &Path) -> String {
 
 fn build_project_properties() -> String {
     format!(r"target=android-18")
-}
-
-fn build_java_class() -> String {
-    format!(r#"
-package com.example.native_activity;
-
-import android.app.NativeActivity;
-import android.util.Log;
-
-public class MyNativeActivity extends NativeActivity {{
-  static {{
-    System.loadLibrary("main");  
-  }}
-
-  private static String TAG = "MyNativeActivity";
-
-  public MyNativeActivity() {{
-    super();
-    Log.v(TAG, "Creating MyNativeActivity");
-  }}
-}}"#)
 }
