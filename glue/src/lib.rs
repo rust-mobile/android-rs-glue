@@ -77,7 +77,11 @@ pub fn android_main2(app: *mut (), main_function: proc(): Send) {
         app.onInputEvent = inputs_callback;
 
         // executing the main function in parallel
-        TaskBuilder::new().native().spawn(main_function);
+        TaskBuilder::new().native().spawn(proc() {
+            std::io::stdio::set_stdout(box std::io::LineBufferedWriter::new(ToLogWriter));
+            std::io::stdio::set_stderr(box std::io::LineBufferedWriter::new(ToLogWriter));
+            main_function()
+        });
 
         // polling for events forever
         // note that this must be done in the same thread as android_main because ALooper are
@@ -102,6 +106,20 @@ pub fn android_main2(app: *mut (), main_function: proc(): Send) {
 
     // terminating the application
     unsafe { ANDROID_APP = 0 as *mut ffi::android_app };
+}
+
+/// Writer that will redirect what is written to it to the logs.
+struct ToLogWriter;
+
+impl Writer for ToLogWriter {
+    fn write(&mut self, buf: &[u8]) -> std::io::IoResult<()> {
+        buf.with_c_str(|message| {
+            b"RustAndroidGlueStdouterr".with_c_str(|tag| {
+                unsafe { ffi::__android_log_write(3, tag, message) };
+            });
+        });
+        Ok(())
+    }
 }
 
 /// The callback for inputs.
