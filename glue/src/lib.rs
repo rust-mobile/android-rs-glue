@@ -92,7 +92,7 @@ pub fn android_main2(app: *mut (), main_function: proc(): Send) {
                 let mut source = mem::uninitialized();
 
                 // passing -1 means that we are blocking
-                let ident = ffi::ALooper_pollAll(-1, ptr::mut_null(), &mut events,
+                let ident = ffi::ALooper_pollAll(-1, ptr::null_mut(), &mut events,
                     &mut source);
 
                 // processing the event
