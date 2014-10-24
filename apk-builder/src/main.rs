@@ -9,15 +9,15 @@ fn main() {
     let (args, passthrough) = parse_arguments();
 
     // getting the path from the ANDROID_HOME env
-    let sdk_path = std::os::env().move_iter().find(|&(ref k, _)| k.as_slice() == "ANDROID_HOME")
+    let sdk_path = std::os::env().into_iter().find(|&(ref k, _)| k.as_slice() == "ANDROID_HOME")
         .map(|(_, v)| Path::new(v)).expect("Please set the ANDROID_HOME environment variable");
 
     // hardcoding ndk path
-    let ndk_path = std::os::env().move_iter().find(|&(ref k, _)| k.as_slice() == "NDK_HOME")
+    let ndk_path = std::os::env().into_iter().find(|&(ref k, _)| k.as_slice() == "NDK_HOME")
         .map(|(_, v)| Path::new(v)).expect("Please set the NDK_HOME environment variable");
 
     // hardcoding ndk path
-    let standalone_path = std::os::env().move_iter().find(|&(ref k, _)| k.as_slice() == "NDK_STANDALONE")
+    let standalone_path = std::os::env().into_iter().find(|&(ref k, _)| k.as_slice() == "NDK_STANDALONE")
         .map(|(_, v)| Path::new(v)).unwrap_or(Path::new("/opt/ndk_standalone"));
 
     // creating the build directory that will contain all the necessary files to create teh apk
@@ -112,7 +112,7 @@ fn parse_arguments() -> (Args, Vec<String>) {
     let mut result_passthrough = Vec::new();
 
     let args = std::os::args();
-    let mut args = args.move_iter().skip(1);
+    let mut args = args.into_iter().skip(1);
 
     loop {
         let arg = match args.next() {
@@ -158,7 +158,7 @@ fn build_directory(sdk_dir: &Path, crate_name: &str) -> TempDir {
 
     {
         let libs_path = build_directory.path().join("libs").join("armeabi");
-        fs::mkdir_recursive(&libs_path, std::io::UserRWX).unwrap();
+        fs::mkdir_recursive(&libs_path, std::io::USER_RWX).unwrap();
     }
 
     build_directory
