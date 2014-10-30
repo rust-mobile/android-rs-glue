@@ -174,7 +174,7 @@ pub fn add_sender(sender: Sender<Event>) {
 /// Returns a handle to the native window.
 pub unsafe fn get_native_window() -> ffi::NativeWindowType {
     if ANDROID_APP.is_null() {
-        fail!("The application was not initialized from android_main");
+        panic!("The application was not initialized from android_main");
     }
 
     loop {
