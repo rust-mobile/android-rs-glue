@@ -225,6 +225,13 @@ pub const AINPUT_KEYBOARD_TYPE_NONE: libc::int32_t = 0;
 pub const AINPUT_KEYBOARD_TYPE_NON_ALPHABETIC: libc::int32_t = 1;
 pub const AINPUT_KEYBOARD_TYPE_ALPHABETIC: libc::int32_t = 2;
 
+extern {
+    pub fn AInputEvent_getType(event: *const AInputEvent) -> libc::int32_t;
+    pub fn AMotionEvent_getX(event: *const AInputEvent, pointer_index: libc::size_t) -> libc::c_float;
+    pub fn AMotionEvent_getY(event: *const AInputEvent, pointer_index: libc::size_t) -> libc::c_float;
+    pub fn AMotionEvent_getAction(motion_event: *const AInputEvent) -> libc::int32_t;
+}
+
 
 /*
  * log.h

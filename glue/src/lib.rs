@@ -27,7 +27,9 @@ struct Context {
 
 /// An event triggered by the Android environment.
 pub enum Event {
-
+    EventUp,
+    EventDown,
+    EventMove(i32, i32),
 }
 
 #[cfg(not(target_os = "android"))]
@@ -75,6 +77,7 @@ pub fn android_main2(app: *mut (), main_function: proc(): Send) {
         let context = Context { senders: Mutex::new(Vec::new()) };
         app.onAppCmd = commands_callback;
         app.onInputEvent = inputs_callback;
+        app.userData = unsafe { std::mem::transmute(&context) };
 
         // executing the main function in parallel
         TaskBuilder::new().native().spawn(proc() {
@@ -126,7 +129,32 @@ impl Writer for ToLogWriter {
 pub extern fn inputs_callback(_: *mut ffi::android_app, event: *const ffi::AInputEvent)
     -> libc::int32_t
 {
-    let context = get_context();
+    fn send_event(event: Event) {
+        for sender in get_context().senders.lock().iter() {
+            sender.send(event);
+        }
+    }
+    let action = unsafe { ffi::AMotionEvent_getAction(event) };
+    let action_code = action & ffi::AMOTION_EVENT_ACTION_MASK;
+    match action_code {
+        ffi::AMOTION_EVENT_ACTION_UP
+            | ffi::AMOTION_EVENT_ACTION_OUTSIDE
+            | ffi::AMOTION_EVENT_ACTION_CANCEL
+            | ffi::AMOTION_EVENT_ACTION_POINTER_UP =>
+        {
+            send_event(EventUp);
+        },
+        ffi::AMOTION_EVENT_ACTION_DOWN
+            | ffi::AMOTION_EVENT_ACTION_POINTER_DOWN =>
+        {
+            send_event(EventDown);
+        },
+        _ => {
+            let x = unsafe { ffi::AMotionEvent_getX(event, 0) };
+            let y = unsafe { ffi::AMotionEvent_getY(event, 0) };
+            send_event(EventMove(x as i32, y as i32));
+        },
+    }
     0
 }
 
