@@ -142,17 +142,17 @@ pub extern fn inputs_callback(_: *mut ffi::android_app, event: *const ffi::AInpu
             | ffi::AMOTION_EVENT_ACTION_CANCEL
             | ffi::AMOTION_EVENT_ACTION_POINTER_UP =>
         {
-            send_event(EventUp);
+            send_event(Event::EventUp);
         },
         ffi::AMOTION_EVENT_ACTION_DOWN
             | ffi::AMOTION_EVENT_ACTION_POINTER_DOWN =>
         {
-            send_event(EventDown);
+            send_event(Event::EventDown);
         },
         _ => {
             let x = unsafe { ffi::AMotionEvent_getX(event, 0) };
             let y = unsafe { ffi::AMotionEvent_getY(event, 0) };
-            send_event(EventMove(x as i32, y as i32));
+            send_event(Event::EventMove(x as i32, y as i32));
         },
     }
     0
