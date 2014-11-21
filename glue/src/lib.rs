@@ -7,7 +7,6 @@
 extern crate compile_msg;
 
 extern crate libc;
-extern crate native;
 
 use std::sync::Mutex;
 
@@ -62,7 +61,6 @@ macro_rules! android_start(
 /// This is the function that must be called by `android_main`
 #[doc(hidden)]
 pub fn android_main2(app: *mut (), main_function: proc(): Send) {
-    use native::NativeTaskBuilder;
     use std::task::TaskBuilder;
     use std::{mem, ptr};
 
@@ -72,7 +70,7 @@ pub fn android_main2(app: *mut (), main_function: proc(): Send) {
     let app: &mut ffi::android_app = unsafe { std::mem::transmute(app) };
 
     // starting the runtime
-    native::start(1, &b"".as_ptr(), proc() {
+    std::rt::start(1, &b"".as_ptr(), proc() {
         // creating the context that will be passed to the callback
         let context = Context { senders: Mutex::new(Vec::new()) };
         app.onAppCmd = commands_callback;
@@ -80,7 +78,7 @@ pub fn android_main2(app: *mut (), main_function: proc(): Send) {
         app.userData = unsafe { std::mem::transmute(&context) };
 
         // executing the main function in parallel
-        TaskBuilder::new().native().spawn(proc() {
+        spawn(proc() {
             std::io::stdio::set_stdout(box std::io::LineBufferedWriter::new(ToLogWriter));
             std::io::stdio::set_stderr(box std::io::LineBufferedWriter::new(ToLogWriter));
             main_function()
