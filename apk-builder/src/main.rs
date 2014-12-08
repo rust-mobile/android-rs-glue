@@ -1,12 +1,15 @@
 extern crate serialize;
 
+use std::collections::HashMap;
 use std::io::process::Command;
 use std::io::{File, TempDir};
+use std::io::fs;
 
 fn main() {
-    use std::io::fs;
-
     let (args, passthrough) = parse_arguments();
+
+    // Find all the native shared libraries that exist in the target directory.
+    let native_shared_libs = find_native_libs(&args);
 
     // getting the path from the ANDROID_HOME env
     let sdk_path = std::os::env().into_iter().find(|&(ref k, _)| k.as_slice() == "ANDROID_HOME")
@@ -21,7 +24,12 @@ fn main() {
         .map(|(_, v)| Path::new(v)).unwrap_or(Path::new("/opt/ndk_standalone"));
 
     // creating the build directory that will contain all the necessary files to create teh apk
-    let directory = build_directory(&sdk_path, args.output.filestem_str().unwrap());
+    let directory = build_directory(&sdk_path, args.output.filestem_str().unwrap(), &native_shared_libs);
+
+    // Copy the additional native libs into the libs directory.
+    for (name, path) in native_shared_libs.iter() {
+        fs::copy(path, &directory.path().join("libs").join("armeabi").join(name)).unwrap();
+    }
 
     // compiling android_native_app_glue.c
     if Command::new(standalone_path.join("bin").join("arm-linux-androideabi-gcc"))
@@ -35,7 +43,7 @@ fn main() {
         std::os::set_exit_status(1);
         return;
     }
-    
+
     // calling gcc to link to an executable
     if Command::new(standalone_path.join("bin").join("arm-linux-androideabi-gcc"))
         .args(passthrough.as_slice())
@@ -134,14 +142,53 @@ fn parse_arguments() -> (Args, Vec<String>) {
     }
 }
 
-fn build_directory(sdk_dir: &Path, crate_name: &str) -> TempDir {
+fn find_native_libs(args: &Args) -> HashMap<String, Path> {
+    let base_path = args.output.dir_path().join("native");
+    let mut native_shared_libs: HashMap<String, Path> = HashMap::new();
+
+    fs::walk_dir(&base_path).and_then(|mut dirs| {
+        for dir in dirs {
+            fs::readdir(&dir).and_then(|paths| {
+                for path in paths.iter() {
+                    match (path.filename_str(), path.extension_str()) {
+                        (Some(filename), Some(ext)) => {
+                            if filename.starts_with("lib") && ext == "so" {
+                                native_shared_libs.insert(filename.to_string(), path.clone());
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                Ok(())
+            }).ok();
+        }
+        Ok(())
+    }).ok();
+
+    native_shared_libs
+}
+
+fn build_directory(sdk_dir: &Path, crate_name: &str, libs: &HashMap<String, Path>) -> TempDir {
     use std::io::fs;
 
     let build_directory = TempDir::new("android-rs-glue-rust-to-apk")
         .ok().expect("Could not create temporary build directory");
 
+    let activity_name = if libs.len() > 0 {
+        let src_path = build_directory.path().join("src/rust/glutin");
+        fs::mkdir_recursive(&src_path, std::io::USER_RWX).unwrap();
+
+        File::create(&src_path.join("MainActivity.java")).unwrap()
+            .write_str(java_src(libs).as_slice())
+            .unwrap();
+
+        "rust.glutin.MainActivity"
+    } else {
+        "android.app.NativeActivity"
+    };
+
     File::create(&build_directory.path().join("AndroidManifest.xml")).unwrap()
-        .write_str(build_manifest(crate_name).as_slice())
+        .write_str(build_manifest(crate_name, activity_name).as_slice())
         .unwrap();
 
     File::create(&build_directory.path().join("build.xml")).unwrap()
@@ -164,7 +211,26 @@ fn build_directory(sdk_dir: &Path, crate_name: &str) -> TempDir {
     build_directory
 }
 
-fn build_manifest(crate_name: &str) -> String {
+fn java_src(libs: &HashMap<String, Path>) -> String {
+    let mut libs_string = "".to_string();
+
+    for (name, _) in libs.iter() {
+        // Strip off the 'lib' prefix and ".so" suffix. This is safe since libs only get added
+        // to the hash map if they start with lib.
+        let line = format!("        System.loadLibrary(\"{}\");\n", name.slice(3, name.len()-3));
+        libs_string.push_str(line.as_slice());
+    }
+
+    format!(r#"package rust.glutin;
+
+public class MainActivity extends android.app.NativeActivity {{
+    static {{
+        {0}
+    }}
+}}"#, libs_string)
+}
+
+fn build_manifest(crate_name: &str, activity_name: &str) -> String {
     format!(r#"<?xml version="1.0" encoding="utf-8"?>
 <!-- BEGIN_INCLUDE(manifest) -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
@@ -174,8 +240,13 @@ fn build_manifest(crate_name: &str) -> String {
 
     <uses-sdk android:minSdkVersion="9" />
 
-    <application android:label="{0}" android:hasCode="false">
-        <activity android:name="android.app.NativeActivity"
+    <uses-feature android:glEsVersion="0x00020000" android:required="true"></uses-feature>
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+
+    <application android:label="{0}">
+        <activity android:name="{1}"
                 android:label="{0}"
                 android:configChanges="orientation|keyboardHidden">
             <intent-filter>
@@ -187,7 +258,7 @@ fn build_manifest(crate_name: &str) -> String {
 
 </manifest> 
 <!-- END_INCLUDE(manifest) -->
-"#, crate_name)
+"#, crate_name, activity_name)
 }
 
 fn build_build_xml() -> String {
