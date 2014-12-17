@@ -44,30 +44,18 @@ fn main() {
         return;
     }
 
-    // calling gcc to link to an executable
+    // calling gcc to link to a shared object
     if Command::new(standalone_path.join("bin").join("arm-linux-androideabi-gcc"))
         .args(passthrough.as_slice())
         .arg(directory.path().join("android_native_app_glue.o"))
         .arg("-o").arg(directory.path().join("libs").join("armeabi").join("libmain.so"))
+        .arg("-shared")
         .arg("-Wl,-E")
         .stdout(std::io::process::InheritFd(1))
         .stderr(std::io::process::InheritFd(2))//.cwd(directory.path())
         .status().unwrap() != std::io::process::ExitStatus(0)
     {
         println!("Error while executing gcc");
-        std::os::set_exit_status(1);
-        return;
-    }
-
-    // calling elfedit to turn our executable into a shared object
-    if Command::new(standalone_path.join("bin").join("arm-linux-androideabi-elfedit"))
-        .arg("--output-type").arg("dyn")
-        .arg(directory.path().join("libs").join("armeabi").join("libmain.so"))
-        .stdout(std::io::process::InheritFd(1))
-        .stderr(std::io::process::InheritFd(2))
-        .status().unwrap() != std::io::process::ExitStatus(0)
-    {
-        println!("Error while executing elfedit");
         std::os::set_exit_status(1);
         return;
     }
