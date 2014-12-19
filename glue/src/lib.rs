@@ -69,41 +69,38 @@ pub fn android_main2(app: *mut (), main_function: proc(): Send) {
     unsafe { ANDROID_APP = std::mem::transmute(app) };
     let app: &mut ffi::android_app = unsafe { std::mem::transmute(app) };
 
-    // starting the runtime
-    std::rt::start(1, &b"".as_ptr(), proc() {
-        // creating the context that will be passed to the callback
-        let context = Context { senders: Mutex::new(Vec::new()) };
-        app.onAppCmd = commands_callback;
-        app.onInputEvent = inputs_callback;
-        app.userData = unsafe { std::mem::transmute(&context) };
+    // creating the context that will be passed to the callback
+    let context = Context { senders: Mutex::new(Vec::new()) };
+    app.onAppCmd = commands_callback;
+    app.onInputEvent = inputs_callback;
+    app.userData = unsafe { std::mem::transmute(&context) };
 
-        // executing the main function in parallel
-        spawn(proc() {
-            std::io::stdio::set_stdout(box std::io::LineBufferedWriter::new(ToLogWriter));
-            std::io::stdio::set_stderr(box std::io::LineBufferedWriter::new(ToLogWriter));
-            main_function()
-        });
+    // executing the main function in parallel
+    spawn(proc() {
+        std::io::stdio::set_stdout(box std::io::LineBufferedWriter::new(ToLogWriter));
+        std::io::stdio::set_stderr(box std::io::LineBufferedWriter::new(ToLogWriter));
+        main_function()
+    });
 
-        // polling for events forever
-        // note that this must be done in the same thread as android_main because ALooper are
-        //  thread-local
-        unsafe {
-            loop {
-                let mut events = mem::uninitialized();
-                let mut source = mem::uninitialized();
+    // polling for events forever
+    // note that this must be done in the same thread as android_main because ALooper are
+    //  thread-local
+    unsafe {
+        loop {
+            let mut events = mem::uninitialized();
+            let mut source = mem::uninitialized();
 
-                // passing -1 means that we are blocking
-                let ident = ffi::ALooper_pollAll(-1, ptr::null_mut(), &mut events,
-                    &mut source);
+            // passing -1 means that we are blocking
+            let ident = ffi::ALooper_pollAll(-1, ptr::null_mut(), &mut events,
+                &mut source);
 
-                // processing the event
-                if !source.is_null() {
-                    let source: *mut ffi::android_poll_source = mem::transmute(source);
-                    ((*source).process)(ANDROID_APP, source);
-                }
+            // processing the event
+            if !source.is_null() {
+                let source: *mut ffi::android_poll_source = mem::transmute(source);
+                ((*source).process)(ANDROID_APP, source);
             }
         }
-    });
+    }
 
     // terminating the application
     unsafe { ANDROID_APP = 0 as *mut ffi::android_app };
