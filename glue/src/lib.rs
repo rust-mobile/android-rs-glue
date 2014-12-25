@@ -10,6 +10,8 @@ extern crate libc;
 
 use std::sync::Mutex;
 
+use std::thread::Thread;
+
 #[doc(hidden)]
 pub mod ffi;
 
@@ -79,7 +81,7 @@ pub fn android_main2<F>(app: *mut (), main_function: F)
     app.userData = unsafe { std::mem::transmute(&context) };
 
     // executing the main function in parallel
-    spawn(move|| {
+    let g = Thread::spawn(move|| {
         std::io::stdio::set_stdout(box std::io::LineBufferedWriter::new(ToLogWriter));
         std::io::stdio::set_stderr(box std::io::LineBufferedWriter::new(ToLogWriter));
         main_function()
