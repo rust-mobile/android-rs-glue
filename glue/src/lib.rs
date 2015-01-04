@@ -8,8 +8,9 @@ extern crate compile_msg;
 
 extern crate libc;
 
+use std::c_str::ToCStr;
+use std::sync::mpsc::{Sender};
 use std::sync::Mutex;
-
 use std::thread::Thread;
 
 #[doc(hidden)]
@@ -130,7 +131,8 @@ pub extern fn inputs_callback(_: *mut ffi::android_app, event: *const ffi::AInpu
     -> libc::int32_t
 {
     fn send_event(event: Event) {
-        for sender in get_context().senders.lock().iter() {
+        let senders = get_context().senders.lock().ok().unwrap();
+        for sender in senders.iter() {
             sender.send(event);
         }
     }
@@ -196,7 +198,7 @@ fn get_context() -> &'static Context {
 
 /// Adds a sender where events will be sent to.
 pub fn add_sender(sender: Sender<Event>) {
-    get_context().senders.lock().push(sender);
+    get_context().senders.lock().ok().unwrap().push(sender);
 }
 
 /// Returns a handle to the native window.
