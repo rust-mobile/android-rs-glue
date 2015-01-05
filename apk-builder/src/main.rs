@@ -262,7 +262,7 @@ fn build_build_xml() -> String {
 
 fn build_local_properties(sdk_dir: &Path) -> String {
     use std::os;
-    format!(r"sdk.dir={}", os::make_absolute(sdk_dir).display())
+    format!(r"sdk.dir={}", os::make_absolute(sdk_dir).unwrap().display())
 }
 
 fn build_project_properties() -> String {
