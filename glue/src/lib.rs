@@ -1,14 +1,14 @@
-#![feature(macro_rules)]
 #![feature(phase)]
 
 #![unstable]
 
-#[phase(plugin)]
+#[macro_use]
+#[no_link]
 extern crate compile_msg;
 
 extern crate libc;
 
-use std::c_str::ToCStr;
+use std::ffi::{CString};
 use std::sync::mpsc::{Sender};
 use std::sync::Mutex;
 use std::thread::Thread;
@@ -117,11 +117,10 @@ struct ToLogWriter;
 
 impl Writer for ToLogWriter {
     fn write(&mut self, buf: &[u8]) -> std::io::IoResult<()> {
-        buf.with_c_str(|message| {
-            b"RustAndroidGlueStdouterr".with_c_str(|tag| {
-                unsafe { ffi::__android_log_write(3, tag, message) };
-            });
-        });
+        let message = CString::from_slice(buf).as_slice_with_nul().as_ptr();
+        let tag = b"RustAndroidGlueStdouterr";
+        let tag = CString::from_slice(tag).as_slice_with_nul().as_ptr();
+        unsafe { ffi::__android_log_write(3, tag, message) };
         Ok(())
     }
 }
@@ -220,9 +219,9 @@ pub unsafe fn get_native_window() -> ffi::NativeWindowType {
 
 /// 
 pub fn write_log(message: &str) {
-    message.with_c_str(|message| {
-        b"RustAndroidGlue".with_c_str(|tag| {
-            unsafe { ffi::__android_log_write(3, tag, message) };
-        });
-    });
+    let message = message.as_bytes();
+    let message = CString::from_slice(message).as_slice_with_nul().as_ptr();
+    let tag = b"RustAndroidGlueStdouterr";
+    let tag = CString::from_slice(tag).as_slice_with_nul().as_ptr();
+    unsafe { ffi::__android_log_write(3, tag, message) };
 }
