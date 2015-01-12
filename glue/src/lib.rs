@@ -1,4 +1,4 @@
-#![feature(phase)]
+#![feature(box_syntax)]
 
 #![unstable]
 
