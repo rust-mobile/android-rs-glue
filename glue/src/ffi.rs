@@ -60,7 +60,25 @@ extern {
 /*
  * asset_manager.h
  */
-pub type AAssetManager = ();
+pub struct AAssetManager;
+
+pub struct Asset;
+
+pub const MODE_UNKNOWN: libc::c_int = 0;
+pub const MODE_RANDOM: libc::c_int = 1;
+pub const MODE_STREAMING: libc::c_int = 2;
+pub const MODE_BUFFER: libc::c_int = 3;
+
+extern {
+    pub fn AAssetManager_open(
+        manager: *const AAssetManager,
+        filename: *const libc::c_char,
+        mode: libc::c_int,
+    ) -> *const Asset;
+    pub fn AAsset_getLength(asset: *const Asset) -> libc::off_t;
+    pub fn AAsset_getBuffer(asset: *const Asset) -> *const libc::c_void;
+    pub fn AAsset_close(asset: *const Asset);
+}
 
 
 /*

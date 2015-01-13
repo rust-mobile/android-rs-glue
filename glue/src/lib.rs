@@ -225,3 +225,52 @@ pub fn write_log(message: &str) {
     let tag = CString::from_slice(tag).as_slice_with_nul().as_ptr();
     unsafe { ffi::__android_log_write(3, tag, message) };
 }
+
+pub enum AssetError {
+    AssetMissing,
+    EmptyBuffer,
+}
+
+pub fn load_asset(filename: &str) -> Result<Vec<u8>, AssetError> {
+    struct AssetCloser {
+        asset: *const ffi::Asset,
+    }
+
+    impl Drop for AssetCloser {
+        fn drop(&mut self) {
+            unsafe {
+                ffi::AAsset_close(self.asset)
+            };
+        }
+    }
+
+    unsafe fn get_asset_manager() -> *const ffi::AAssetManager {
+        let app = &*ANDROID_APP;
+        let activity = &*app.activity;
+        activity.assetManager
+    }
+
+    let filename_c_str = CString::from_slice(filename.as_bytes())
+        .as_slice_with_nul().as_ptr();
+    let asset = unsafe {
+        ffi::AAssetManager_open(
+            get_asset_manager(), filename_c_str, ffi::MODE_STREAMING)
+    };
+    if asset.is_null() {
+        return Err(AssetError::AssetMissing);
+    }
+    let _asset_closer = AssetCloser{asset: asset};
+    let len = unsafe {
+        ffi::AAsset_getLength(asset)
+    };
+    let buff = unsafe {
+        ffi::AAsset_getBuffer(asset)
+    };
+    if buff.is_null() {
+        return Err(AssetError::EmptyBuffer);
+    }
+    let vec = unsafe {
+        Vec::from_raw_buf(buff as *const u8, len as usize)
+    };
+    Ok(vec)
+}
