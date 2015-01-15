@@ -135,6 +135,11 @@ pub extern fn inputs_callback(_: *mut ffi::android_app, event: *const ffi::AInpu
             sender.send(event);
         }
     }
+    fn get_xy(event: *const ffi::AInputEvent) -> (i32, i32) {
+        let x = unsafe { ffi::AMotionEvent_getX(event, 0) };
+        let y = unsafe { ffi::AMotionEvent_getY(event, 0) };
+        (x as i32, y as i32)
+    }
     let action = unsafe { ffi::AMotionEvent_getAction(event) };
     let action_code = action & ffi::AMOTION_EVENT_ACTION_MASK;
     match action_code {
@@ -148,12 +153,13 @@ pub extern fn inputs_callback(_: *mut ffi::android_app, event: *const ffi::AInpu
         ffi::AMOTION_EVENT_ACTION_DOWN
             | ffi::AMOTION_EVENT_ACTION_POINTER_DOWN =>
         {
+            let (x, y) = get_xy(event);
+            send_event(Event::EventMove(x, y));
             send_event(Event::EventDown);
         },
         _ => {
-            let x = unsafe { ffi::AMotionEvent_getX(event, 0) };
-            let y = unsafe { ffi::AMotionEvent_getY(event, 0) };
-            send_event(Event::EventMove(x as i32, y as i32));
+            let (x, y) = get_xy(event);
+            send_event(Event::EventMove(x, y));
         },
     }
     0
