@@ -1,8 +1,9 @@
 #![feature(box_syntax)]
+#![feature(plugin)]
 
 #![unstable]
 
-#[macro_use]
+#[plugin]
 #[no_link]
 extern crate compile_msg;
 
