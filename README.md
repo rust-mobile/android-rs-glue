@@ -21,11 +21,11 @@ Then, add `extern crate android_glue` and invoke `android_start!` in your main c
 
 ```rust
 #[cfg(target_os = "android")]
-#[phase(plugin, link)] 
+#[macro_use] 
 extern crate android_glue;
 
 #[cfg(target_os = "android")]
-android_start!(main)
+android_start!(main);
 
 fn main() {
     // ...
