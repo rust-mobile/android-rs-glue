@@ -84,8 +84,8 @@ pub fn android_main2<F>(app: *mut (), main_function: F)
 
     // executing the main function in parallel
     let g = Thread::spawn(move|| {
-        std::io::stdio::set_stdout(box std::io::LineBufferedWriter::new(ToLogWriter));
-        std::io::stdio::set_stderr(box std::io::LineBufferedWriter::new(ToLogWriter));
+        std::old_io::stdio::set_stdout(box std::old_io::LineBufferedWriter::new(ToLogWriter));
+        std::old_io::stdio::set_stderr(box std::old_io::LineBufferedWriter::new(ToLogWriter));
         main_function()
     });
 
@@ -117,7 +117,7 @@ pub fn android_main2<F>(app: *mut (), main_function: F)
 struct ToLogWriter;
 
 impl Writer for ToLogWriter {
-    fn write(&mut self, buf: &[u8]) -> std::io::IoResult<()> {
+    fn write(&mut self, buf: &[u8]) -> std::old_io::IoResult<()> {
         let message = CString::from_slice(buf).as_slice_with_nul().as_ptr();
         let tag = b"RustAndroidGlueStdouterr";
         let tag = CString::from_slice(tag).as_slice_with_nul().as_ptr();
@@ -220,7 +220,7 @@ pub unsafe fn get_native_window() -> ffi::NativeWindowType {
         }
 
         // spin-locking
-        std::io::timer::sleep(std::time::Duration::milliseconds(10));
+        std::old_io::timer::sleep(std::time::Duration::milliseconds(10));
     }
 }
 
