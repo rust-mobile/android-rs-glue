@@ -117,7 +117,7 @@ pub fn android_main2<F>(app: *mut (), main_function: F)
 struct ToLogWriter;
 
 impl Writer for ToLogWriter {
-    fn write(&mut self, buf: &[u8]) -> std::old_io::IoResult<()> {
+    fn write_all(&mut self, buf: &[u8]) -> std::old_io::IoResult<()> {
         let message = CString::from_slice(buf).as_slice_with_nul().as_ptr();
         let tag = b"RustAndroidGlueStdouterr";
         let tag = CString::from_slice(tag).as_slice_with_nul().as_ptr();
