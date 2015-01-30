@@ -1,9 +1,9 @@
 extern crate serialize;
 
 use std::collections::HashMap;
-use std::io::process::Command;
-use std::io::{File, TempDir};
-use std::io::fs;
+use std::old_io::process::Command;
+use std::old_io::{File, TempDir};
+use std::old_io::fs;
 
 fn main() {
     let (args, passthrough) = parse_arguments();
@@ -36,8 +36,8 @@ fn main() {
         .arg(ndk_path.join("sources").join("android").join("native_app_glue").join("android_native_app_glue.c"))
         .arg("-c")
         .arg("-o").arg(directory.path().join("android_native_app_glue.o"))
-        .stdout(std::io::process::InheritFd(1)).stderr(std::io::process::InheritFd(2))
-        .status().unwrap() != std::io::process::ExitStatus(0)
+        .stdout(std::old_io::process::InheritFd(1)).stderr(std::old_io::process::InheritFd(2))
+        .status().unwrap() != std::old_io::process::ExitStatus(0)
     {
         println!("Error while executing gcc");
         std::os::set_exit_status(1);
@@ -51,9 +51,9 @@ fn main() {
         .arg("-o").arg(directory.path().join("libs").join("armeabi").join("libmain.so"))
         .arg("-shared")
         .arg("-Wl,-E")
-        .stdout(std::io::process::InheritFd(1))
-        .stderr(std::io::process::InheritFd(2))//.cwd(directory.path())
-        .status().unwrap() != std::io::process::ExitStatus(0)
+        .stdout(std::old_io::process::InheritFd(1))
+        .stderr(std::old_io::process::InheritFd(2))//.cwd(directory.path())
+        .status().unwrap() != std::old_io::process::ExitStatus(0)
     {
         println!("Error while executing gcc");
         std::os::set_exit_status(1);
@@ -66,14 +66,14 @@ fn main() {
         let mut process =
             Command::new(standalone_path.join("bin").join("arm-linux-androideabi-objdump"))
             .arg("-x").arg(directory.path().join("libs").join("armeabi").join("libmain.so"))
-            .stderr(std::io::process::InheritFd(2))
+            .stderr(std::old_io::process::InheritFd(2))
             .spawn().unwrap();
 
         // TODO: use UFCS instead
-        fn by_ref<'a, T: Reader>(r: &'a mut T) -> std::io::RefReader<'a, T> { r.by_ref() };
+        fn by_ref<'a, T: Reader>(r: &'a mut T) -> std::old_io::RefReader<'a, T> { r.by_ref() };
 
         let stdout = process.stdout.as_mut().unwrap();
-        let mut stdout = std::io::BufferedReader::new(by_ref(stdout));
+        let mut stdout = std::old_io::BufferedReader::new(by_ref(stdout));
 
         if stdout.lines().filter_map(|l| l.ok())
             .find(|line| line.as_slice().contains("ANativeActivity_onCreate")).is_none()
@@ -85,9 +85,9 @@ fn main() {
     }*/
 
     // executing ant
-    if Command::new("ant").arg("debug").stdout(std::io::process::InheritFd(1))
-        .stderr(std::io::process::InheritFd(2)).cwd(directory.path())
-        .status().unwrap() != std::io::process::ExitStatus(0)
+    if Command::new("ant").arg("debug").stdout(std::old_io::process::InheritFd(1))
+        .stderr(std::old_io::process::InheritFd(2)).cwd(directory.path())
+        .status().unwrap() != std::old_io::process::ExitStatus(0)
     {
         println!("Error while executing ant debug");
         std::os::set_exit_status(1);
@@ -157,14 +157,14 @@ fn find_native_libs(args: &Args) -> HashMap<String, Path> {
 }
 
 fn build_directory(sdk_dir: &Path, crate_name: &str, libs: &HashMap<String, Path>) -> TempDir {
-    use std::io::fs;
+    use std::old_io::fs;
 
     let build_directory = TempDir::new("android-rs-glue-rust-to-apk")
         .ok().expect("Could not create temporary build directory");
 
     let activity_name = if libs.len() > 0 {
         let src_path = build_directory.path().join("src/rust/glutin");
-        fs::mkdir_recursive(&src_path, std::io::USER_RWX).unwrap();
+        fs::mkdir_recursive(&src_path, std::old_io::USER_RWX).unwrap();
 
         File::create(&src_path.join("MainActivity.java")).unwrap()
             .write_str(java_src(libs).as_slice())
@@ -193,7 +193,7 @@ fn build_directory(sdk_dir: &Path, crate_name: &str, libs: &HashMap<String, Path
 
     {
         let libs_path = build_directory.path().join("libs").join("armeabi");
-        fs::mkdir_recursive(&libs_path, std::io::USER_RWX).unwrap();
+        fs::mkdir_recursive(&libs_path, std::old_io::USER_RWX).unwrap();
     }
 
     build_directory
