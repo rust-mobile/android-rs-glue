@@ -1,0 +1,4 @@
+language: rust
+
+script:
+    - cd apk-builder && cargo build --verbose
