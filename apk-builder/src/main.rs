@@ -198,6 +198,12 @@ fn build_directory(sdk_dir: &Path, crate_name: &str, libs: &HashMap<String, Path
         fs::mkdir_recursive(&libs_path, std::old_io::USER_RWX).unwrap();
     }
 
+    {
+        // Make sure that 'src' directory is creates
+        let src_path = build_directory.path().join("src");
+        fs::mkdir_recursive(&src_path, std::old_io::USER_RWX).unwrap();
+    }
+
     build_directory
 }
 
