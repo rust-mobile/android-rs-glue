@@ -1,3 +1,5 @@
+#![feature(path, core, io, os, rustc_private)]
+
 extern crate serialize;
 
 use std::collections::HashMap;
@@ -134,7 +136,7 @@ fn find_native_libs(args: &Args) -> HashMap<String, Path> {
     let base_path = args.output.dir_path().join("native");
     let mut native_shared_libs: HashMap<String, Path> = HashMap::new();
 
-    fs::walk_dir(&base_path).and_then(|mut dirs| {
+    fs::walk_dir(&base_path).and_then(|dirs| {
         for dir in dirs {
             fs::readdir(&dir).and_then(|paths| {
                 for path in paths.iter() {
