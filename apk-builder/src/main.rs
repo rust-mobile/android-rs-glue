@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::old_io::process::Command;
 use std::old_io::{File, TempDir};
 use std::old_io::fs;
+use std::old_io::fs::{PathExtensions};
 
 fn main() {
     let (args, passthrough) = parse_arguments();
@@ -85,6 +86,14 @@ fn main() {
             return;
         }
     }*/
+
+    let cwd = std::os::getcwd().ok()
+        .expect("Can not get current working directory!");
+    let assets_path = cwd.join("assets");
+    if assets_path.exists() {
+        fs::symlink(&assets_path, &directory.path().join("assets"))
+            .ok().expect("Can not create symlink to assets");
+    }
 
     // executing ant
     if Command::new("ant").arg("debug").stdout(std::old_io::process::InheritFd(1))
