@@ -1,5 +1,4 @@
-#![feature(box_syntax)]
-#![feature(plugin)]
+#![feature(box_syntax, plugin, libc, core, io, collections, std_misc)]
 
 #![unstable]
 
@@ -49,10 +48,11 @@ macro_rules! android_start(
             // this function is here because we are sure that it will be included by the linker
             // so we call app_dummy in it, in order to be sure that the native glue will be included
             #[start]
-            pub fn start(_: int, _: *const *const u8) -> int {
+            pub fn start(_: isize, _: *const *const u8) -> isize {
                 unsafe { android_glue::ffi::app_dummy() };
                 1
             }
+
 
             #[no_mangle]
             #[inline(never)]
