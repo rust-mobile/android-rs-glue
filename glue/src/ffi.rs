@@ -60,9 +60,9 @@ extern {
 /*
  * asset_manager.h
  */
-pub struct AAssetManager;
+pub type AAssetManager = ();
 
-pub struct Asset;
+pub type Asset = ();
 
 pub const MODE_UNKNOWN: libc::c_int = 0;
 pub const MODE_RANDOM: libc::c_int = 1;
