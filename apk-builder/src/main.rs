@@ -86,6 +86,8 @@ fn main() {
         }
     }*/
 
+    copy_assets(&directory.path());
+
     // executing ant
     if Command::new("ant").arg("debug").stdout(std::old_io::process::InheritFd(1))
         .stderr(std::old_io::process::InheritFd(2)).cwd(directory.path())
@@ -100,6 +102,22 @@ fn main() {
     fs::copy(&directory.path().join("bin").join("rust-android-debug.apk"),
         &args.output).unwrap();
 }
+
+#[cfg(feature = "assets_hack")]
+fn copy_assets(build_path: &Path) {
+    use std::old_io::fs::{PathExtensions};
+
+    let cwd = std::os::getcwd().ok()
+        .expect("Can not get current working directory!");
+    let assets_path = cwd.join("assets");
+    if assets_path.exists() {
+        fs::symlink(&assets_path, &build_path.join("assets"))
+            .ok().expect("Can not create symlink to assets");
+    }
+}
+
+#[cfg(not(feature = "assets_hack"))]
+fn copy_assets(_: &Path) {}
 
 struct Args {
     output: Path,
