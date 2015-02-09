@@ -2,10 +2,6 @@
 
 #![unstable]
 
-#[plugin]
-#[no_link]
-extern crate compile_msg;
-
 extern crate libc;
 
 use std::ffi::{CString};
@@ -37,7 +33,7 @@ pub enum Event {
 impl Copy for Event {}
 
 #[cfg(not(target_os = "android"))]
-compile_note!("You are not compiling for Android");
+use this_platform_is_not_supported;
 
 #[macro_export]
 macro_rules! android_start(
