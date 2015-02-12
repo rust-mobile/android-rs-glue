@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::old_io::process::Command;
 use std::old_io::{File, TempDir};
 use std::old_io::fs;
+use std::old_io::fs::PathExtensions;
 
 fn main() {
     let (args, passthrough) = parse_arguments();
@@ -25,7 +26,7 @@ fn main() {
     let standalone_path = std::os::env().into_iter().find(|&(ref k, _)| k.as_slice() == "NDK_STANDALONE")
         .map(|(_, v)| Path::new(v)).unwrap_or(Path::new("/opt/ndk_standalone"));
 
-    // creating the build directory that will contain all the necessary files to create teh apk
+    // creating the build directory that will contain all the necessary files to create the apk
     let directory = build_directory(&sdk_path, args.output.filestem_str().unwrap(), &native_shared_libs);
 
     // Copy the additional native libs into the libs directory.
@@ -33,8 +34,18 @@ fn main() {
         fs::copy(path, &directory.path().join("libs").join("armeabi").join(name)).unwrap();
     }
 
+    // Set the paths for the tools used in one central place. Then we also use this to not
+    // only invoke the tool when needed, but also to check before first invocation in order
+    // to display a nice error message to the user if the tool is missing from the path.
+    let toolgccpath = standalone_path.join("bin").join("arm-linux-androideabi-gcc");
+    let toolantpath = Path::new("ant");
+
+    if !toolgccpath.exists() {
+        println!("Missing Tool `{}`!", toolgccpath.display());
+        std::os::set_exit_status(1);
+    }
     // compiling android_native_app_glue.c
-    if Command::new(standalone_path.join("bin").join("arm-linux-androideabi-gcc"))
+    if Command::new(toolgccpath.clone())
         .arg(ndk_path.join("sources").join("android").join("native_app_glue").join("android_native_app_glue.c"))
         .arg("-c")
         .arg("-o").arg(directory.path().join("android_native_app_glue.o"))
@@ -47,7 +58,7 @@ fn main() {
     }
 
     // calling gcc to link to a shared object
-    if Command::new(standalone_path.join("bin").join("arm-linux-androideabi-gcc"))
+    if Command::new(toolgccpath.clone())
         .args(passthrough.as_slice())
         .arg(directory.path().join("android_native_app_glue.o"))
         .arg("-o").arg(directory.path().join("libs").join("armeabi").join("libmain.so"))
@@ -89,11 +100,12 @@ fn main() {
     copy_assets(&directory.path());
 
     // executing ant
-    if Command::new("ant").arg("debug").stdout(std::old_io::process::InheritFd(1))
+    let antcmd = Command::new(toolantpath).arg("debug").stdout(std::old_io::process::InheritFd(1))
         .stderr(std::old_io::process::InheritFd(2)).cwd(directory.path())
-        .status().unwrap() != std::old_io::process::ExitStatus(0)
+        .status();
+    if antcmd.is_err() || antcmd.unwrap() != std::old_io::process::ExitStatus(0)
     {
-        println!("Error while executing ant debug");
+        println!("Error while executing program `ant` debug, or missing program.");
         std::os::set_exit_status(1);
         return;
     }
