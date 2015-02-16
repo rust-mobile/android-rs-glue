@@ -49,6 +49,7 @@ use std::ffi::{CString};
 use std::sync::mpsc::{Sender};
 use std::sync::Mutex;
 use std::thread::Thread;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 #[doc(hidden)]
 pub mod ffi;
@@ -64,6 +65,8 @@ struct Context {
     senders:    Mutex<Vec<Sender<Event>>>,
     // Any missed events are stored here.
     missed:     Mutex<Vec<Event>>,
+    // Better performance to track number of missed items.
+    missedcnt:  AtomicUsize,
     // The maximum number of missed events.
     missedmax:  usize,
 }
@@ -142,6 +145,7 @@ pub fn android_main2<F>(app: *mut (), main_function: F)
     let context = Context { 
         senders:    Mutex::new(Vec::new()),
         missed:     Mutex::new(Vec::new()),
+        missedcnt:  AtomicUsize::new(0),
         missedmax:  1024,           
     };
     app.onAppCmd = commands_callback;
@@ -205,15 +209,13 @@ fn send_event(event: Event) {
     let mut ctx = get_context();
     let senders = ctx.senders.lock().ok().unwrap();
 
-    // Store missed events up to a maximum. This is a little expensive, because
-    // we have to double lock, until a sender is added. For applications that 
-    // never register a sender it would always double lock on any event, but 
-    // those applications might be short lived and not bothered? 
-    // -- kmcg3413@gmail.com
+    // Store missed events up to a maximum.
     if senders.len() < 1 {
-        let mut missed = ctx.missed.lock().unwrap();
-        if missed.len() < ctx.missedmax {
+        // We use a quick target word sized atomic load to check
+        if ctx.missedcnt.load(Ordering::SeqCst) < ctx.missedmax {
+            let mut missed = ctx.missed.lock().unwrap();
             missed.push(event);
+            ctx.missedcnt.fetch_add(1, Ordering::SeqCst);
         }
     }
 
@@ -325,6 +327,7 @@ pub fn add_sender_missing(sender: Sender<Event>) {
         while missed.len() > 0 {
             sender.send(missed.remove(0));
         }
+        ctx.missedcnt.store(0, Ordering::Relaxed);
     }
 
     senders.push(sender);
