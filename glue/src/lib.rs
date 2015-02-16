@@ -49,7 +49,7 @@ use std::ffi::{CString};
 use std::sync::mpsc::{Sender};
 use std::sync::Mutex;
 use std::thread::Thread;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicUsize, AtomicBool, Ordering};
 
 #[doc(hidden)]
 pub mod ffi;
@@ -69,6 +69,8 @@ struct Context {
     missedcnt:  AtomicUsize,
     // The maximum number of missed events.
     missedmax:  usize,
+    // A flag indicating that we should shutdown.
+    shutdown:   AtomicBool,
 }
 
 /// An event triggered by the Android environment.
@@ -146,7 +148,8 @@ pub fn android_main2<F>(app: *mut (), main_function: F)
         senders:    Mutex::new(Vec::new()),
         missed:     Mutex::new(Vec::new()),
         missedcnt:  AtomicUsize::new(0),
-        missedmax:  1024,           
+        missedmax:  1024,
+        shutdown:   AtomicBool::new(false),
     };
     app.onAppCmd = commands_callback;
     app.onInputEvent = inputs_callback;
@@ -170,6 +173,10 @@ pub fn android_main2<F>(app: *mut (), main_function: F)
         loop {
             let mut events = mem::uninitialized();
             let mut source = mem::uninitialized();
+
+            if context.shutdown.load(Ordering::Relaxed) {
+                break;
+            }
 
             // passing -1 means that we are blocking
             let ident = ffi::ALooper_pollAll(-1, ptr::null_mut(), &mut events,
@@ -295,7 +302,10 @@ pub extern fn commands_callback(_: *mut ffi::android_app, command: libc::int32_t
         ffi::APP_CMD_RESUME => send_event(Event::Resume),
         ffi::APP_CMD_PAUSE => send_event(Event::Pause),
         ffi::APP_CMD_STOP => send_event(Event::Stop),
-        ffi::APP_CMD_DESTROY => send_event(Event::Destroy),
+        ffi::APP_CMD_DESTROY => {
+            send_event(Event::Destroy);
+            context.shutdown.store(true, Ordering::Relaxed);
+        },
         _ => write_log(format!("unknown command {}", command).as_slice()),
     }
 }
