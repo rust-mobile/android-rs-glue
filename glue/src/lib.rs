@@ -1,3 +1,44 @@
+//!
+//! You can make _any_ program run on Android with minimal non-intrusive 
+//! modification using this library.
+//!
+//! If you are using Cargo add this line to your `Cargo.toml`.
+//!
+//!     [dependencies.android_glue] git = "https://github.com/tomaka/android-rs-glue"
+//!
+//! If you are not using Cargo then make sure the library is findable by `rustc`
+//! and then see example program below.
+//!
+//!
+//! A sample application:
+//!
+//!     // This code will only be included if android is the target.
+//!     #[cfg(target_os = "android")]
+//!     #[macro_use]
+//!     extern crate android_glue;
+//!     // This code will only be included if android is the target.
+//!     #[cfg(target_os = "android")]
+//!     android_start!(main);
+//!     
+//!     use std::sync::mpsc::channel;
+//!     use android_glue::{Event, add_sender};
+//!     
+//!     fn main() {
+//!         // Create a channel.
+//!         let (eventstx, eventsrx) = channel::<Event>();
+//!         
+//!         // Try `dbg logcat *:D | grep RustAndroidGlue` when you run this program.    
+//!         println!("HELLO WORLD");
+//!         
+//!         // Add the sender half of the channel so we can be sent events.
+//!         add_sender(eventstx);
+//!         
+//!         loop {
+//!             // Print the event since it implements the Debug trait.
+//!             println!("{:?}", eventsrx.recv());
+//!         }
+//!     }
+
 #![feature(box_syntax, plugin, libc, core, io, collections, std_misc)]
 
 #![unstable]
@@ -20,14 +61,39 @@ static mut ANDROID_APP: *mut ffi::android_app = 0 as *mut ffi::android_app;
 /// This is the structure that serves as user data in the android_app*
 #[doc(hidden)]
 struct Context {
-    senders: Mutex<Vec<Sender<Event>>>,
+    senders:    Mutex<Vec<Sender<Event>>>,
+    // Any missed events are stored here.
+    missed:     Mutex<Vec<Event>>,
+    // The maximum number of missed events.
+    missedmax:  usize,
 }
 
 /// An event triggered by the Android environment.
+#[derive(Debug)]
 pub enum Event {
     EventUp,
     EventDown,
     EventMove(i32, i32),
+    // The above are more specifically EventMotion, but to prevent a breaking
+    // change I did not rename them, but instead made EventKey** --kmcg3413@gmail.com
+    EventKeyUp,
+    EventKeyDown,
+    InitWindow,
+    SaveState,
+    TermWindow,
+    GainedFocus,
+    LostFocus,
+    InputChanged,
+    WindowResized,
+    WindowRedrawNeeded,
+    ContentRectChanged,
+    ConfigChanged,
+    LowMemory,
+    Start,
+    Resume,
+    Pause,
+    Stop,
+    Destroy,
 }
 
 impl Copy for Event {}
@@ -73,10 +139,18 @@ pub fn android_main2<F>(app: *mut (), main_function: F)
     let app: &mut ffi::android_app = unsafe { std::mem::transmute(app) };
 
     // creating the context that will be passed to the callback
-    let context = Context { senders: Mutex::new(Vec::new()) };
+    let context = Context { 
+        senders:    Mutex::new(Vec::new()),
+        missed:     Mutex::new(Vec::new()),
+        missedmax:  1024,           
+    };
     app.onAppCmd = commands_callback;
     app.onInputEvent = inputs_callback;
     app.userData = unsafe { std::mem::transmute(&context) };
+
+    // Set our stdout and stderr so that panics are directed to the log.
+    std::old_io::stdio::set_stdout(box std::old_io::LineBufferedWriter::new(ToLogWriter));
+    std::old_io::stdio::set_stderr(box std::old_io::LineBufferedWriter::new(ToLogWriter));
 
     // executing the main function in parallel
     let g = Thread::spawn(move|| {
@@ -124,42 +198,76 @@ impl Writer for ToLogWriter {
     }
 }
 
-/// The callback for inputs.
+/// Send a event to anything that has registered a sender. This is where events
+/// messages are sent, and the main application can recieve them from this. There
+/// is likely only one sender in our list, but we support more than one.
+fn send_event(event: Event) {
+    let mut ctx = get_context();
+    let senders = ctx.senders.lock().ok().unwrap();
+
+    // Store missed events up to a maximum. This is a little expensive, because
+    // we have to double lock, until a sender is added. For applications that 
+    // never register a sender it would always double lock on any event, but 
+    // those applications might be short lived and not bothered? 
+    // -- kmcg3413@gmail.com
+    if senders.len() < 1 {
+        let mut missed = ctx.missed.lock().unwrap();
+        if missed.len() < ctx.missedmax {
+            missed.push(event);
+        }
+    }
+
+    for sender in senders.iter() {
+        sender.send(event);
+    }
+}
+
+/// The callback for input.
+///
+/// This callback is registered when we startup and is called by our main thread,
+/// from the function `android_main2`. We then process the event to gain additional
+/// information, and finally send the event, which normally would be recieved by
+/// the main application thread IF it has registered a sender. 
 pub extern fn inputs_callback(_: *mut ffi::android_app, event: *const ffi::AInputEvent)
     -> libc::int32_t
 {
-    fn send_event(event: Event) {
-        let senders = get_context().senders.lock().ok().unwrap();
-        for sender in senders.iter() {
-            sender.send(event);
-        }
-    }
     fn get_xy(event: *const ffi::AInputEvent) -> (i32, i32) {
         let x = unsafe { ffi::AMotionEvent_getX(event, 0) };
         let y = unsafe { ffi::AMotionEvent_getY(event, 0) };
         (x as i32, y as i32)
     }
+
+    let etype = unsafe { ffi::AInputEvent_getType(event) };
     let action = unsafe { ffi::AMotionEvent_getAction(event) };
     let action_code = action & ffi::AMOTION_EVENT_ACTION_MASK;
-    match action_code {
-        ffi::AMOTION_EVENT_ACTION_UP
-            | ffi::AMOTION_EVENT_ACTION_OUTSIDE
-            | ffi::AMOTION_EVENT_ACTION_CANCEL
-            | ffi::AMOTION_EVENT_ACTION_POINTER_UP =>
-        {
-            send_event(Event::EventUp);
+
+    match etype {
+        ffi::AINPUT_EVENT_TYPE_KEY => match action_code {
+            ffi::AKEY_EVENT_ACTION_DOWN => { send_event(Event::EventKeyDown); },
+            ffi::AKEY_EVENT_ACTION_UP => send_event(Event::EventKeyUp),
+            _ => write_log(format!("unknown input-event-type:{} action_code:{}", etype, action_code).as_slice()),
         },
-        ffi::AMOTION_EVENT_ACTION_DOWN
-            | ffi::AMOTION_EVENT_ACTION_POINTER_DOWN =>
-        {
-            let (x, y) = get_xy(event);
-            send_event(Event::EventMove(x, y));
-            send_event(Event::EventDown);
+        ffi::AINPUT_EVENT_TYPE_MOTION => match action_code {
+            ffi::AMOTION_EVENT_ACTION_UP
+                | ffi::AMOTION_EVENT_ACTION_OUTSIDE
+                | ffi::AMOTION_EVENT_ACTION_CANCEL
+                | ffi::AMOTION_EVENT_ACTION_POINTER_UP =>
+            {
+                send_event(Event::EventUp);
+            },
+            ffi::AMOTION_EVENT_ACTION_DOWN
+                | ffi::AMOTION_EVENT_ACTION_POINTER_DOWN =>
+            {
+                let (x, y) = get_xy(event);
+                send_event(Event::EventMove(x, y));
+                send_event(Event::EventDown);
+            },
+            _ => {
+                let (x, y) = get_xy(event);
+                send_event(Event::EventMove(x, y));
+            },
         },
-        _ => {
-            let (x, y) = get_xy(event);
-            send_event(Event::EventMove(x, y));
-        },
+        _ => write_log(format!("unknown input-event-type:{} action_code:{}", etype, action_code).as_slice()),
     }
     0
 }
@@ -170,27 +278,23 @@ pub extern fn commands_callback(_: *mut ffi::android_app, command: libc::int32_t
     let context = get_context();
 
     match command {
-        ffi::APP_CMD_INIT_WINDOW => {
-
-        },
-
-        ffi::APP_CMD_SAVE_STATE => {
-
-        },
-
-        ffi::APP_CMD_TERM_WINDOW => {
-
-        },
-
-        ffi::APP_CMD_GAINED_FOCUS => {
-
-        },
-
-        ffi::APP_CMD_LOST_FOCUS => {
-
-        },
-
-        _ => ()
+        ffi::APP_CMD_INIT_WINDOW => send_event(Event::InitWindow),
+        ffi::APP_CMD_SAVE_STATE => send_event(Event::SaveState),
+        ffi::APP_CMD_TERM_WINDOW => send_event(Event::TermWindow),
+        ffi::APP_CMD_GAINED_FOCUS => send_event(Event::GainedFocus),
+        ffi::APP_CMD_LOST_FOCUS => send_event(Event::LostFocus),
+        ffi::APP_CMD_INPUT_CHANGED => send_event(Event::InputChanged),
+        ffi::APP_CMD_WINDOW_RESIZED => send_event(Event::WindowResized),
+        ffi::APP_CMD_WINDOW_REDRAW_NEEDED => send_event(Event::WindowRedrawNeeded),
+        ffi::APP_CMD_CONTENT_RECT_CHANGED => send_event(Event::ContentRectChanged),
+        ffi::APP_CMD_CONFIG_CHANGED => send_event(Event::ConfigChanged),
+        ffi::APP_CMD_LOW_MEMORY => send_event(Event::LowMemory),
+        ffi::APP_CMD_START => send_event(Event::Start),
+        ffi::APP_CMD_RESUME => send_event(Event::Resume),
+        ffi::APP_CMD_PAUSE => send_event(Event::Pause),
+        ffi::APP_CMD_STOP => send_event(Event::Stop),
+        ffi::APP_CMD_DESTROY => send_event(Event::Destroy),
+        _ => write_log(format!("unknown command {}", command).as_slice()),
     }
 }
 
@@ -202,7 +306,28 @@ fn get_context() -> &'static Context {
 
 /// Adds a sender where events will be sent to.
 pub fn add_sender(sender: Sender<Event>) {
-    get_context().senders.lock().ok().unwrap().push(sender);
+    get_context().senders.lock().unwrap().push(sender);
+}
+
+/// Adds a sender where events will be sent to, but also sends
+/// any missing events to the sender object. 
+///
+/// The missing events happen when the application starts, but before
+/// any senders are registered. Since these might be important to certain
+/// applications, this function provides that support.
+pub fn add_sender_missing(sender: Sender<Event>) {
+    let mut ctx = get_context();
+    let mut senders = ctx.senders.lock().ok().unwrap();
+
+    if senders.len() == 0 {
+        // If the first sender added then, let us send any missing events.
+        let mut missed = ctx.missed.lock().unwrap();
+        while missed.len() > 0 {
+            sender.send(missed.remove(0));
+        }
+    }
+
+    senders.push(sender);
 }
 
 /// Returns a handle to the native window.
