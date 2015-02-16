@@ -46,9 +46,9 @@
 extern crate libc;
 
 use std::ffi::{CString};
-use std::sync::mpsc::{Sender};
+use std::sync::mpsc::{Sender, Receiver, TryRecvError, channel};
 use std::sync::Mutex;
-use std::thread::Thread;
+use std::thread::{Thread, JoinGuard};
 use std::sync::atomic::{AtomicUsize, AtomicBool, Ordering};
 
 #[doc(hidden)]
@@ -131,6 +131,31 @@ macro_rules! android_start(
     )
 );
 
+static mut g_mainthread_boxed: Option<*mut Receiver<()>> = Option::None;
+
+/// Return a tuple with tuple.0 set to true is the application thread
+/// has terminated, and tuple.1 set to true if an abnormal exit occured.
+fn is_app_thread_terminated() -> (bool, bool) {
+    if unsafe { g_mainthread_boxed.is_some() } {
+        // Let us see if it had shutdown or paniced.
+        let raw = unsafe { g_mainthread_boxed.unwrap() };
+        let br: &mut Receiver<()> = unsafe { std::mem::transmute(raw) };
+        let result = br.try_recv();
+        let terminated = if result.is_err() {
+            match result.err().unwrap() {
+                TryRecvError::Disconnected => (true, true),
+                TryRecvError::Empty => (false, false),
+            }
+        } else {
+            (true, false)
+        };
+        unsafe { g_mainthread_boxed = Option::Some(raw) };
+        terminated
+    } else {
+        (true, false)
+    }
+}
+
 /// This is the function that must be called by `android_main`
 #[doc(hidden)]
 pub fn android_main2<F>(app: *mut (), main_function: F)
@@ -159,16 +184,47 @@ pub fn android_main2<F>(app: *mut (), main_function: F)
     std::old_io::stdio::set_stdout(box std::old_io::LineBufferedWriter::new(ToLogWriter));
     std::old_io::stdio::set_stderr(box std::old_io::LineBufferedWriter::new(ToLogWriter));
 
-    // executing the main function in parallel
-    let g = Thread::spawn(move|| {
-        std::old_io::stdio::set_stdout(box std::old_io::LineBufferedWriter::new(ToLogWriter));
-        std::old_io::stdio::set_stderr(box std::old_io::LineBufferedWriter::new(ToLogWriter));
-        main_function()
-    });
+    // We have to take into consideration that the application we are wrapping
+    // may not have been designed for android very well. It may not listen for
+    // the destroy command/event, therefore it might not have shutdown and we 
+    // remained in memory. We need to determine if the thread is still alive.
+    let terminated = is_app_thread_terminated();
 
-    // polling for events forever
-    // note that this must be done in the same thread as android_main because ALooper are
-    //  thread-local
+    if terminated.1 {
+        // A little debug message for helping to diagnose problems in your
+        // main thread.
+        write_log("abnormal exit of main application thread detected");
+    }
+
+    // If the thread is still alive we will continue as normal, but we will NOT
+    // create the thread. By continuing we keep the application responsive and
+    // will not lock up some of the UI, which will be very abnormal for the user,
+    // and will result in the entire process being terminated for being unresponsive
+    // which is likely the least desired behavior.
+    if terminated.0 {
+        let (mtx, mrx) = channel::<()>();
+
+        // executing the main function in parallel
+        Thread::spawn(move || {
+            std::old_io::stdio::set_stdout(box std::old_io::LineBufferedWriter::new(ToLogWriter));
+            std::old_io::stdio::set_stderr(box std::old_io::LineBufferedWriter::new(ToLogWriter));
+            main_function();
+            mtx.send(());
+        });
+
+        // We have to store the JoinGuard off the stack, in the heap, so if we are
+        // recalled after a Destroy event/command, then we can make check if the
+        // main application thread we created above is still running, and if it is
+        // we should wait on it to exit.
+        unsafe { g_mainthread_boxed = Option::Some(std::mem::transmute(Box::new(mrx))) };
+        write_log("created application thread");
+    } else {
+        write_log("application thread was still running - not creating new one");
+    }
+
+    // Polling for events forever, until shutdown signal is set.
+    // note: that this must be done in the same thread as android_main because 
+    //       ALooper are thread-local
     unsafe {
         loop {
             let mut events = mem::uninitialized();
@@ -178,9 +234,25 @@ pub fn android_main2<F>(app: *mut (), main_function: F)
                 break;
             }
 
-            // passing -1 means that we are blocking
+            // A `-1` means to block forever, but any other positive value 
+            // specifies the number of milliseconds to block for, before
+            // returning.
             let ident = ffi::ALooper_pollAll(-1, ptr::null_mut(), &mut events,
                 &mut source);
+
+            // If the application thread has exited then we need to exit also.
+            if is_app_thread_terminated().0 {
+                // Not sure exactly how to do this, or what might be the proper
+                // manner in which to do it.
+                //
+                // (1) hide ourselves by switching to home screen
+                // (2) display message that we have finished
+                // (3) do nothing like we are doing now
+                //
+                // We must keep this thread going so it can service events, else
+                // the user will get a locked UI until the system terminates our
+                // process. So we continue processing events..
+            }
 
             // processing the event
             if !source.is_null() {
