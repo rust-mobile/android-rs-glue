@@ -2,15 +2,14 @@
 //! You can make _any_ program run on Android with minimal non-intrusive 
 //! modification using this library.
 //!
-//! If you are using Cargo add this line to your `Cargo.toml`.
+//! See, https://github.com/tomaka/android-rs-glue, for detailed instructions!
 //!
-//!     [dependencies.android_glue] git = "https://github.com/tomaka/android-rs-glue"
+//! The libray allow you to run any program on Android, but it also allows you
+//! to work specifically with the Android system if you desire. The following
+//! sample application demonstrates both non-os specific code, and android 
+//! specific code. 
 //!
-//! If you are not using Cargo then make sure the library is findable by `rustc`
-//! and then see example program below.
-//!
-//!
-//! A sample application:
+//! A example application:
 //!
 //!     // This code will only be included if android is the target.
 //!     #[cfg(target_os = "android")]
@@ -23,20 +22,31 @@
 //!     use std::sync::mpsc::channel;
 //!     use android_glue::{Event, add_sender};
 //!     
-//!     fn main() {
+//!     #[cfg(target_os = "android")]
+//!     fn os_specific() {
 //!         // Create a channel.
 //!         let (eventstx, eventsrx) = channel::<Event>();
-//!         
-//!         // Try `dbg logcat *:D | grep RustAndroidGlue` when you run this program.    
-//!         println!("HELLO WORLD");
-//!         
+//!         // The following is optional, and will only work if you target Android.
 //!         // Add the sender half of the channel so we can be sent events.
 //!         add_sender(eventstx);
-//!         
 //!         loop {
 //!             // Print the event since it implements the Debug trait.
 //!             println!("{:?}", eventsrx.recv());
 //!         }
+//!     }
+//!
+//!     #[cfg(not(target_os = "android"))]
+//!     fn os_specific() {
+//!         println!("non-android");
+//!     }
+//!
+//!
+//!     fn main() {
+//!         // Try `adb logcat *:D | grep RustAndroidGlue` when you run this 
+//!         // program on android. If on any other platform it will work as
+//!         // normal.    
+//!         println!("HELLO WORLD");
+//!         os_specific();
 //!     }
 
 #![feature(box_syntax, plugin, libc, core, io, collections, std_misc)]
