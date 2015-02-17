@@ -58,7 +58,7 @@ extern crate libc;
 use std::ffi::{CString};
 use std::sync::mpsc::{Sender, Receiver, TryRecvError, channel};
 use std::sync::Mutex;
-use std::thread::{Thread, JoinGuard};
+use std::thread::Thread;
 use std::sync::atomic::{AtomicUsize, AtomicBool, Ordering};
 
 #[doc(hidden)]
@@ -166,6 +166,11 @@ fn is_app_thread_terminated() -> (bool, bool) {
     }
 }
 
+/// Return a reference to the application structure.
+pub fn get_app<'a>() -> &'a mut ffi::android_app {
+    unsafe { std::mem::transmute(ANDROID_APP) }
+}
+
 /// This is the function that must be called by `android_main`
 #[doc(hidden)]
 pub fn android_main2<F>(app: *mut (), main_function: F)
@@ -219,7 +224,7 @@ pub fn android_main2<F>(app: *mut (), main_function: F)
             std::old_io::stdio::set_stdout(box std::old_io::LineBufferedWriter::new(ToLogWriter));
             std::old_io::stdio::set_stderr(box std::old_io::LineBufferedWriter::new(ToLogWriter));
             main_function();
-            mtx.send(());
+            mtx.send(()).unwrap();
         });
 
         // We have to store the JoinGuard off the stack, in the heap, so if we are
@@ -247,7 +252,7 @@ pub fn android_main2<F>(app: *mut (), main_function: F)
             // A `-1` means to block forever, but any other positive value 
             // specifies the number of milliseconds to block for, before
             // returning.
-            let ident = ffi::ALooper_pollAll(-1, ptr::null_mut(), &mut events,
+            ffi::ALooper_pollAll(-1, ptr::null_mut(), &mut events,
                 &mut source);
 
             // If the application thread has exited then we need to exit also.
@@ -295,7 +300,7 @@ impl Writer for ToLogWriter {
 /// messages are sent, and the main application can recieve them from this. There
 /// is likely only one sender in our list, but we support more than one.
 fn send_event(event: Event) {
-    let mut ctx = get_context();
+    let ctx = get_context();
     let senders = ctx.senders.lock().ok().unwrap();
 
     // Store missed events up to a maximum.
@@ -309,7 +314,7 @@ fn send_event(event: Event) {
     }
 
     for sender in senders.iter() {
-        sender.send(event);
+        sender.send(event).unwrap();
     }
 }
 
@@ -410,14 +415,14 @@ pub fn add_sender(sender: Sender<Event>) {
 /// any senders are registered. Since these might be important to certain
 /// applications, this function provides that support.
 pub fn add_sender_missing(sender: Sender<Event>) {
-    let mut ctx = get_context();
+    let ctx = get_context();
     let mut senders = ctx.senders.lock().ok().unwrap();
 
     if senders.len() == 0 {
         // If the first sender added then, let us send any missing events.
         let mut missed = ctx.missed.lock().unwrap();
         while missed.len() > 0 {
-            sender.send(missed.remove(0));
+            sender.send(missed.remove(0)).unwrap();
         }
         ctx.missedcnt.store(0, Ordering::Relaxed);
     }
@@ -459,7 +464,7 @@ pub enum AssetError {
 
 pub fn load_asset(filename: &str) -> Result<Vec<u8>, AssetError> {
     struct AssetCloser {
-        asset: *const ffi::Asset,
+        asset: *mut ffi::Asset,
     }
 
     impl Drop for AssetCloser {
@@ -470,7 +475,7 @@ pub fn load_asset(filename: &str) -> Result<Vec<u8>, AssetError> {
         }
     }
 
-    unsafe fn get_asset_manager() -> *const ffi::AAssetManager {
+    unsafe fn get_asset_manager() -> *mut ffi::AAssetManager {
         let app = &*ANDROID_APP;
         let activity = &*app.activity;
         activity.assetManager
