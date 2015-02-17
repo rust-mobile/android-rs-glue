@@ -2,7 +2,7 @@
 
 extern crate serialize;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::old_io::process::Command;
 use std::old_io::{File, TempDir};
 use std::old_io::fs;
@@ -133,10 +133,14 @@ fn copy_assets(_: &Path) {}
 
 struct Args {
     output: Path,
+    library_path: Vec<Path>,
+    shared_libraries: HashSet<String>,
 }
 
 fn parse_arguments() -> (Args, Vec<String>) {
     let mut result_output = None;
+    let mut result_library_path = Vec::new();
+    let mut result_shared_libraries = HashSet::new();
     let mut result_passthrough = Vec::new();
 
     let args = std::os::args();
@@ -146,7 +150,9 @@ fn parse_arguments() -> (Args, Vec<String>) {
         let arg = match args.next() {
             None => return (
                 Args {
-                    output: result_output.expect("Could not find -o argument")
+                    output: result_output.expect("Could not find -o argument"),
+                    library_path: result_library_path,
+                    shared_libraries: result_shared_libraries,
                 },
                 result_passthrough
             ),
@@ -157,34 +163,43 @@ fn parse_arguments() -> (Args, Vec<String>) {
             "-o" => {
                 result_output = Some(Path::new(args.next().expect("-o must be followed by the output name")));
             },
-            _ => result_passthrough.push(arg)
+            "-L" => {
+                let path = args.next().expect("-L must be followed by a path");
+                result_library_path.push(Path::new(path.clone()));
+
+                // Also pass these through.
+                result_passthrough.push(arg);
+                result_passthrough.push(path);
+            },
+            _ => {
+                if arg.starts_with("-l") {
+                    result_shared_libraries.insert(vec!["lib", &arg[2..], ".so"].concat());
+                }
+                result_passthrough.push(arg)
+            }
         };
     }
 }
 
 fn find_native_libs(args: &Args) -> HashMap<String, Path> {
-    let base_path = args.output.dir_path().join("native");
     let mut native_shared_libs: HashMap<String, Path> = HashMap::new();
 
-    fs::walk_dir(&base_path).and_then(|dirs| {
-        for dir in dirs {
-            fs::readdir(&dir).and_then(|paths| {
-                for path in paths.iter() {
-                    match (path.filename_str(), path.extension_str()) {
-                        (Some(filename), Some(ext)) => {
-                            if filename.starts_with("lib") && ext == "so" {
-                                native_shared_libs.insert(filename.to_string(), path.clone());
-                            }
+    for dir in &args.library_path {
+        fs::readdir(&dir).and_then(|paths| {
+            for path in paths.iter() {
+                match (path.filename_str(), path.extension_str()) {
+                    (Some(filename), Some(ext)) => {
+                        if filename.starts_with("lib") && ext == "so" &&
+                                args.shared_libraries.contains(filename) {
+                            native_shared_libs.insert(filename.to_string(), path.clone());
                         }
-                        _ => {}
                     }
+                    _ => {}
                 }
-                Ok(())
-            }).ok();
-        }
-        Ok(())
-    }).ok();
-
+            }
+            Ok(())
+        }).ok();
+    }
     native_shared_libs
 }
 
