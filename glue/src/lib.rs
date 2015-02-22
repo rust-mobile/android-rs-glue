@@ -49,7 +49,7 @@
 //!         os_specific();
 //!     }
 
-#![feature(box_syntax, plugin, libc, core, io, collections, std_misc)]
+#![feature(box_syntax, plugin, libc, core, old_io, collections, std_misc)]
 
 #![unstable]
 
@@ -174,7 +174,7 @@ pub fn get_app<'a>() -> &'a mut ffi::android_app {
 /// This is the function that must be called by `android_main`
 #[doc(hidden)]
 pub fn android_main2<F>(app: *mut (), main_function: F)
-    where F: FnOnce(), F: Send
+    where F: FnOnce(), F: 'static, F: Send
 {
     use std::{mem, ptr};
 
@@ -287,10 +287,10 @@ struct ToLogWriter;
 impl Writer for ToLogWriter {
     fn write_all(&mut self, buf: &[u8]) -> std::old_io::IoResult<()> {
         let message = CString::from_slice(buf);
-        let message = message.as_slice_with_nul().as_ptr();
+        let message = message.as_ptr();
         let tag = b"RustAndroidGlueStdouterr";
         let tag = CString::from_slice(tag);
-        let tag = tag.as_slice_with_nul().as_ptr();
+        let tag = tag.as_ptr();
         unsafe { ffi::__android_log_write(3, tag, message) };
         Ok(())
     }
@@ -450,10 +450,10 @@ pub unsafe fn get_native_window() -> ffi::NativeWindowType {
 /// 
 pub fn write_log(message: &str) {
     let message = CString::from_slice(message.as_bytes());
-    let message = message.as_slice_with_nul().as_ptr();
+    let message = message.as_ptr();
     let tag = b"RustAndroidGlueStdouterr";
     let tag = CString::from_slice(tag);
-    let tag = tag.as_slice_with_nul().as_ptr();
+    let tag = tag.as_ptr();
     unsafe { ffi::__android_log_write(3, tag, message) };
 }
 
@@ -482,7 +482,7 @@ pub fn load_asset(filename: &str) -> Result<Vec<u8>, AssetError> {
     }
 
     let filename_c_str = CString::from_slice(filename.as_bytes());
-    let filename_c_str = filename_c_str.as_slice_with_nul().as_ptr();
+    let filename_c_str = filename_c_str.as_ptr();
     let asset = unsafe {
         ffi::AAssetManager_open(
             get_asset_manager(), filename_c_str, ffi::MODE_STREAMING)
