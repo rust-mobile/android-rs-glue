@@ -8,4 +8,4 @@ after_success:
     - |
         [ $TRAVIS_BRANCH = master ] &&
         [ $TRAVIS_PULL_REQUEST = false ] &&
-        cargo publish --token ${CRATESIO_TOKEN} --manifest-path glue/Cargo.toml
+        cargo publish --token ${CRATESIO_TOKEN} --manifest-path glue/Cargo.toml --no-verify
