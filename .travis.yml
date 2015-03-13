@@ -1,7 +1,8 @@
 language: rust
+sudo: false
 
 script:
-    - cd apk-builder && cargo build --verbose
+    - cargo build --verbose --manifest-path apk-builder/Cargo.toml
 
 after_success: 
     - |
