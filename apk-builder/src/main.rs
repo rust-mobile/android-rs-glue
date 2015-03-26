@@ -1,12 +1,13 @@
-#![feature(path, core, io, os, rustc_private)]
+#![feature(collections, convert, core, os, path_ext, rustc_private, tempdir)]
 
 extern crate serialize;
 
 use std::collections::{HashMap, HashSet};
-use std::old_io::process::Command;
-use std::old_io::{File, TempDir};
-use std::old_io::fs;
-use std::old_io::fs::PathExtensions;
+use std::env;
+use std::fs;
+use std::fs::{File, PathExt, TempDir};
+use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 
 fn main() {
     let (args, passthrough) = parse_arguments();
@@ -14,20 +15,20 @@ fn main() {
     // Find all the native shared libraries that exist in the target directory.
     let native_shared_libs = find_native_libs(&args);
 
-    // getting the path from the ANDROID_HOME env
-    let sdk_path = std::os::env().into_iter().find(|&(ref k, _)| k.as_slice() == "ANDROID_HOME")
-        .map(|(_, v)| Path::new(v)).expect("Please set the ANDROID_HOME environment variable");
+    // Get the SDK path from the ANDROID_HOME env.
+    let sdk_path = env::var("ANDROID_HOME").ok().expect("Please set the ANDROID_HOME environment variable");
+    let sdk_path = Path::new(&sdk_path);
 
-    // hardcoding ndk path
-    let ndk_path = std::os::env().into_iter().find(|&(ref k, _)| k.as_slice() == "NDK_HOME")
-        .map(|(_, v)| Path::new(v)).expect("Please set the NDK_HOME environment variable");
+    // Get the NDK path from NDK_HOME env.
+    let ndk_path = env::var("NDK_HOME").ok().expect("Please set the NDK_HOME environment variable");
+    let ndk_path = Path::new(&ndk_path);
 
-    // hardcoding ndk path
-    let standalone_path = std::os::env().into_iter().find(|&(ref k, _)| k.as_slice() == "NDK_STANDALONE")
-        .map(|(_, v)| Path::new(v)).unwrap_or(Path::new("/opt/ndk_standalone"));
+    // Get the standalone NDK path from NDK_STANDALONE env.
+    let standalone_path = env::var("NDK_STANDALONE").ok().unwrap_or("/opt/ndk_standalone".to_string());
+    let standalone_path = Path::new(&standalone_path);
 
     // creating the build directory that will contain all the necessary files to create the apk
-    let directory = build_directory(&sdk_path, args.output.filestem_str().unwrap(), &native_shared_libs);
+    let directory = build_directory(&sdk_path, args.output.file_stem().and_then(|s| s.to_str()).unwrap(), &native_shared_libs);
 
     // Copy the additional native libs into the libs directory.
     for (name, path) in native_shared_libs.iter() {
@@ -40,17 +41,18 @@ fn main() {
     let toolgccpath = standalone_path.join("bin").join("arm-linux-androideabi-gcc");
     let toolantpath = Path::new("ant");
 
-    if !toolgccpath.exists() {
+    if !&toolgccpath.exists() {
         println!("Missing Tool `{}`!", toolgccpath.display());
         std::os::set_exit_status(1);
     }
     // compiling android_native_app_glue.c
-    if Command::new(toolgccpath.clone())
+    if Command::new(&toolgccpath.clone())
         .arg(ndk_path.join("sources").join("android").join("native_app_glue").join("android_native_app_glue.c"))
         .arg("-c")
         .arg("-o").arg(directory.path().join("android_native_app_glue.o"))
-        .stdout(std::old_io::process::InheritFd(1)).stderr(std::old_io::process::InheritFd(2))
-        .status().unwrap() != std::old_io::process::ExitStatus(0)
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .status().unwrap().code().unwrap() != 0
     {
         println!("Error while executing gcc");
         std::os::set_exit_status(1);
@@ -58,15 +60,15 @@ fn main() {
     }
 
     // calling gcc to link to a shared object
-    if Command::new(toolgccpath.clone())
+    if Command::new(&toolgccpath.clone())
         .args(passthrough.as_slice())
         .arg(directory.path().join("android_native_app_glue.o"))
         .arg("-o").arg(directory.path().join("libs").join("armeabi").join("libmain.so"))
         .arg("-shared")
         .arg("-Wl,-E")
-        .stdout(std::old_io::process::InheritFd(1))
-        .stderr(std::old_io::process::InheritFd(2))//.cwd(directory.path())
-        .status().unwrap() != std::old_io::process::ExitStatus(0)
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())//.current_dir(directory.path())
+        .status().unwrap().code().unwrap() != 0
     {
         println!("Error while executing gcc");
         std::os::set_exit_status(1);
@@ -79,7 +81,7 @@ fn main() {
         let mut process =
             Command::new(standalone_path.join("bin").join("arm-linux-androideabi-objdump"))
             .arg("-x").arg(directory.path().join("libs").join("armeabi").join("libmain.so"))
-            .stderr(std::old_io::process::InheritFd(2))
+            .stderr(Stdio::inherit())
             .spawn().unwrap();
 
         // TODO: use UFCS instead
@@ -100,11 +102,12 @@ fn main() {
     copy_assets(&directory.path());
 
     // executing ant
-    let antcmd = Command::new(toolantpath).arg("debug").stdout(std::old_io::process::InheritFd(1))
-        .stderr(std::old_io::process::InheritFd(2)).cwd(directory.path())
+    let antcmd = Command::new(toolantpath).arg("debug")
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .current_dir(directory.path())
         .status();
-    if antcmd.is_err() || antcmd.unwrap() != std::old_io::process::ExitStatus(0)
-    {
+    if antcmd.is_err() || antcmd.unwrap().code().unwrap() != 0 {
         println!("Error while executing program `ant` debug, or missing program.");
         std::os::set_exit_status(1);
         return;
@@ -117,8 +120,6 @@ fn main() {
 
 #[cfg(feature = "assets_hack")]
 fn copy_assets(build_path: &Path) {
-    use std::old_io::fs::{PathExtensions};
-
     let cwd = std::os::getcwd().ok()
         .expect("Can not get current working directory!");
     let assets_path = cwd.join("assets");
@@ -132,8 +133,8 @@ fn copy_assets(build_path: &Path) {
 fn copy_assets(_: &Path) {}
 
 struct Args {
-    output: Path,
-    library_path: Vec<Path>,
+    output: PathBuf,
+    library_path: Vec<PathBuf>,
     shared_libraries: HashSet<String>,
 }
 
@@ -161,11 +162,11 @@ fn parse_arguments() -> (Args, Vec<String>) {
 
         match arg.as_slice() {
             "-o" => {
-                result_output = Some(Path::new(args.next().expect("-o must be followed by the output name")));
+                result_output = Some(PathBuf::from(args.next().expect("-o must be followed by the output name")));
             },
             "-L" => {
                 let path = args.next().expect("-L must be followed by a path");
-                result_library_path.push(Path::new(path.clone()));
+                result_library_path.push(PathBuf::from(path.clone()));
 
                 // Also pass these through.
                 result_passthrough.push(arg);
@@ -181,16 +182,19 @@ fn parse_arguments() -> (Args, Vec<String>) {
     }
 }
 
-fn find_native_libs(args: &Args) -> HashMap<String, Path> {
-    let mut native_shared_libs: HashMap<String, Path> = HashMap::new();
+fn find_native_libs(args: &Args) -> HashMap<String, PathBuf> {
+    let mut native_shared_libs: HashMap<String, PathBuf> = HashMap::new();
 
     for dir in &args.library_path {
-        fs::readdir(&dir).and_then(|paths| {
-            for path in paths.iter() {
-                match (path.filename_str(), path.extension_str()) {
+        fs::read_dir(&dir).and_then(|paths| {
+            for path in paths {
+                let path = path.unwrap().path();
+                match (path.file_name(), path.extension()) {
                     (Some(filename), Some(ext)) => {
-                        if filename.starts_with("lib") && ext == "so" &&
-                                args.shared_libraries.contains(filename) {
+                        let filename = filename.to_str().unwrap();
+                        if filename.starts_with("lib")
+                            && ext == "so"
+                            && args.shared_libraries.contains(filename) {
                             native_shared_libs.insert(filename.to_string(), path.clone());
                         }
                     }
@@ -203,18 +207,18 @@ fn find_native_libs(args: &Args) -> HashMap<String, Path> {
     native_shared_libs
 }
 
-fn build_directory(sdk_dir: &Path, crate_name: &str, libs: &HashMap<String, Path>) -> TempDir {
-    use std::old_io::fs;
+fn build_directory(sdk_dir: &Path, crate_name: &str, libs: &HashMap<String, PathBuf>) -> TempDir {
+    use std::io::Write;
 
     let build_directory = TempDir::new("android-rs-glue-rust-to-apk")
         .ok().expect("Could not create temporary build directory");
 
     let activity_name = if libs.len() > 0 {
         let src_path = build_directory.path().join("src/rust/glutin");
-        fs::mkdir_recursive(&src_path, std::old_io::USER_RWX).unwrap();
+        fs::create_dir_all(&src_path).unwrap();
 
         File::create(&src_path.join("MainActivity.java")).unwrap()
-            .write_str(java_src(libs).as_slice())
+            .write_all(java_src(libs).as_bytes())
             .unwrap();
 
         "rust.glutin.MainActivity"
@@ -223,36 +227,36 @@ fn build_directory(sdk_dir: &Path, crate_name: &str, libs: &HashMap<String, Path
     };
 
     File::create(&build_directory.path().join("AndroidManifest.xml")).unwrap()
-        .write_str(build_manifest(crate_name, activity_name).as_slice())
+        .write_all(build_manifest(crate_name, activity_name).as_bytes())
         .unwrap();
 
     File::create(&build_directory.path().join("build.xml")).unwrap()
-        .write_str(build_build_xml().as_slice())
+        .write_all(build_build_xml().as_bytes())
         .unwrap();
 
     File::create(&build_directory.path().join("local.properties")).unwrap()
-        .write_str(build_local_properties(sdk_dir).as_slice())
+        .write_all(build_local_properties(sdk_dir).as_bytes())
         .unwrap();
 
     File::create(&build_directory.path().join("project.properties")).unwrap()
-        .write_str(build_project_properties().as_slice())
+        .write_all(build_project_properties().as_bytes())
         .unwrap();
 
     {
         let libs_path = build_directory.path().join("libs").join("armeabi");
-        fs::mkdir_recursive(&libs_path, std::old_io::USER_RWX).unwrap();
+        fs::create_dir_all(&libs_path).unwrap();
     }
 
     {
         // Make sure that 'src' directory is creates
         let src_path = build_directory.path().join("src");
-        fs::mkdir_recursive(&src_path, std::old_io::USER_RWX).unwrap();
+        fs::create_dir_all(&src_path).unwrap();
     }
 
     build_directory
 }
 
-fn java_src(libs: &HashMap<String, Path>) -> String {
+fn java_src(libs: &HashMap<String, PathBuf>) -> String {
     let mut libs_string = "".to_string();
 
     for (name, _) in libs.iter() {
@@ -314,8 +318,12 @@ fn build_build_xml() -> String {
 }
 
 fn build_local_properties(sdk_dir: &Path) -> String {
-    use std::os;
-    format!(r"sdk.dir={}", os::make_absolute(sdk_dir).unwrap().display())
+    let abs_dir = if sdk_dir.is_absolute() {
+        sdk_dir.to_path_buf()
+    } else {
+        env::current_dir().unwrap().join(sdk_dir)
+    };
+    format!(r"sdk.dir={:?}", abs_dir)
 }
 
 fn build_project_properties() -> String {
