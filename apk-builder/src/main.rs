@@ -323,7 +323,7 @@ fn build_local_properties(sdk_dir: &Path) -> String {
     } else {
         env::current_dir().unwrap().join(sdk_dir)
     };
-    format!(r"sdk.dir={:?}", abs_dir)
+    format!(r"sdk.dir={}", abs_dir.to_str().unwrap())
 }
 
 fn build_project_properties() -> String {
