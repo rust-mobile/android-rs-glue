@@ -60,6 +60,7 @@ use std::sync::mpsc::{Sender, Receiver, TryRecvError, channel};
 use std::sync::Mutex;
 use std::thread::Thread;
 use std::sync::atomic::{AtomicUsize, AtomicBool, Ordering};
+use std::old_io::Writer;
 
 #[doc(hidden)]
 pub mod ffi;
