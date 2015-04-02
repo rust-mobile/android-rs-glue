@@ -1,13 +1,13 @@
 //!
-//! You can make _any_ program run on Android with minimal non-intrusive 
+//! You can make _any_ program run on Android with minimal non-intrusive
 //! modification using this library.
 //!
 //! See, https://github.com/tomaka/android-rs-glue, for detailed instructions!
 //!
 //! The libray allow you to run any program on Android, but it also allows you
 //! to work specifically with the Android system if you desire. The following
-//! sample application demonstrates both non-os specific code, and android 
-//! specific code. 
+//! sample application demonstrates both non-os specific code, and android
+//! specific code.
 //!
 //! A example application:
 //!
@@ -18,10 +18,10 @@
 //!     // This code will only be included if android is the target.
 //!     #[cfg(target_os = "android")]
 //!     android_start!(main);
-//!     
+//!
 //!     use std::sync::mpsc::channel;
 //!     use android_glue::{Event, add_sender};
-//!     
+//!
 //!     #[cfg(target_os = "android")]
 //!     fn os_specific() {
 //!         // Create a channel.
@@ -42,9 +42,9 @@
 //!
 //!
 //!     fn main() {
-//!         // Try `adb logcat *:D | grep RustAndroidGlue` when you run this 
+//!         // Try `adb logcat *:D | grep RustAndroidGlue` when you run this
 //!         // program on android. If on any other platform it will work as
-//!         // normal.    
+//!         // normal.
 //!         println!("HELLO WORLD");
 //!         os_specific();
 //!     }
@@ -58,7 +58,7 @@ extern crate libc;
 use std::ffi::{CString};
 use std::sync::mpsc::{Sender, Receiver, TryRecvError, channel};
 use std::sync::Mutex;
-use std::thread::Thread;
+use std::thread;
 use std::sync::atomic::{AtomicUsize, AtomicBool, Ordering};
 use std::old_io::Writer;
 
@@ -185,7 +185,7 @@ pub fn android_main2<F>(app: *mut (), main_function: F)
     let app: &mut ffi::android_app = unsafe { std::mem::transmute(app) };
 
     // creating the context that will be passed to the callback
-    let context = Context { 
+    let context = Context {
         senders:    Mutex::new(Vec::new()),
         missed:     Mutex::new(Vec::new()),
         missedcnt:  AtomicUsize::new(0),
@@ -202,7 +202,7 @@ pub fn android_main2<F>(app: *mut (), main_function: F)
 
     // We have to take into consideration that the application we are wrapping
     // may not have been designed for android very well. It may not listen for
-    // the destroy command/event, therefore it might not have shutdown and we 
+    // the destroy command/event, therefore it might not have shutdown and we
     // remained in memory. We need to determine if the thread is still alive.
     let terminated = is_app_thread_terminated();
 
@@ -221,7 +221,7 @@ pub fn android_main2<F>(app: *mut (), main_function: F)
         let (mtx, mrx) = channel::<()>();
 
         // executing the main function in parallel
-        Thread::spawn(move || {
+        thread::spawn(move || {
             std::old_io::stdio::set_stdout(box std::old_io::LineBufferedWriter::new(ToLogWriter));
             std::old_io::stdio::set_stderr(box std::old_io::LineBufferedWriter::new(ToLogWriter));
             main_function();
@@ -239,7 +239,7 @@ pub fn android_main2<F>(app: *mut (), main_function: F)
     }
 
     // Polling for events forever, until shutdown signal is set.
-    // note: that this must be done in the same thread as android_main because 
+    // note: that this must be done in the same thread as android_main because
     //       ALooper are thread-local
     unsafe {
         loop {
@@ -250,7 +250,7 @@ pub fn android_main2<F>(app: *mut (), main_function: F)
                 break;
             }
 
-            // A `-1` means to block forever, but any other positive value 
+            // A `-1` means to block forever, but any other positive value
             // specifies the number of milliseconds to block for, before
             // returning.
             ffi::ALooper_pollAll(-1, ptr::null_mut(), &mut events,
@@ -287,10 +287,9 @@ struct ToLogWriter;
 
 impl Writer for ToLogWriter {
     fn write_all(&mut self, buf: &[u8]) -> std::old_io::IoResult<()> {
-        let message = CString::from_slice(buf);
+        let message = CString::new(buf).unwrap();
         let message = message.as_ptr();
-        let tag = b"RustAndroidGlueStdouterr";
-        let tag = CString::from_slice(tag);
+        let tag = CString::new("RustAndroidGlueStdouterr").unwrap();
         let tag = tag.as_ptr();
         unsafe { ffi::__android_log_write(3, tag, message) };
         Ok(())
@@ -324,7 +323,7 @@ fn send_event(event: Event) {
 /// This callback is registered when we startup and is called by our main thread,
 /// from the function `android_main2`. We then process the event to gain additional
 /// information, and finally send the event, which normally would be recieved by
-/// the main application thread IF it has registered a sender. 
+/// the main application thread IF it has registered a sender.
 pub extern fn inputs_callback(_: *mut ffi::android_app, event: *const ffi::AInputEvent)
     -> libc::int32_t
 {
@@ -410,7 +409,7 @@ pub fn add_sender(sender: Sender<Event>) {
 }
 
 /// Adds a sender where events will be sent to, but also sends
-/// any missing events to the sender object. 
+/// any missing events to the sender object.
 ///
 /// The missing events happen when the application starts, but before
 /// any senders are registered. Since these might be important to certain
@@ -448,12 +447,11 @@ pub unsafe fn get_native_window() -> ffi::NativeWindowType {
     }
 }
 
-/// 
+///
 pub fn write_log(message: &str) {
-    let message = CString::from_slice(message.as_bytes());
+    let message = CString::new(message).unwrap();
     let message = message.as_ptr();
-    let tag = b"RustAndroidGlueStdouterr";
-    let tag = CString::from_slice(tag);
+    let tag = CString::new("RustAndroidGlueStdouterr").unwrap();
     let tag = tag.as_ptr();
     unsafe { ffi::__android_log_write(3, tag, message) };
 }
@@ -482,7 +480,7 @@ pub fn load_asset(filename: &str) -> Result<Vec<u8>, AssetError> {
         activity.assetManager
     }
 
-    let filename_c_str = CString::from_slice(filename.as_bytes());
+    let filename_c_str = CString::new(filename).unwrap();
     let filename_c_str = filename_c_str.as_ptr();
     let asset = unsafe {
         ffi::AAssetManager_open(
