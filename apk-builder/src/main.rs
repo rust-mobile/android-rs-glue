@@ -1,4 +1,4 @@
-#![feature(collections, convert, core, os, path_ext, rustc_private, tempdir)]
+#![feature(convert, path_ext, rustc_private)]
 
 extern crate serialize;
 
@@ -7,6 +7,7 @@ use std::env;
 use std::fs;
 use std::fs::{File, PathExt, TempDir};
 use std::path::{Path, PathBuf};
+use std::process;
 use std::process::{Command, Stdio};
 
 fn main() {
@@ -43,7 +44,7 @@ fn main() {
 
     if !&toolgccpath.exists() {
         println!("Missing Tool `{}`!", toolgccpath.display());
-        std::os::set_exit_status(1);
+        process::exit(1);
     }
     // compiling android_native_app_glue.c
     if Command::new(&toolgccpath.clone())
@@ -55,8 +56,7 @@ fn main() {
         .status().unwrap().code().unwrap() != 0
     {
         println!("Error while executing gcc");
-        std::os::set_exit_status(1);
-        return;
+        process::exit(1);
     }
 
     // calling gcc to link to a shared object
@@ -71,8 +71,7 @@ fn main() {
         .status().unwrap().code().unwrap() != 0
     {
         println!("Error while executing gcc");
-        std::os::set_exit_status(1);
-        return;
+        process::exit(1);
     }
 
     // calling objdump to make sure that our object has `ANativeActivity_onCreate`
@@ -94,8 +93,7 @@ fn main() {
             .find(|line| line.as_slice().contains("ANativeActivity_onCreate")).is_none()
         {
             println!("Error: the output file doesn't contain ANativeActivity_onCreate");
-            std::os::set_exit_status(1);
-            return;
+            process::exit(1);
         }
     }*/
 
@@ -109,8 +107,7 @@ fn main() {
         .status();
     if antcmd.is_err() || antcmd.unwrap().code().unwrap() != 0 {
         println!("Error while executing program `ant` debug, or missing program.");
-        std::os::set_exit_status(1);
-        return;
+        process::exit(1);
     }
 
     // copying apk file to the requested output
@@ -120,11 +117,11 @@ fn main() {
 
 #[cfg(feature = "assets_hack")]
 fn copy_assets(build_path: &Path) {
-    let cwd = std::os::getcwd().ok()
+    let cwd = env::current_dir().ok()
         .expect("Can not get current working directory!");
     let assets_path = cwd.join("assets");
     if assets_path.exists() {
-        fs::symlink(&assets_path, &build_path.join("assets"))
+        fs::soft_link(&assets_path, &build_path.join("assets"))
             .ok().expect("Can not create symlink to assets");
     }
 }
@@ -144,8 +141,8 @@ fn parse_arguments() -> (Args, Vec<String>) {
     let mut result_shared_libraries = HashSet::new();
     let mut result_passthrough = Vec::new();
 
-    let args = std::os::args();
-    let mut args = args.into_iter().skip(1);
+    let args = env::args();
+    let mut args = args.skip(1);
 
     loop {
         let arg = match args.next() {
@@ -160,7 +157,7 @@ fn parse_arguments() -> (Args, Vec<String>) {
             Some(arg) => arg
         };
 
-        match arg.as_slice() {
+        match arg.as_str() {
             "-o" => {
                 result_output = Some(PathBuf::from(args.next().expect("-o must be followed by the output name")));
             },
@@ -262,8 +259,8 @@ fn java_src(libs: &HashMap<String, PathBuf>) -> String {
     for (name, _) in libs.iter() {
         // Strip off the 'lib' prefix and ".so" suffix. This is safe since libs only get added
         // to the hash map if they start with lib.
-        let line = format!("        System.loadLibrary(\"{}\");\n", name.slice(3, name.len()-3));
-        libs_string.push_str(line.as_slice());
+        let line = format!("        System.loadLibrary(\"{}\");\n", &name[3..]);
+        libs_string.push_str(line.as_str());
     }
 
     format!(r#"package rust.glutin;
