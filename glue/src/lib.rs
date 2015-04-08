@@ -85,7 +85,7 @@ struct Context {
 }
 
 /// An event triggered by the Android environment.
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum Event {
     EventUp,
     EventDown,
@@ -111,8 +111,6 @@ pub enum Event {
     Stop,
     Destroy,
 }
-
-impl Copy for Event {}
 
 #[cfg(not(target_os = "android"))]
 use this_platform_is_not_supported;
