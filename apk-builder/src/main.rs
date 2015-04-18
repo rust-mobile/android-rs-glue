@@ -1,14 +1,16 @@
 #![feature(convert, path_ext, rustc_private)]
 
 extern crate serialize;
+extern crate tempdir;
 
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs;
-use std::fs::{File, PathExt, TempDir};
+use std::fs::{File, PathExt};
 use std::path::{Path, PathBuf};
 use std::process;
 use std::process::{Command, Stdio};
+use tempdir::{TempDir};
 
 fn main() {
     let (args, passthrough) = parse_arguments();
