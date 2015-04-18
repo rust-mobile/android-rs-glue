@@ -6,3 +6,6 @@ authors = ["Pierre Krieger <pierre.krieger1708@gmail.com>"]
 
 [features]
 assets_hack = []
+
+[dependencies]
+tempdir = "*"
