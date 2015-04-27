@@ -9,3 +9,4 @@ assets_hack = []
 
 [dependencies]
 tempdir = "*"
+num = "*"

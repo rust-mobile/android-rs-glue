@@ -49,18 +49,18 @@
 //!         os_specific();
 //!     }
 
-#![feature(box_syntax, plugin, libc, core, old_io, collections, std_misc)]
-
-#![unstable]
+#![feature(libc, set_stdio)]
 
 extern crate libc;
+extern crate schedule_recv;
 
 use std::ffi::{CString};
 use std::sync::mpsc::{Sender, Receiver, TryRecvError, channel};
 use std::sync::Mutex;
 use std::thread;
+use std::slice;
 use std::sync::atomic::{AtomicUsize, AtomicBool, Ordering};
-use std::old_io::Writer;
+use std::io::Write;
 
 #[doc(hidden)]
 pub mod ffi;
@@ -123,12 +123,10 @@ macro_rules! android_start(
 
             // this function is here because we are sure that it will be included by the linker
             // so we call app_dummy in it, in order to be sure that the native glue will be included
-            #[start]
             pub fn start(_: isize, _: *const *const u8) -> isize {
                 unsafe { android_glue::ffi::app_dummy() };
                 1
             }
-
 
             #[no_mangle]
             #[inline(never)]
@@ -195,8 +193,8 @@ pub fn android_main2<F>(app: *mut (), main_function: F)
     app.userData = unsafe { std::mem::transmute(&context) };
 
     // Set our stdout and stderr so that panics are directed to the log.
-    std::old_io::stdio::set_stdout(box std::old_io::LineBufferedWriter::new(ToLogWriter));
-    std::old_io::stdio::set_stderr(box std::old_io::LineBufferedWriter::new(ToLogWriter));
+    std::io::set_print(Box::new(ToLogWriter));
+    std::io::set_panic(Box::new(ToLogWriter));
 
     // We have to take into consideration that the application we are wrapping
     // may not have been designed for android very well. It may not listen for
@@ -220,8 +218,8 @@ pub fn android_main2<F>(app: *mut (), main_function: F)
 
         // executing the main function in parallel
         thread::spawn(move || {
-            std::old_io::stdio::set_stdout(box std::old_io::LineBufferedWriter::new(ToLogWriter));
-            std::old_io::stdio::set_stderr(box std::old_io::LineBufferedWriter::new(ToLogWriter));
+            std::io::set_print(Box::new(ToLogWriter));
+            std::io::set_panic(Box::new(ToLogWriter));
             main_function();
             mtx.send(()).unwrap();
         });
@@ -283,13 +281,15 @@ pub fn android_main2<F>(app: *mut (), main_function: F)
 /// Writer that will redirect what is written to it to the logs.
 struct ToLogWriter;
 
-impl Writer for ToLogWriter {
-    fn write_all(&mut self, buf: &[u8]) -> std::old_io::IoResult<()> {
+impl Write for ToLogWriter {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         let message = CString::new(buf).unwrap();
-        let message = message.as_ptr();
         let tag = CString::new("RustAndroidGlueStdouterr").unwrap();
-        let tag = tag.as_ptr();
-        unsafe { ffi::__android_log_write(3, tag, message) };
+        unsafe { ffi::__android_log_write(3, tag.as_ptr(), message.as_ptr()) };
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
         Ok(())
     }
 }
@@ -339,7 +339,7 @@ pub extern fn inputs_callback(_: *mut ffi::android_app, event: *const ffi::AInpu
         ffi::AINPUT_EVENT_TYPE_KEY => match action_code {
             ffi::AKEY_EVENT_ACTION_DOWN => { send_event(Event::EventKeyDown); },
             ffi::AKEY_EVENT_ACTION_UP => send_event(Event::EventKeyUp),
-            _ => write_log(format!("unknown input-event-type:{} action_code:{}", etype, action_code).as_slice()),
+            _ => write_log(&format!("unknown input-event-type:{} action_code:{}", etype, action_code)),
         },
         ffi::AINPUT_EVENT_TYPE_MOTION => match action_code {
             ffi::AMOTION_EVENT_ACTION_UP
@@ -361,7 +361,7 @@ pub extern fn inputs_callback(_: *mut ffi::android_app, event: *const ffi::AInpu
                 send_event(Event::EventMove(x, y));
             },
         },
-        _ => write_log(format!("unknown input-event-type:{} action_code:{}", etype, action_code).as_slice()),
+        _ => write_log(&format!("unknown input-event-type:{} action_code:{}", etype, action_code)),
     }
     0
 }
@@ -391,7 +391,7 @@ pub extern fn commands_callback(_: *mut ffi::android_app, command: libc::int32_t
             send_event(Event::Destroy);
             context.shutdown.store(true, Ordering::Relaxed);
         },
-        _ => write_log(format!("unknown command {}", command).as_slice()),
+        _ => write_log(&format!("unknown command {}", command)),
     }
 }
 
@@ -441,7 +441,7 @@ pub unsafe fn get_native_window() -> ffi::NativeWindowType {
         }
 
         // spin-locking
-        std::old_io::timer::sleep(std::time::Duration::milliseconds(10));
+        schedule_recv::oneshot_ms(10);
     }
 }
 
@@ -498,7 +498,7 @@ pub fn load_asset(filename: &str) -> Result<Vec<u8>, AssetError> {
         return Err(AssetError::EmptyBuffer);
     }
     let vec = unsafe {
-        Vec::from_raw_buf(buff as *const u8, len as usize)
+        slice::from_raw_parts(buff as *const u8, len as usize).to_vec()
     };
     Ok(vec)
 }
