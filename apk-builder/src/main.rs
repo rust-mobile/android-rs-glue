@@ -2,6 +2,7 @@
 
 extern crate serialize;
 extern crate tempdir;
+extern crate num;
 
 use std::collections::{HashMap, HashSet};
 use std::env;
