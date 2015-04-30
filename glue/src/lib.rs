@@ -52,7 +52,6 @@
 #![feature(libc, set_stdio)]
 
 extern crate libc;
-extern crate schedule_recv;
 
 use std::ffi::{CString};
 use std::sync::mpsc::{Sender, Receiver, TryRecvError, channel};
@@ -441,7 +440,7 @@ pub unsafe fn get_native_window() -> ffi::NativeWindowType {
         }
 
         // spin-locking
-        schedule_recv::oneshot_ms(10);
+        thread::sleep_ms(10);
     }
 }
 
