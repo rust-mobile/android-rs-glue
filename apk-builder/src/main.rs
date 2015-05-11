@@ -260,9 +260,9 @@ fn java_src(libs: &HashMap<String, PathBuf>) -> String {
     let mut libs_string = "".to_string();
 
     for (name, _) in libs.iter() {
-        // Strip off the 'lib' prefix and ".so" suffix. This is safe since libs only get added
-        // to the hash map if they start with lib.
-        let line = format!("        System.loadLibrary(\"{}\");\n", &name[3..]);
+        // Strip off the 'lib' prefix and ".so" suffix.
+        let line = format!("        System.loadLibrary(\"{}\");\n",
+            name.trim_left_matches("lib").trim_right_matches(".so"));
         libs_string.push_str(line.as_str());
     }
 
