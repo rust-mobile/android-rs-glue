@@ -1,13 +1,10 @@
-#![feature(convert, path_ext, rustc_private)]
-
-extern crate serialize;
 extern crate tempdir;
 extern crate num;
 
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs;
-use std::fs::{File, PathExt};
+use std::fs::{File};
 use std::path::{Path, PathBuf};
 use std::process;
 use std::process::{Command, Stdio};
@@ -45,7 +42,7 @@ fn main() {
     let toolgccpath = standalone_path.join("bin").join("arm-linux-androideabi-gcc");
     let toolantpath = Path::new("ant");
 
-    if !&toolgccpath.exists() {
+    if let Err(_) = File::open(toolgccpath.clone()) {
         println!("Missing Tool `{}`!", toolgccpath.display());
         process::exit(1);
     }
@@ -64,7 +61,7 @@ fn main() {
 
     // calling gcc to link to a shared object
     if Command::new(&toolgccpath.clone())
-        .args(passthrough.as_slice())
+        .args(&*passthrough)
         .arg(directory.path().join("android_native_app_glue.o"))
         .arg("-o").arg(directory.path().join("libs").join("armeabi").join("libmain.so"))
         .arg("-shared")
@@ -160,7 +157,7 @@ fn parse_arguments() -> (Args, Vec<String>) {
             Some(arg) => arg
         };
 
-        match arg.as_str() {
+        match &*arg {
             "-o" => {
                 result_output = Some(PathBuf::from(args.next().expect("-o must be followed by the output name")));
             },
@@ -263,7 +260,7 @@ fn java_src(libs: &HashMap<String, PathBuf>) -> String {
         // Strip off the 'lib' prefix and ".so" suffix.
         let line = format!("        System.loadLibrary(\"{}\");\n",
             name.trim_left_matches("lib").trim_right_matches(".so"));
-        libs_string.push_str(line.as_str());
+        libs_string.push_str(&*line);
     }
 
     format!(r#"package rust.glutin;
@@ -301,7 +298,7 @@ fn build_manifest(crate_name: &str, activity_name: &str) -> String {
         </activity>
     </application>
 
-</manifest> 
+</manifest>
 <!-- END_INCLUDE(manifest) -->
 "#, crate_name, activity_name)
 }
