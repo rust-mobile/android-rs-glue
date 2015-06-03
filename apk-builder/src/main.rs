@@ -169,6 +169,14 @@ fn parse_arguments() -> (Args, Vec<String>) {
                 result_passthrough.push(arg);
                 result_passthrough.push(path);
             },
+            "-l" => {
+                let name = args.next().expect("-l must be followed by a library name");
+                result_shared_libraries.insert(vec!["lib", &name, ".so"].concat());
+
+                // Also pass these through.
+                result_passthrough.push(arg);
+                result_passthrough.push(name);
+            }
             _ => {
                 if arg.starts_with("-l") {
                     result_shared_libraries.insert(vec!["lib", &arg[2..], ".so"].concat());
