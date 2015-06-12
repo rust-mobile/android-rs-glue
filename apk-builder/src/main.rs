@@ -120,7 +120,7 @@ fn copy_assets(build_path: &Path) {
     let cwd = env::current_dir().ok()
         .expect("Can not get current working directory!");
     let assets_path = cwd.join("assets");
-    if assets_path.exists() {
+    if let Ok(_) = File::open(assets_path.clone()) {
         fs::soft_link(&assets_path, &build_path.join("assets"))
             .ok().expect("Can not create symlink to assets");
     }
