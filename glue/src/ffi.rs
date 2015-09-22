@@ -376,6 +376,7 @@ pub const AMOTION_EVENT_ACTION_MOVE: libc::int32_t = 2;
 pub const AMOTION_EVENT_ACTION_OUTSIDE: libc::int32_t = 4;
 pub const AMOTION_EVENT_ACTION_POINTER_DOWN: libc::int32_t = 5;
 pub const AMOTION_EVENT_ACTION_POINTER_INDEX_MASK: libc::int32_t = 65280;
+pub const AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT: libc::int32_t = 8;
 pub const AMOTION_EVENT_ACTION_POINTER_UP: libc::int32_t = 6;
 pub const AMOTION_EVENT_ACTION_SCROLL: libc::int32_t = 8;
 pub const AMOTION_EVENT_ACTION_UP: libc::int32_t = 1;

@@ -86,11 +86,7 @@ struct Context {
 /// An event triggered by the Android environment.
 #[derive(Clone, Copy, Debug)]
 pub enum Event {
-    EventUp,
-    EventDown,
-    EventMove(i32, i32),
-    // The above are more specifically EventMotion, but to prevent a breaking
-    // change I did not rename them, but instead made EventKey** --kmcg3413@gmail.com
+    EventMotion(Motion),
     EventKeyUp,
     EventKeyDown,
     InitWindow,
@@ -109,6 +105,24 @@ pub enum Event {
     Pause,
     Stop,
     Destroy,
+}
+
+/// Data about a motion event.
+#[derive(Clone, Copy, Debug)]
+pub struct Motion {
+    pub action: MotionAction,
+    pub pointer_id: i32,
+    pub x: f32,
+    pub y: f32,
+}
+
+/// The type of pointer action in a motion event.
+#[derive(Clone, Copy, Debug)]
+pub enum MotionAction {
+    Down,
+    Move,
+    Up,
+    Cancel,
 }
 
 #[cfg(not(target_os = "android"))]
@@ -324,12 +338,6 @@ fn send_event(event: Event) {
 pub extern fn inputs_callback(_: *mut ffi::android_app, event: *const ffi::AInputEvent)
     -> libc::int32_t
 {
-    fn get_xy(event: *const ffi::AInputEvent) -> (i32, i32) {
-        let x = unsafe { ffi::AMotionEvent_getX(event, 0) };
-        let y = unsafe { ffi::AMotionEvent_getY(event, 0) };
-        (x as i32, y as i32)
-    }
-
     let etype = unsafe { ffi::AInputEvent_getType(event) };
     let action = unsafe { ffi::AMotionEvent_getAction(event) };
     let action_code = action & ffi::AMOTION_EVENT_ACTION_MASK;
@@ -340,25 +348,34 @@ pub extern fn inputs_callback(_: *mut ffi::android_app, event: *const ffi::AInpu
             ffi::AKEY_EVENT_ACTION_UP => send_event(Event::EventKeyUp),
             _ => write_log(&format!("unknown input-event-type:{} action_code:{}", etype, action_code)),
         },
-        ffi::AINPUT_EVENT_TYPE_MOTION => match action_code {
-            ffi::AMOTION_EVENT_ACTION_UP
-                | ffi::AMOTION_EVENT_ACTION_OUTSIDE
-                | ffi::AMOTION_EVENT_ACTION_CANCEL
-                | ffi::AMOTION_EVENT_ACTION_POINTER_UP =>
-            {
-                send_event(Event::EventUp);
-            },
-            ffi::AMOTION_EVENT_ACTION_DOWN
-                | ffi::AMOTION_EVENT_ACTION_POINTER_DOWN =>
-            {
-                let (x, y) = get_xy(event);
-                send_event(Event::EventMove(x, y));
-                send_event(Event::EventDown);
-            },
-            _ => {
-                let (x, y) = get_xy(event);
-                send_event(Event::EventMove(x, y));
-            },
+        ffi::AINPUT_EVENT_TYPE_MOTION => {
+            let motion_action = match action_code {
+                ffi::AMOTION_EVENT_ACTION_DOWN |
+                ffi::AMOTION_EVENT_ACTION_POINTER_DOWN => MotionAction::Down,
+                ffi::AMOTION_EVENT_ACTION_UP |
+                ffi::AMOTION_EVENT_ACTION_POINTER_UP => MotionAction::Up,
+                ffi::AMOTION_EVENT_ACTION_MOVE => MotionAction::Move,
+                ffi::AMOTION_EVENT_ACTION_CANCEL => MotionAction::Cancel,
+                _ => {
+                    write_log(&format!("unknown action_code:{}", action_code));
+                    return 0
+                }
+            };
+            let idx = (action & ffi::AMOTION_EVENT_ACTION_POINTER_INDEX_MASK
+                       >> ffi::AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT)
+                      as libc::size_t;
+            let pointer_id = unsafe {
+                ffi::AMotionEvent_getPointerId(event, idx)
+            };
+            let x = unsafe { ffi::AMotionEvent_getX(event, idx) };
+            let y = unsafe { ffi::AMotionEvent_getY(event, idx) };
+
+            send_event(Event::EventMotion(Motion {
+                action: motion_action,
+                pointer_id: pointer_id,
+                x: x,
+                y: y,
+            }));
         },
         _ => write_log(&format!("unknown input-event-type:{} action_code:{}", etype, action_code)),
     }
