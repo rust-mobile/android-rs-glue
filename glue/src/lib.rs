@@ -209,8 +209,8 @@ pub fn android_main2<F>(app: *mut (), main_function: F)
     app.userData = unsafe { std::mem::transmute(&context) };
 
     // Set our stdout and stderr so that panics are directed to the log.
-    std::io::set_print(Box::new(ToLogWriter));
-    std::io::set_panic(Box::new(ToLogWriter));
+    std::io::set_print(Box::new(ToLogWriter::new()));
+    std::io::set_panic(Box::new(ToLogWriter::new()));
 
     // We have to take into consideration that the application we are wrapping
     // may not have been designed for android very well. It may not listen for
@@ -234,8 +234,8 @@ pub fn android_main2<F>(app: *mut (), main_function: F)
 
         // executing the main function in parallel
         thread::spawn(move || {
-            std::io::set_print(Box::new(ToLogWriter));
-            std::io::set_panic(Box::new(ToLogWriter));
+            std::io::set_print(Box::new(ToLogWriter::new()));
+            std::io::set_panic(Box::new(ToLogWriter::new()));
             main_function();
             mtx.send(()).unwrap();
         });
@@ -295,13 +295,39 @@ pub fn android_main2<F>(app: *mut (), main_function: F)
 }
 
 /// Writer that will redirect what is written to it to the logs.
-struct ToLogWriter;
+struct ToLogWriter {
+    buffer: Vec<u8>,
+}
+
+impl ToLogWriter {
+    fn new() -> ToLogWriter {
+        ToLogWriter {
+            buffer: Vec::new(),
+        }
+    }
+}
 
 impl Write for ToLogWriter {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        let message = CString::new(buf).unwrap();
         let tag = CString::new("RustAndroidGlueStdouterr").unwrap();
-        unsafe { ffi::__android_log_write(3, tag.as_ptr(), message.as_ptr()) };
+        let tag = tag.as_ptr();
+        let mut cursor_id = 0;
+        for i in 0 .. buf.len() {
+            let c = buf[i];
+            if c == '\n' as u8 {
+                self.buffer.extend(&buf[cursor_id..i + 1]);
+                let message = CString::new(self.buffer.clone()).unwrap();
+                let message = message.as_ptr();
+                unsafe {
+                    ffi::__android_log_write(3, tag, message)
+                };
+                self.buffer.clear();
+                cursor_id = i + 1;
+            }
+            if i == buf.len() - 1 {
+                self.buffer.extend(&buf[cursor_id..i + 1]);
+            }
+        }
         Ok(buf.len())
     }
 
