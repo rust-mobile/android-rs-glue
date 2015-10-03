@@ -53,6 +53,7 @@
 
 extern crate libc;
 
+use std::cell::{Cell};
 use std::ffi::{CString};
 use std::sync::mpsc::{Sender, Receiver, TryRecvError, channel};
 use std::sync::Mutex;
@@ -81,6 +82,7 @@ struct Context {
     missedmax:  usize,
     // A flag indicating that we should shutdown.
     shutdown:   AtomicBool,
+    multitouch: Cell<bool>,
 }
 
 /// An event triggered by the Android environment.
@@ -200,6 +202,7 @@ pub fn android_main2<F>(app: *mut (), main_function: F)
         missedcnt:  AtomicUsize::new(0),
         missedmax:  1024,
         shutdown:   AtomicBool::new(false),
+        multitouch: Cell::new(false),
     };
     app.onAppCmd = commands_callback;
     app.onInputEvent = inputs_callback;
@@ -361,9 +364,14 @@ pub extern fn inputs_callback(_: *mut ffi::android_app, event: *const ffi::AInpu
                     return 0
                 }
             };
-            let idx = (action & ffi::AMOTION_EVENT_ACTION_POINTER_INDEX_MASK
-                       >> ffi::AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT)
-                      as libc::size_t;
+            let context = get_context();
+            let idx = if context.multitouch.get() {
+                (action & ffi::AMOTION_EVENT_ACTION_POINTER_INDEX_MASK
+                           >> ffi::AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT)
+                          as libc::size_t
+            } else {
+                0
+            };
             let pointer_id = unsafe {
                 ffi::AMotionEvent_getPointerId(event, idx)
             };
@@ -420,6 +428,10 @@ fn get_context() -> &'static Context {
 /// Adds a sender where events will be sent to.
 pub fn add_sender(sender: Sender<Event>) {
     get_context().senders.lock().unwrap().push(sender);
+}
+
+pub fn set_multitouch(multitouch: bool) {
+    get_context().multitouch.set(multitouch);
 }
 
 /// Adds a sender where events will be sent to, but also sends
