@@ -67,7 +67,7 @@ The library provides other unsafe low-level functions, but they should only be u
  - Generate a stand-alone toolchain of the NDK, example: `./android-ndk-r10/build/tools/make-standalone-toolchain.sh --platform=android-21 --toolchain=arm-linux-androideabi-4.8 --install-dir=/opt/ndk_standalone --ndk-dir=/home/you/android-ndk-r10`. Any toolchain will work.
 
  - Clone the Rust compiler: `git clone https://github.com/rust-lang/rust.git`
- - Compile Rust for Android: `mkdir rust-build`, `cd rust-build`, `../rust/configure --target=arm-linux-androideabi --android-cross-path=/opt/ndk_standalone`, `make`, `make install`
+ - Compile Rust for Android: `mkdir rust-build`, `cd rust-build`, `../rust/configure --target=arm-linux-androideabi --arm-linux-androideabi-ndk=/opt/ndk_standalone`, `make`, `make install`
 
  - Make sure that Cargo is installed as well.
 
