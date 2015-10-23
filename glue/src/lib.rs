@@ -391,13 +391,15 @@ pub extern fn inputs_callback(_: *mut ffi::android_app, event: *const ffi::AInpu
                 }
             };
             let context = get_context();
-            let idx = if context.multitouch.get() {
-                (action & ffi::AMOTION_EVENT_ACTION_POINTER_INDEX_MASK
-                           >> ffi::AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT)
-                          as libc::size_t
-            } else {
-                0
-            };
+            let idx = (action & ffi::AMOTION_EVENT_ACTION_POINTER_INDEX_MASK
+                       >> ffi::AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT)
+                      as libc::size_t;
+
+            // When multi-touch is disabled, ignore motion events from additional pointers.
+            if idx > 0 && !context.multitouch.get() {
+                return 0
+            }
+
             let pointer_id = unsafe {
                 ffi::AMotionEvent_getPointerId(event, idx)
             };
