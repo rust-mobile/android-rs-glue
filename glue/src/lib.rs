@@ -391,7 +391,7 @@ pub extern fn inputs_callback(_: *mut ffi::android_app, event: *const ffi::AInpu
                 }
             };
             let context = get_context();
-            let idx = (action & ffi::AMOTION_EVENT_ACTION_POINTER_INDEX_MASK
+            let idx = ((action & ffi::AMOTION_EVENT_ACTION_POINTER_INDEX_MASK)
                        >> ffi::AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT)
                       as libc::size_t;
 
