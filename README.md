@@ -4,7 +4,7 @@ This repository consists in two crates: a binary named `apk-builder`, and a libr
 
 `apk-builder` is a wrapper around `gcc` and the Android SDK and NDK. Invoking it will produce an `.apk` (Android package) instead of a regular binary.
 
-This linker is supposed to be used alongside with `android_glue`, which is a low-level library that will allow you to access the Android environment (the window, the events, etc.). `android_glue` is supposed to be used as a dependency for higher-level libraries that require access to this environment, like [`gl-init`](https://github.com/tomaka/gl-init-rs).
+This linker is supposed to be used alongside with `android_glue`, which is a low-level library that will allow you to access the Android environment (the window, the events, etc.). `android_glue` is supposed to be used as a dependency for higher-level libraries that require access to this environment, like [`gl-init`](https://github.com/tomaka/glutin).
 
 # Installation
 
@@ -40,7 +40,7 @@ cd apk-builder/apk-builder
 cargo build
 ```
 
-Finally, add a file named [`.cargo/config`](http://crates.io/config.html) in your main repository in order to ask rustc to use `apk-builder`:
+Finally, add a file named [`.cargo/config`](https://crates.io/config.html) in your main repository in order to ask rustc to use `apk-builder`:
 
 ```toml
 [target.arm-linux-androideabi]
