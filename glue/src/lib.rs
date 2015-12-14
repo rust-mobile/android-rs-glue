@@ -401,20 +401,36 @@ pub extern fn inputs_callback(_: *mut ffi::android_app, event: *const ffi::AInpu
             if action_code == ffi::AMOTION_EVENT_ACTION_DOWN {
                 context.primary_pointer_id.set(pointer_id);
             }
-            // When multi-touch is disabled, ignore motion events from additional pointers.
-            if !context.multitouch.get() && pointer_id != context.primary_pointer_id.get() {
-                return 0
+            let primary_pointer_id = context.primary_pointer_id.get();
+            let multitouch = context.multitouch.get();
+
+            match motion_action {
+                MotionAction::Down | MotionAction::Up | MotionAction::Cancel => {
+                    if multitouch || pointer_id == primary_pointer_id {
+                        send_event(Event::EventMotion(Motion {
+                            action: motion_action,
+                            pointer_id: pointer_id,
+                            x: unsafe { ffi::AMotionEvent_getX(event, idx) },
+                            y: unsafe { ffi::AMotionEvent_getY(event, idx) },
+                        }));
+                    }
+                }
+                MotionAction::Move => {
+                    // A move event may have multiple changed pointers. Send an event for each.
+                    let pointer_count = unsafe { ffi::AMotionEvent_getPointerCount(event) };
+                    for idx in 0..pointer_count {
+                        let pointer_id = unsafe { ffi::AMotionEvent_getPointerId(event, idx) };
+                        if multitouch || pointer_id == primary_pointer_id {
+                            send_event(Event::EventMotion(Motion {
+                                action: motion_action,
+                                pointer_id: pointer_id,
+                                x: unsafe { ffi::AMotionEvent_getX(event, idx) },
+                                y: unsafe { ffi::AMotionEvent_getY(event, idx) },
+                            }));
+                        }
+                    }
+                }
             }
-
-            let x = unsafe { ffi::AMotionEvent_getX(event, idx) };
-            let y = unsafe { ffi::AMotionEvent_getY(event, idx) };
-
-            send_event(Event::EventMotion(Motion {
-                action: motion_action,
-                pointer_id: pointer_id,
-                x: x,
-                y: y,
-            }));
         },
         _ => write_log(&format!("unknown input-event-type:{} action_code:{}", etype, action_code)),
     }
