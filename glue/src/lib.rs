@@ -83,6 +83,7 @@ struct Context {
     // A flag indicating that we should shutdown.
     shutdown:   AtomicBool,
     multitouch: Cell<bool>,
+    primary_pointer_id: Cell<i32>,
 }
 
 /// An event triggered by the Android environment.
@@ -203,6 +204,7 @@ pub fn android_main2<F>(app: *mut (), main_function: F)
         missedmax:  1024,
         shutdown:   AtomicBool::new(false),
         multitouch: Cell::new(false),
+        primary_pointer_id: Cell::new(0),
     };
     app.onAppCmd = commands_callback;
     app.onInputEvent = inputs_callback;
@@ -395,23 +397,40 @@ pub extern fn inputs_callback(_: *mut ffi::android_app, event: *const ffi::AInpu
                        >> ffi::AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT)
                       as libc::size_t;
 
-            // When multi-touch is disabled, ignore motion events from additional pointers.
-            if idx > 0 && !context.multitouch.get() {
-                return 0
+            let pointer_id = unsafe { ffi::AMotionEvent_getPointerId(event, idx) };
+            if action_code == ffi::AMOTION_EVENT_ACTION_DOWN {
+                context.primary_pointer_id.set(pointer_id);
             }
+            let primary_pointer_id = context.primary_pointer_id.get();
+            let multitouch = context.multitouch.get();
 
-            let pointer_id = unsafe {
-                ffi::AMotionEvent_getPointerId(event, idx)
-            };
-            let x = unsafe { ffi::AMotionEvent_getX(event, idx) };
-            let y = unsafe { ffi::AMotionEvent_getY(event, idx) };
-
-            send_event(Event::EventMotion(Motion {
-                action: motion_action,
-                pointer_id: pointer_id,
-                x: x,
-                y: y,
-            }));
+            match motion_action {
+                MotionAction::Down | MotionAction::Up | MotionAction::Cancel => {
+                    if multitouch || pointer_id == primary_pointer_id {
+                        send_event(Event::EventMotion(Motion {
+                            action: motion_action,
+                            pointer_id: pointer_id,
+                            x: unsafe { ffi::AMotionEvent_getX(event, idx) },
+                            y: unsafe { ffi::AMotionEvent_getY(event, idx) },
+                        }));
+                    }
+                }
+                MotionAction::Move => {
+                    // A move event may have multiple changed pointers. Send an event for each.
+                    let pointer_count = unsafe { ffi::AMotionEvent_getPointerCount(event) };
+                    for idx in 0..pointer_count {
+                        let pointer_id = unsafe { ffi::AMotionEvent_getPointerId(event, idx) };
+                        if multitouch || pointer_id == primary_pointer_id {
+                            send_event(Event::EventMotion(Motion {
+                                action: motion_action,
+                                pointer_id: pointer_id,
+                                x: unsafe { ffi::AMotionEvent_getX(event, idx) },
+                                y: unsafe { ffi::AMotionEvent_getY(event, idx) },
+                            }));
+                        }
+                    }
+                }
+            }
         },
         _ => write_log(&format!("unknown input-event-type:{} action_code:{}", etype, action_code)),
     }
