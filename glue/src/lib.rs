@@ -343,7 +343,7 @@ impl Write for ToLogWriter {
 /// is likely only one sender in our list, but we support more than one.
 fn send_event(event: Event) {
     let ctx = get_context();
-    let senders = ctx.senders.lock().ok().unwrap();
+    let mut senders = ctx.senders.lock().ok().unwrap();
 
     // Store missed events up to a maximum.
     if senders.len() < 1 {
@@ -355,9 +355,7 @@ fn send_event(event: Event) {
         }
     }
 
-    for sender in senders.iter() {
-        sender.send(event).unwrap();
-    }
+    senders.retain(|s| s.send(event).is_ok());
 }
 
 /// The callback for input.
