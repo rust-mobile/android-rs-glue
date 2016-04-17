@@ -1,92 +1,27 @@
-# What is this repository?
-
-This repository consists in two crates: a binary named `apk-builder`, and a library named `android_glue`.
-
-`apk-builder` is a wrapper around `gcc` and the Android SDK and NDK. Invoking it will produce an `.apk` (Android package) instead of a regular binary.
-
-This linker is supposed to be used alongside with `android_glue`, which is a low-level library that will allow you to access the Android environment (the window, the events, etc.). `android_glue` is supposed to be used as a dependency for higher-level libraries that require access to this environment, like [`gl-init`](https://github.com/tomaka/glutin).
-
-# Installation
-
-You can make *any* program run on Android with the following steps.
-
-First, add a dependency to `android_glue`:
-
-```toml
-[dependencies.android_glue]
-git = "https://github.com/tomaka/android-rs-glue"
-```
-
-Then, add `extern crate android_glue` and invoke `android_start!` in your main crate.
-
-```rust
-#[cfg(target_os = "android")]
-#[macro_use] 
-extern crate android_glue;
-
-#[cfg(target_os = "android")]
-android_start!(main);
-
-fn main() {
-    // ...
-}
-```
-
-Then, clone or download this repository somewhere on your computer and compile `apk-builder`.
-
-```sh
-git clone https://github.com/tomaka/android-rs-glue apk-builder
-cd apk-builder/apk-builder
-cargo build
-```
-
-Finally, add a file named [`.cargo/config`](https://crates.io/config.html) in your main repository in order to ask rustc to use `apk-builder`:
-
-```toml
-[target.arm-linux-androideabi]
-linker = "apk-builder/apk-builder/target/apk-builder"
-```
-
-Instead of a regular binary, compiling with `cargo build --target=arm-linux-androideabi` will produce an APK that can be installed on an Android device. See `How to compile` below.
-
-One important thing to notice is that this doesn't break your existing build. Calling `cargo build` or `cargo build --target=something-something-something` will produce the exact same thing as before.
-
 # Usage
-
- - `android_start!(main)` defines the entry point of your application to `main`.
-
-The library provides other unsafe low-level functions, but they should only be used by higher-level libraries that need access to the Android environment.
-
-# How to compile
 
 ## Setting up your environment
 
- - If you are on Linux 64 bits, install the 32 bits binaries (`apt-get install libc6-i386 lib32z1 lib32stdc++6`)
+Before you can compile for Android, you need to setup your environment. This needs to be done only once per system.
+
+ - Install [`rustup`](http://rustup.rs).
+ - Run `rustup target add arm-linux-androideabi`, or any other target that you want to compile to.
+
+ - Install the Java JDK and Ant (on Ubuntu, `sudo apt-get install openjdk-8-jdk ant`)
 
  - Download and unzip [the Android NDK](http://developer.android.com/tools/sdk/ndk/index.html)
- - Generate a stand-alone toolchain of the NDK, example: `./android-ndk-r10/build/tools/make-standalone-toolchain.sh --platform=android-21 --toolchain=arm-linux-androideabi-4.8 --install-dir=/opt/ndk_standalone --ndk-dir=/home/you/android-ndk-r10`. Any toolchain will work.
-
- - Clone the Rust compiler: `git clone https://github.com/rust-lang/rust.git`
- - Compile Rust for Android: `mkdir rust-build`, `cd rust-build`, `../rust/configure --target=arm-linux-androideabi --arm-linux-androideabi-ndk=/opt/ndk_standalone`, `make`, `make install`
-
- - Make sure that Cargo is installed as well.
-
- - Install the Java JDK and Ant (`apt-get install openjdk-7-jdk ant`)
-
  - Download and unzip [the Android SDK](http://developer.android.com/sdk/index.html) (under *SDK Tools Only* at the bottom)
  - Update the SDK: `./android-sdk-linux/tools/android update sdk -u`
 
-## Building your project
+ - Install `cargo-apk` with `cargo install cargo-apk`.
 
-Building your project is done in one single step:
+## Compiling
 
-`ANDROID_HOME=/path/to/android/sdk NDK_HOME=/path/to/ndk NDK_STANDALONE=/opt/ndk_standalone cargo build --target=arm-linux-androideabi`
+Run `cargo apk`.
 
-(Note: the SDK installer should automatically set `ANDROID_HOME`, in which case you don't need to pass it. The NDK standalone may be by-passed in the future, making `NDK_HOME` the only environment variable that will need to be passed).
+This will build an Android package in `target/android-artifacts/build/bin`.
 
-This will generate a file named `target/arm-linux-androideabi/your_crate` or `target/arm-linux-androideabi/your_crate.exe`. Even though it has the wrong extension, this file is an Android package (`.apk`) that can be installed on an Android device.
-
-# Testing on an Android emulator
+## Testing on an Android emulator
 
 Start the emulator, then run:
 
@@ -96,4 +31,25 @@ adb install -r target/your_crate
 
 This will install your application on the emulator.
 
-For the moment, your application's name is always the name of your crate. This will be customizable in the future.
+## Interfacing with Android
+
+An application is not very useful if it doesn't have access to the screen, the user inputs, etc.
+
+The `android_glue` crate provides FFI with the Android environment for things that are not in
+the stdlib.
+
+# How it works
+
+## The build process
+
+The build process works by invoking `cargo rustc` and:
+
+- Always compiles your crate as a shared library.
+- Injects the `android_native_app_glue` file provided by the Android NDK.
+- Injects some glue libraries in Rust, which ties the link between `android_native_app_glue` and
+  the `main` function of your crate.
+
+This first step outputs a shared library, and is run once per target architecture.
+
+The command then sets up an Android build environment, which includes some Java code, in
+`target/android-artifacts` and puts the shared libraries in it. Then it runs `ant`.
