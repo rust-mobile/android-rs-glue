@@ -68,16 +68,33 @@ fn main() {
         }
 
         // Compiling injected-glue
-        if Command::new("cargo")
-            .arg("build")
-            .arg("--target").arg(build_target)
-            .arg("--manifest-path").arg(android_artifacts_dir.join("injected-glue/Cargo.toml"))
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit())
-            .status().unwrap().code().unwrap() != 0
-        {
-            exit(1);
-        }
+        let injected_glue_lib = {
+            if Command::new("rustc")
+                .arg(android_artifacts_dir.join("injected-glue/lib.rs"))
+                .arg("--crate-type").arg("rlib")
+                .arg("--crate-name").arg("cargo_apk_injected_glue")
+                .arg("--target").arg(build_target)
+                .arg("--out-dir").arg(&build_target_dir)
+                .stdout(Stdio::inherit())
+                .stderr(Stdio::inherit())
+                .status().unwrap().code().unwrap() != 0
+            {
+                exit(1);
+            }
+
+            let output = Command::new("rustc")
+                .arg(android_artifacts_dir.join("injected-glue/lib.rs"))
+                .arg("--crate-type").arg("rlib")
+                .arg("--crate-name").arg("cargo_apk_injected_glue")
+                .arg("--target").arg(build_target)
+                .arg("--out-dir").arg(&build_target_dir)
+                .arg("--print").arg("file-names")
+                .stdout(Stdio::piped())
+                .stderr(Stdio::inherit())
+                .output().unwrap();
+            let stdout = String::from_utf8(output.stdout).unwrap();
+            build_target_dir.join(stdout.lines().next().unwrap())
+        };
 
         // Compiling glue_obj.rs
         {
@@ -88,7 +105,7 @@ fn main() {
             .arg(build_target_dir.join("glue_obj.rs"))
             .arg("--crate-type").arg("staticlib")
             .arg("--target").arg(build_target)
-            .arg("--extern").arg(format!("cargo_apk_injected_glue={}", android_artifacts_dir.join("injected-glue/target").join(build_target).join("debug").join("libcargo_apk_injected_glue.rlib").to_string_lossy()))
+            .arg("--extern").arg(format!("cargo_apk_injected_glue={}", injected_glue_lib.to_string_lossy()))
             .arg("--emit").arg("obj")
             .arg("-o").arg(build_target_dir.join("glue_obj.o"))
             .stdout(Stdio::inherit())
@@ -124,7 +141,7 @@ fn main() {
             .arg("--")
             .arg("-C").arg(format!("linker={}", android_artifacts_dir.join("linker_exe")
                                                                      .to_string_lossy()))
-            .arg("--extern").arg(format!("cargo_apk_injected_glue={}", android_artifacts_dir.join("injected-glue/target").join(build_target).join("debug").join("libcargo_apk_injected_glue.rlib").to_string_lossy()))
+            .arg("--extern").arg(format!("cargo_apk_injected_glue={}", injected_glue_lib.to_string_lossy()))
             .env("CARGO_APK_GCC", gcc_path.as_os_str())
             .env("CARGO_APK_GCC_SYSROOT", gcc_sysroot.as_os_str())
             .env("CARGO_APK_NATIVE_APP_GLUE", build_target_dir.join("android_native_app_glue.o"))
@@ -212,16 +229,13 @@ fn build_android_artifacts_dir(path: &Path, config: &config::Config) {
     }
 
     {
-        fs::create_dir_all(path.join("injected-glue/src")).unwrap();
+        fs::create_dir_all(path.join("injected-glue")).unwrap();
 
-        let mut cargo_toml = File::create(path.join("injected-glue/Cargo.toml")).unwrap();
-        cargo_toml.write_all(&include_bytes!("../injected-glue/Cargo.toml")[..]).unwrap();
+        let mut lib = File::create(path.join("injected-glue/lib.rs")).unwrap();
+        lib.write_all(&include_bytes!("../injected-glue/lib.rs")[..]).unwrap();
 
-        let mut lib = File::create(path.join("injected-glue/src/lib.rs")).unwrap();
-        lib.write_all(&include_bytes!("../injected-glue/src/lib.rs")[..]).unwrap();
-
-        let mut ffi = File::create(path.join("injected-glue/src/ffi.rs")).unwrap();
-        ffi.write_all(&include_bytes!("../injected-glue/src/ffi.rs")[..]).unwrap();
+        let mut ffi = File::create(path.join("injected-glue/ffi.rs")).unwrap();
+        ffi.write_all(&include_bytes!("../injected-glue/ffi.rs")[..]).unwrap();
     }
 
     build_linker(path);
