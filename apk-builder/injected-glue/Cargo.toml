@@ -1,0 +1,4 @@
+[package]
+name = "cargo-apk-injected-glue"
+version = "0.1.0"
+authors = ["Pierre Krieger"]

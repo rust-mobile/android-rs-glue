@@ -17,6 +17,7 @@ fn main() {
     let gcc = env::var("CARGO_APK_GCC").unwrap();
     let gcc_sysroot = env::var("CARGO_APK_GCC_SYSROOT").unwrap();
     let native_app_glue = env::var("CARGO_APK_NATIVE_APP_GLUE").unwrap();
+    let glue_obj = env::var("CARGO_APK_GLUE_OBJ").unwrap();
     let linker_output = env::var("CARGO_APK_LINKER_OUTPUT").unwrap();
     let lib_paths_output = env::var("CARGO_APK_LIB_PATHS_OUTPUT").unwrap();
     let libs_output = env::var("CARGO_APK_LIBS_OUTPUT").unwrap();
@@ -38,6 +39,7 @@ fn main() {
     if Command::new(Path::new(&gcc))
         .args(&*passthrough)
         .arg(native_app_glue)
+        .arg(glue_obj)
         .arg("--sysroot").arg(gcc_sysroot)
         .arg("-o").arg(linker_output)
         .arg("-shared")

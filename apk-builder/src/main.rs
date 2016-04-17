@@ -67,6 +67,37 @@ fn main() {
             exit(1);
         }
 
+        // Compiling injected-glue
+        if Command::new("cargo")
+            .arg("build")
+            .arg("--target").arg(build_target)
+            .arg("--manifest-path").arg(android_artifacts_dir.join("injected-glue/Cargo.toml"))
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .status().unwrap().code().unwrap() != 0
+        {
+            exit(1);
+        }
+
+        // Compiling glue_obj.rs
+        {
+            let mut file = File::create(build_target_dir.join("glue_obj.rs")).unwrap();
+            file.write_all(&include_bytes!("../glue_obj.rs")[..]).unwrap();
+        }
+        if Command::new("rustc")
+            .arg(build_target_dir.join("glue_obj.rs"))
+            .arg("--crate-type").arg("staticlib")
+            .arg("--target").arg(build_target)
+            .arg("--extern").arg(format!("cargo_apk_injected_glue={}", android_artifacts_dir.join("injected-glue/target").join(build_target).join("debug").join("libcargo_apk_injected_glue.rlib").to_string_lossy()))
+            .arg("--emit").arg("obj")
+            .arg("-o").arg(build_target_dir.join("glue_obj.o"))
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .status().unwrap().code().unwrap() != 0
+        {
+            exit(1);
+        }
+
         // Directory where we will put the native libraries for ant to pick them up.
         let native_libraries_dir = {
             let abi = if build_target.starts_with("arm") { "armeabi" }
@@ -93,9 +124,11 @@ fn main() {
             .arg("--")
             .arg("-C").arg(format!("linker={}", android_artifacts_dir.join("linker_exe")
                                                                      .to_string_lossy()))
+            .arg("--extern").arg(format!("cargo_apk_injected_glue={}", android_artifacts_dir.join("injected-glue/target").join(build_target).join("debug").join("libcargo_apk_injected_glue.rlib").to_string_lossy()))
             .env("CARGO_APK_GCC", gcc_path.as_os_str())
             .env("CARGO_APK_GCC_SYSROOT", gcc_sysroot.as_os_str())
             .env("CARGO_APK_NATIVE_APP_GLUE", build_target_dir.join("android_native_app_glue.o"))
+            .env("CARGO_APK_GLUE_OBJ", build_target_dir.join("glue_obj.o"))
             .env("CARGO_APK_LINKER_OUTPUT", native_libraries_dir.join("libmain.so"))
             .env("CARGO_APK_LIB_PATHS_OUTPUT", build_target_dir.join("lib_paths"))
             .env("CARGO_APK_LIBS_OUTPUT", build_target_dir.join("libs"))
@@ -176,6 +209,19 @@ fn find_project_target() -> PathBuf {
 fn build_android_artifacts_dir(path: &Path, config: &config::Config) {
     if fs::metadata(path.join("build")).is_err() {
         fs::DirBuilder::new().recursive(true).create(path.join("build")).unwrap();
+    }
+
+    {
+        fs::create_dir_all(path.join("injected-glue/src")).unwrap();
+
+        let mut cargo_toml = File::create(path.join("injected-glue/Cargo.toml")).unwrap();
+        cargo_toml.write_all(&include_bytes!("../injected-glue/Cargo.toml")[..]).unwrap();
+
+        let mut lib = File::create(path.join("injected-glue/src/lib.rs")).unwrap();
+        lib.write_all(&include_bytes!("../injected-glue/src/lib.rs")[..]).unwrap();
+
+        let mut ffi = File::create(path.join("injected-glue/src/ffi.rs")).unwrap();
+        ffi.write_all(&include_bytes!("../injected-glue/src/ffi.rs")[..]).unwrap();
     }
 
     build_linker(path);
