@@ -159,13 +159,21 @@ fn main() {
         // Determine the list of library paths and libraries, and copy them to the right location.
         {
             let lib_paths: Vec<String> = {
-                let l = BufReader::new(File::open(build_target_dir.join("lib_paths")).unwrap());
-                l.lines().map(|l| l.unwrap()).collect()
+                if let Ok(f) = File::open(build_target_dir.join("lib_paths")) {
+                    let l = BufReader::new(f);
+                    l.lines().map(|l| l.unwrap()).collect()
+                } else {
+                    vec![]
+                }
             };
 
             let libs_list: HashSet<String> = {
-                let l = BufReader::new(File::open(build_target_dir.join("libs")).unwrap());
-                l.lines().map(|l| l.unwrap()).collect()
+                if let Ok(f) = File::open(build_target_dir.join("libs")) {
+                    let l = BufReader::new(f);
+                    l.lines().map(|l| l.unwrap()).collect()
+                } else {
+                    HashSet::new()
+                }
             };
 
             for dir in lib_paths.iter() {
@@ -273,8 +281,8 @@ fn build_linker(path: &Path) {
 
 fn build_java_src(path: &Path) {
     let file = path.join("build/src/rust/glutin/MainActivity.java");
-    if fs::metadata(&file).is_ok() { return; }
     fs::create_dir_all(file.parent().unwrap()).unwrap();
+    if fs::metadata(&file).is_ok() { return; }
     let mut file = File::create(&file).unwrap();
 
     let libs_string = "".to_owned();
