@@ -1,287 +1,248 @@
-extern crate tempdir;
-extern crate num;
+extern crate rustc_serialize;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::env;
 use std::fs;
-use std::fs::{File};
-use std::path::{Path, PathBuf};
-use std::process;
+use std::fs::File;
+use std::io::BufRead;
+use std::io::BufReader;
+use std::io::Write;
+use std::path::Path;
+use std::path::PathBuf;
+use std::process::exit;
 use std::process::{Command, Stdio};
-use tempdir::{TempDir};
+
+mod config;
 
 fn main() {
-    let (args, passthrough) = parse_arguments();
+    // Fetching the configuration for the build.
+    let config = config::load();
 
-    // Find all the native shared libraries that exist in the target directory.
-    let native_shared_libs = find_native_libs(&args);
+    // Building the `android-artifacts` directory that will contain all the artifacts.
+    let android_artifacts_dir = {
+        let target_dir = find_project_target();
+        target_dir.join("android-artifacts")
+    };
+    build_android_artifacts_dir(&android_artifacts_dir, &config);
 
-    // Get the SDK path from the ANDROID_HOME env.
-    let sdk_path = env::var("ANDROID_HOME").ok().expect("Please set the ANDROID_HOME environment variable");
-    let sdk_path = Path::new(&sdk_path);
+    for build_target in config.build_targets.iter() {
+        let build_target_dir = android_artifacts_dir.join(build_target);
 
-    // Get the NDK path from NDK_HOME env.
-    let ndk_path = env::var("NDK_HOME").ok().expect("Please set the NDK_HOME environment variable");
-    let ndk_path = Path::new(&ndk_path);
+        // Finding the tools in the NDK.
+        let gcc_path = {
+            let arch = if build_target.starts_with("arm") { "arm-linux-androideabi" }
+                       else if build_target.starts_with("aarch64") { "aarch64-linux-android" }
+                       else if build_target.starts_with("i") { "x86" }
+                       else if build_target.starts_with("x86_64") { "x86_64" }
+                       else if build_target.starts_with("mipsel") { "mipsel-linux-android" }
+                       // TODO: mips64
+                       else { panic!("Unknown or incompatible build target: {}", build_target) };
 
-    // Get the standalone NDK path from NDK_STANDALONE env.
-    let standalone_path = env::var("NDK_STANDALONE").ok().unwrap_or("/opt/ndk_standalone".to_string());
-    let standalone_path = Path::new(&standalone_path);
+            config.ndk_path.join(format!("toolchains/{}-4.9/prebuilt/linux-x86_64", arch))      // FIXME: correct host arch
+                           .join(format!("bin/{}-gcc", arch))
+        };
 
-    // creating the build directory that will contain all the necessary files to create the apk
-    let directory = build_directory(&sdk_path, args.output.file_stem().and_then(|s| s.to_str()).unwrap(), &native_shared_libs);
+        let gcc_sysroot = {
+            let arch = if build_target.starts_with("arm") { "arm" }
+                       else if build_target.starts_with("aarch64") { "arm64" }
+                       else if build_target.starts_with("i") { "x86" }
+                       else if build_target.starts_with("x86_64") { "x86_64" }
+                       else if build_target.starts_with("mips") { "mips" }
+                       // TODO: mips64
+                       else { panic!("Unknown or incompatible build target: {}", build_target) };
+            config.ndk_path.join(format!("platforms/android-{v}/arch-{a}",
+                                         v = config.android_version, a = arch))
+        };
 
-    // Copy the additional native libs into the libs directory.
-    for (name, path) in native_shared_libs.iter() {
-        fs::copy(path, &directory.path().join("libs").join("armeabi").join(name)).unwrap();
-    }
-
-    // Set the paths for the tools used in one central place. Then we also use this to not
-    // only invoke the tool when needed, but also to check before first invocation in order
-    // to display a nice error message to the user if the tool is missing from the path.
-    let toolgccpath = standalone_path.join("bin").join("arm-linux-androideabi-gcc");
-    let toolantpath = Path::new("ant");
-
-    if let Err(_) = File::open(toolgccpath.clone()) {
-        println!("Missing Tool `{}`!", toolgccpath.display());
-        process::exit(1);
-    }
-    // compiling android_native_app_glue.c
-    if Command::new(&toolgccpath.clone())
-        .arg(ndk_path.join("sources").join("android").join("native_app_glue").join("android_native_app_glue.c"))
-        .arg("-c")
-        .arg("-o").arg(directory.path().join("android_native_app_glue.o"))
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .status().unwrap().code().unwrap() != 0
-    {
-        println!("Error while executing gcc");
-        process::exit(1);
-    }
-
-    // calling gcc to link to a shared object
-    if Command::new(&toolgccpath.clone())
-        .args(&*passthrough)
-        .arg(directory.path().join("android_native_app_glue.o"))
-        .arg("-o").arg(directory.path().join("libs").join("armeabi").join("libmain.so"))
-        .arg("-shared")
-        .arg("-Wl,-E")
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())//.current_dir(directory.path())
-        .status().unwrap().code().unwrap() != 0
-    {
-        println!("Error while executing gcc");
-        process::exit(1);
-    }
-
-    // calling objdump to make sure that our object has `ANativeActivity_onCreate`
-    // TODO: not working
-    /*{
-        let mut process =
-            Command::new(standalone_path.join("bin").join("arm-linux-androideabi-objdump"))
-            .arg("-x").arg(directory.path().join("libs").join("armeabi").join("libmain.so"))
+        // Compiling android_native_app_glue.c
+        if Command::new(&gcc_path)
+            .arg(config.ndk_path.join("sources/android/native_app_glue/android_native_app_glue.c"))
+            .arg("-c")
+            .arg("-o").arg(build_target_dir.join("android_native_app_glue.o"))
+            .arg("--sysroot").arg(&gcc_sysroot)
+            .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
-            .spawn().unwrap();
-
-        // TODO: use UFCS instead
-        fn by_ref<'a, T: Reader>(r: &'a mut T) -> std::old_io::RefReader<'a, T> { r.by_ref() };
-
-        let stdout = process.stdout.as_mut().unwrap();
-        let mut stdout = std::old_io::BufferedReader::new(by_ref(stdout));
-
-        if stdout.lines().filter_map(|l| l.ok())
-            .find(|line| line.as_slice().contains("ANativeActivity_onCreate")).is_none()
+            .status().unwrap().code().unwrap() != 0
         {
-            println!("Error: the output file doesn't contain ANativeActivity_onCreate");
-            process::exit(1);
+            exit(1);
         }
-    }*/
 
-    copy_assets(&directory.path());
+        // Directory where we will put the native libraries for ant to pick them up.
+        let native_libraries_dir = {
+            let abi = if build_target.starts_with("arm") { "armeabi" }
+                      // TODO: armeabi-v7a
+                      else if build_target.starts_with("aarch64") { "arm64-v8a" }
+                      else if build_target.starts_with("i") { "x86" }
+                      else if build_target.starts_with("x86_64") { "x86_64" }
+                      else if build_target.starts_with("mips") { "mips" }
+                      // TODO: mips64
+                      else { panic!("Unknown or incompatible build target: {}", build_target) };
 
-    // executing ant
-    let antcmd = Command::new(toolantpath).arg("debug")
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .current_dir(directory.path())
-        .status();
-    if antcmd.is_err() || antcmd.unwrap().code().unwrap() != 0 {
-        println!("Error while executing program `ant` debug, or missing program.");
-        process::exit(1);
-    }
-
-    // copying apk file to the requested output
-    fs::copy(&directory.path().join("bin").join("rust-android-debug.apk"),
-        &args.output).unwrap();
-}
-
-#[cfg(feature = "assets_hack")]
-fn copy_assets(build_path: &Path) {
-    let cwd = env::current_dir().ok()
-        .expect("Can not get current working directory!");
-    let assets_path = cwd.join("assets");
-    if let Ok(_) = File::open(assets_path.clone()) {
-        fs::soft_link(&assets_path, &build_path.join("assets"))
-            .ok().expect("Can not create symlink to assets");
-    }
-}
-
-#[cfg(not(feature = "assets_hack"))]
-fn copy_assets(_: &Path) {}
-
-struct Args {
-    output: PathBuf,
-    library_path: Vec<PathBuf>,
-    shared_libraries: HashSet<String>,
-}
-
-fn parse_arguments() -> (Args, Vec<String>) {
-    let mut result_output = None;
-    let mut result_library_path = Vec::new();
-    let mut result_shared_libraries = HashSet::new();
-    let mut result_passthrough = Vec::new();
-
-    let args = env::args();
-    let mut args = args.skip(1);
-
-    loop {
-        let arg = match args.next() {
-            None => return (
-                Args {
-                    output: result_output.expect("Could not find -o argument"),
-                    library_path: result_library_path,
-                    shared_libraries: result_shared_libraries,
-                },
-                result_passthrough
-            ),
-            Some(arg) => arg
+            android_artifacts_dir.join(format!("build/libs/{}", abi))
         };
 
-        match &*arg {
-            "-o" => {
-                result_output = Some(PathBuf::from(args.next().expect("-o must be followed by the output name")));
-            },
-            "-L" => {
-                let path = args.next().expect("-L must be followed by a path");
-                result_library_path.push(PathBuf::from(path.clone()));
+        if fs::metadata(&native_libraries_dir).is_err() {
+            fs::DirBuilder::new().recursive(true).create(&native_libraries_dir).unwrap();
+        }
 
-                // Also pass these through.
-                result_passthrough.push(arg);
-                result_passthrough.push(path);
-            },
-            "-l" => {
-                let name = args.next().expect("-l must be followed by a library name");
-                result_shared_libraries.insert(vec!["lib", &name, ".so"].concat());
+        // Compiling the crate thanks to `cargo rustc`. We set the linker to `linker_exe`, a hacky
+        // linker that will tweak the options passed to `gcc`.
+        if Command::new("cargo").arg("rustc")
+            .arg("--verbose")
+            .arg("--target").arg(build_target)
+            .arg("--")
+            .arg("-C").arg(format!("linker={}", android_artifacts_dir.join("linker_exe")
+                                                                     .to_string_lossy()))
+            .env("CARGO_APK_GCC", gcc_path.as_os_str())
+            .env("CARGO_APK_GCC_SYSROOT", gcc_sysroot.as_os_str())
+            .env("CARGO_APK_NATIVE_APP_GLUE", build_target_dir.join("android_native_app_glue.o"))
+            .env("CARGO_APK_LINKER_OUTPUT", native_libraries_dir.join("libmain.so"))
+            .env("CARGO_APK_LIB_PATHS_OUTPUT", build_target_dir.join("lib_paths"))
+            .env("CARGO_APK_LIBS_OUTPUT", build_target_dir.join("libs"))
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .status().unwrap().code().unwrap() != 0
+        {
+            exit(1);
+        }
 
-                // Also pass these through.
-                result_passthrough.push(arg);
-                result_passthrough.push(name);
-            }
-            _ => {
-                if arg.starts_with("-l") {
-                    result_shared_libraries.insert(vec!["lib", &arg[2..], ".so"].concat());
-                }
-                result_passthrough.push(arg)
-            }
-        };
-    }
-}
+        // Determine the list of library paths and libraries, and copy them to the right location.
+        {
+            let lib_paths: Vec<String> = {
+                let l = BufReader::new(File::open(build_target_dir.join("lib_paths")).unwrap());
+                l.lines().map(|l| l.unwrap()).collect()
+            };
 
-fn find_native_libs(args: &Args) -> HashMap<String, PathBuf> {
-    let mut native_shared_libs: HashMap<String, PathBuf> = HashMap::new();
+            let libs_list: HashSet<String> = {
+                let l = BufReader::new(File::open(build_target_dir.join("libs")).unwrap());
+                l.lines().map(|l| l.unwrap()).collect()
+            };
 
-    for dir in &args.library_path {
-        fs::read_dir(&dir).and_then(|paths| {
-            for path in paths {
-                let path = path.unwrap().path();
-                match (path.file_name(), path.extension()) {
-                    (Some(filename), Some(ext)) => {
-                        let filename = filename.to_str().unwrap();
-                        if filename.starts_with("lib")
-                            && ext == "so"
-                            && args.shared_libraries.contains(filename) {
-                            native_shared_libs.insert(filename.to_string(), path.clone());
+            for dir in lib_paths.iter() {
+                fs::read_dir(&dir).and_then(|paths| {
+                    for path in paths {
+                        let path = path.unwrap().path();
+                        match (path.file_name(), path.extension()) {
+                            (Some(filename), Some(ext)) => {
+                                let filename = filename.to_str().unwrap();
+                                if filename.starts_with("lib") && ext == "so" &&
+                                   libs_list.contains(filename)
+                                {
+                                    fs::copy(&path, native_libraries_dir.join(filename)).unwrap();
+                                }
+                            }
+                            _ => {}
                         }
                     }
-                    _ => {}
-                }
+
+                    Ok(())
+                }).ok();
             }
-            Ok(())
-        }).ok();
+        }
     }
-    native_shared_libs
+
+    // Invoking `ant` from within `android-artifacts` in order to compile the project.
+    if Command::new(Path::new("ant"))
+        .arg("debug")
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .current_dir(android_artifacts_dir.join("build"))
+        .status().unwrap().code().unwrap() != 0
+    {
+        exit(1);
+    }
 }
 
-fn build_directory(sdk_dir: &Path, crate_name: &str, libs: &HashMap<String, PathBuf>) -> TempDir {
-    use std::io::Write;
+// Determines the location of the `target` directory of the project we're compiling.
+fn find_project_target() -> PathBuf {
+    let output = Command::new("cargo").arg("locate-project").output().unwrap();
 
-    let build_directory = TempDir::new("android-rs-glue-rust-to-apk")
-        .ok().expect("Could not create temporary build directory");
-
-    let activity_name = if libs.len() > 0 {
-        let src_path = build_directory.path().join("src/rust/glutin");
-        fs::create_dir_all(&src_path).unwrap();
-
-        File::create(&src_path.join("MainActivity.java")).unwrap()
-            .write_all(java_src(libs).as_bytes())
-            .unwrap();
-
-        "rust.glutin.MainActivity"
-    } else {
-        "android.app.NativeActivity"
-    };
-
-    File::create(&build_directory.path().join("AndroidManifest.xml")).unwrap()
-        .write_all(build_manifest(crate_name, activity_name).as_bytes())
-        .unwrap();
-
-    File::create(&build_directory.path().join("build.xml")).unwrap()
-        .write_all(build_build_xml().as_bytes())
-        .unwrap();
-
-    File::create(&build_directory.path().join("local.properties")).unwrap()
-        .write_all(build_local_properties(sdk_dir).as_bytes())
-        .unwrap();
-
-    File::create(&build_directory.path().join("project.properties")).unwrap()
-        .write_all(build_project_properties().as_bytes())
-        .unwrap();
-
-    {
-        let libs_path = build_directory.path().join("libs").join("armeabi");
-        fs::create_dir_all(&libs_path).unwrap();
+    if !output.status.success() {
+        if let Some(code) = output.status.code() {
+            exit(code);
+        } else {
+            exit(-1);
+        }
     }
 
-    {
-        // Make sure that 'src' directory is creates
-        let src_path = build_directory.path().join("src");
-        fs::create_dir_all(&src_path).unwrap();
-    }
-
-    build_directory
+    #[derive(RustcDecodable)]
+    struct Data { root: String }
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let decoded: Data = rustc_serialize::json::decode(&stdout).unwrap();
+    let path = Path::new(&decoded.root);
+    path.parent().unwrap().join("target")
 }
 
-fn java_src(libs: &HashMap<String, PathBuf>) -> String {
-    let mut libs_string = "".to_string();
+fn build_android_artifacts_dir(path: &Path, config: &config::Config) {
+    if fs::metadata(path.join("build")).is_err() {
+        fs::DirBuilder::new().recursive(true).create(path.join("build")).unwrap();
+    }
 
-    for (name, _) in libs.iter() {
+    build_linker(path);
+    build_manifest(path, "test", "test");
+    build_java_src(path);
+    build_build_xml(path);
+    build_local_properties(path, config);
+    build_project_properties(path, config);
+
+    for target in config.build_targets.iter() {
+        if fs::metadata(path.join(target)).is_err() {
+            fs::DirBuilder::new().recursive(true).create(path.join(target)).unwrap();
+        }
+    }
+}
+
+fn build_linker(path: &Path) {
+    let exe_file = path.join("linker_exe");
+    let src_file = path.join("linker_src");
+
+    if fs::metadata(&exe_file).is_ok() {
+        return;
+    }
+
+    {
+        let mut src_write = fs::File::create(&src_file).unwrap();
+        src_write.write_all(&include_bytes!("../linker.rs")[..]).unwrap();
+    }
+
+    let status = Command::new("rustc").arg(src_file).arg("-o").arg(&exe_file).status().unwrap();
+    assert!(status.success());
+
+    assert!(fs::metadata(&exe_file).is_ok());
+}
+
+fn build_java_src(path: &Path) {
+    let file = path.join("build/src/rust/glutin/MainActivity.java");
+    if fs::metadata(&file).is_ok() { return; }
+    fs::create_dir_all(file.parent().unwrap()).unwrap();
+    let mut file = File::create(&file).unwrap();
+
+    let libs_string = "".to_owned();
+
+    // FIXME: this needs to insert each library that we want to load ; the problem is that they could
+    //        vary between platforms
+    /*for (name, _) in libs.iter() {
         // Strip off the 'lib' prefix and ".so" suffix.
         let line = format!("        System.loadLibrary(\"{}\");\n",
             name.trim_left_matches("lib").trim_right_matches(".so"));
         libs_string.push_str(&*line);
-    }
+    }*/
 
-    format!(r#"package rust.glutin;
+    write!(file, r#"package rust.glutin;
 
 public class MainActivity extends android.app.NativeActivity {{
     static {{
         {0}
     }}
-}}"#, libs_string)
+}}"#, libs_string).unwrap();
 }
 
-fn build_manifest(crate_name: &str, activity_name: &str) -> String {
-    format!(r#"<?xml version="1.0" encoding="utf-8"?>
+fn build_manifest(path: &Path, crate_name: &str, activity_name: &str) {
+    let file = path.join("build/AndroidManifest.xml");
+    if fs::metadata(&file).is_ok() { return; }
+    let mut file = File::create(&file).unwrap();
+
+    write!(file, r#"<?xml version="1.0" encoding="utf-8"?>
 <!-- BEGIN_INCLUDE(manifest) -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
         package="com.example.native_activity"
@@ -308,29 +269,41 @@ fn build_manifest(crate_name: &str, activity_name: &str) -> String {
 
 </manifest>
 <!-- END_INCLUDE(manifest) -->
-"#, crate_name, activity_name)
+"#, crate_name, activity_name).unwrap()
 }
 
-fn build_build_xml() -> String {
-    format!(r#"<?xml version="1.0" encoding="UTF-8"?>
+fn build_build_xml(path: &Path) {
+    let file = path.join("build/build.xml");
+    if fs::metadata(&file).is_ok() { return; }
+    let mut file = File::create(&file).unwrap();
+
+    write!(file, r#"<?xml version="1.0" encoding="UTF-8"?>
 <project name="rust-android" default="help">
     <property file="local.properties" />
     <loadproperties srcFile="project.properties" />
     <import file="custom_rules.xml" optional="true" />
     <import file="${{sdk.dir}}/tools/ant/build.xml" />
 </project>
-"#)
+"#).unwrap()
 }
 
-fn build_local_properties(sdk_dir: &Path) -> String {
-    let abs_dir = if sdk_dir.is_absolute() {
-        sdk_dir.to_path_buf()
+fn build_local_properties(path: &Path, config: &config::Config) {
+    let file = path.join("build/local.properties");
+    if fs::metadata(&file).is_ok() { return; }
+    let mut file = File::create(&file).unwrap();
+
+    let abs_dir = if config.sdk_path.is_absolute() {
+        config.sdk_path.clone()
     } else {
-        env::current_dir().unwrap().join(sdk_dir)
+        env::current_dir().unwrap().join(&config.sdk_path)
     };
-    format!(r"sdk.dir={}", abs_dir.to_str().unwrap())
+
+    write!(file, r"sdk.dir={}", abs_dir.to_str().unwrap()).unwrap();
 }
 
-fn build_project_properties() -> String {
-    format!(r"target=android-18")
+fn build_project_properties(path: &Path, config: &config::Config) {
+    let file = path.join("build/project.properties");
+    if fs::metadata(&file).is_ok() { return; }
+    let mut file = File::create(&file).unwrap();
+    write!(file, r"target=android-{}", config.android_version).unwrap();
 }

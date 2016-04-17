@@ -1,6 +1,5 @@
 [package]
-
-name = "apk-builder"
+name = "cargo-apk"
 version = "0.0.1"
 authors = ["Pierre Krieger <pierre.krieger1708@gmail.com>"]
 
@@ -8,5 +7,4 @@ authors = ["Pierre Krieger <pierre.krieger1708@gmail.com>"]
 assets_hack = []
 
 [dependencies]
-tempdir = "*"
-num = "*"
+rustc-serialize = "0.3.19"
