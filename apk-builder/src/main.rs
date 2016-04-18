@@ -157,7 +157,7 @@ fn main() {
         }
 
         // Determine the list of library paths and libraries, and copy them to the right location.
-        {
+        let shared_objects_to_load = {
             let lib_paths: Vec<String> = {
                 if let Ok(f) = File::open(build_target_dir.join("lib_paths")) {
                     let l = BufReader::new(f);
@@ -176,6 +176,8 @@ fn main() {
                 }
             };
 
+            let mut shared_objects_to_load = Vec::new();
+
             for dir in lib_paths.iter() {
                 fs::read_dir(&dir).and_then(|paths| {
                     for path in paths {
@@ -186,6 +188,7 @@ fn main() {
                                 if filename.starts_with("lib") && ext == "so" &&
                                    libs_list.contains(filename)
                                 {
+                                    shared_objects_to_load.push(filename.to_owned());
                                     fs::copy(&path, native_libraries_dir.join(filename)).unwrap();
                                 }
                             }
@@ -196,7 +199,13 @@ fn main() {
                     Ok(())
                 }).ok();
             }
-        }
+
+            shared_objects_to_load
+        };
+
+        // Write the Java source
+        // FIXME: duh, the file will be replaced every time, so this only works with one target
+        build_java_src(&android_artifacts_dir, shared_objects_to_load.iter().map(|s| &**s));
     }
 
     // Invoking `ant` from within `android-artifacts` in order to compile the project.
@@ -247,8 +256,7 @@ fn build_android_artifacts_dir(path: &Path, config: &config::Config) {
     }
 
     build_linker(path);
-    build_manifest(path, "test", "test");
-    build_java_src(path);
+    build_manifest(path, "test", "rust.glutin.MainActivity");
     build_build_xml(path);
     build_local_properties(path, config);
     build_project_properties(path, config);
@@ -264,9 +272,9 @@ fn build_linker(path: &Path) {
     let exe_file = path.join("linker_exe");
     let src_file = path.join("linker_src");
 
-    if fs::metadata(&exe_file).is_ok() {
+    /*if fs::metadata(&exe_file).is_ok() {
         return;
-    }
+    }*/
 
     {
         let mut src_write = fs::File::create(&src_file).unwrap();
@@ -279,22 +287,21 @@ fn build_linker(path: &Path) {
     assert!(fs::metadata(&exe_file).is_ok());
 }
 
-fn build_java_src(path: &Path) {
+fn build_java_src<'a, I>(path: &Path, libs: I)
+    where I: Iterator<Item = &'a str>
+{
     let file = path.join("build/src/rust/glutin/MainActivity.java");
     fs::create_dir_all(file.parent().unwrap()).unwrap();
-    if fs::metadata(&file).is_ok() { return; }
+    //if fs::metadata(&file).is_ok() { return; }
     let mut file = File::create(&file).unwrap();
 
-    let libs_string = "".to_owned();
-
-    // FIXME: this needs to insert each library that we want to load ; the problem is that they could
-    //        vary between platforms
-    /*for (name, _) in libs.iter() {
+    let mut libs_string = String::new();
+    for name in libs {
         // Strip off the 'lib' prefix and ".so" suffix.
         let line = format!("        System.loadLibrary(\"{}\");\n",
             name.trim_left_matches("lib").trim_right_matches(".so"));
         libs_string.push_str(&*line);
-    }*/
+    }
 
     write!(file, r#"package rust.glutin;
 
@@ -307,7 +314,7 @@ public class MainActivity extends android.app.NativeActivity {{
 
 fn build_manifest(path: &Path, crate_name: &str, activity_name: &str) {
     let file = path.join("build/AndroidManifest.xml");
-    if fs::metadata(&file).is_ok() { return; }
+    //if fs::metadata(&file).is_ok() { return; }
     let mut file = File::create(&file).unwrap();
 
     write!(file, r#"<?xml version="1.0" encoding="utf-8"?>
@@ -342,7 +349,7 @@ fn build_manifest(path: &Path, crate_name: &str, activity_name: &str) {
 
 fn build_build_xml(path: &Path) {
     let file = path.join("build/build.xml");
-    if fs::metadata(&file).is_ok() { return; }
+    //if fs::metadata(&file).is_ok() { return; }
     let mut file = File::create(&file).unwrap();
 
     write!(file, r#"<?xml version="1.0" encoding="UTF-8"?>
@@ -357,7 +364,7 @@ fn build_build_xml(path: &Path) {
 
 fn build_local_properties(path: &Path, config: &config::Config) {
     let file = path.join("build/local.properties");
-    if fs::metadata(&file).is_ok() { return; }
+    //if fs::metadata(&file).is_ok() { return; }
     let mut file = File::create(&file).unwrap();
 
     let abs_dir = if config.sdk_path.is_absolute() {
@@ -371,7 +378,7 @@ fn build_local_properties(path: &Path, config: &config::Config) {
 
 fn build_project_properties(path: &Path, config: &config::Config) {
     let file = path.join("build/project.properties");
-    if fs::metadata(&file).is_ok() { return; }
+    //if fs::metadata(&file).is_ok() { return; }
     let mut file = File::create(&file).unwrap();
     write!(file, r"target=android-{}", config.android_version).unwrap();
 }
