@@ -146,6 +146,7 @@ fn main() {
             .env("CARGO_APK_GCC_SYSROOT", gcc_sysroot.as_os_str())
             .env("CARGO_APK_NATIVE_APP_GLUE", build_target_dir.join("android_native_app_glue.o"))
             .env("CARGO_APK_GLUE_OBJ", build_target_dir.join("glue_obj.o"))
+            .env("CARGO_APK_GLUE_LIB", injected_glue_lib)
             .env("CARGO_APK_LINKER_OUTPUT", native_libraries_dir.join("libmain.so"))
             .env("CARGO_APK_LIB_PATHS_OUTPUT", build_target_dir.join("lib_paths"))
             .env("CARGO_APK_LIBS_OUTPUT", build_target_dir.join("libs"))
