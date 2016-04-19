@@ -3,64 +3,73 @@
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
 
-use libc;
+use std::os::raw::c_void;
+use std::os::raw::c_float;
+use std::os::raw::c_double;
+use std::os::raw::c_char;
+use std::os::raw::c_schar;
+use std::os::raw::c_uchar;
+use std::os::raw::c_int;
+use std::os::raw::c_short;
+use std::os::raw::c_ushort;
+use std::os::raw::c_longlong;
 
 /*
  * android_native_app_glue.h
  */
 #[repr(C)]
 pub struct android_app {
-    pub userData: *mut libc::c_void,
-    pub onAppCmd: extern fn(*mut android_app, libc::int32_t),
-    pub onInputEvent: extern fn(*mut android_app, *const AInputEvent) -> libc::int32_t,
+    pub userData: *mut c_void,
+    pub onAppCmd: extern fn(*mut android_app, i32),
+    pub onInputEvent: extern fn(*mut android_app, *const AInputEvent) -> i32,
     pub activity: *const ANativeActivity,
     pub config: *const AConfiguration,
-    pub savedState: *mut libc::c_void,
-    pub savedStateSize: libc::size_t,
+    pub savedState: *mut c_void,
+    pub savedStateSize: usize,
     pub looper: *mut ALooper,
     pub inputQueue: *const AInputQueue,
     pub window: *const ANativeWindow,
     pub contentRect: ARect,
-    pub activityState: libc::c_int,
-    pub destroyRequested: libc::c_int,
+    pub activityState: c_int,
+    pub destroyRequested: c_int,
 }
 
 #[repr(C)]
 pub struct android_poll_source {
-    pub id: libc::int32_t,      // can be LOOPER_ID_MAIN, LOOPER_ID_INPUT or LOOPER_ID_USER
+    pub id: i32,      // can be LOOPER_ID_MAIN, LOOPER_ID_INPUT or LOOPER_ID_USER
     pub app: *mut android_app,
     pub process: extern fn(*mut android_app, *mut android_poll_source),
 }
 
-pub const LOOPER_ID_MAIN: libc::int32_t = 1;
-pub const LOOPER_ID_INPUT: libc::int32_t = 1;
-pub const LOOPER_ID_USER: libc::int32_t = 1;
+pub const LOOPER_ID_MAIN: i32 = 1;
+pub const LOOPER_ID_INPUT: i32 = 1;
+pub const LOOPER_ID_USER: i32 = 1;
 
-pub const APP_CMD_INPUT_CHANGED: libc::int32_t = 0;
-pub const APP_CMD_INIT_WINDOW: libc::int32_t = 1;
-pub const APP_CMD_TERM_WINDOW: libc::int32_t = 2;
-pub const APP_CMD_WINDOW_RESIZED: libc::int32_t = 3;
-pub const APP_CMD_WINDOW_REDRAW_NEEDED: libc::int32_t = 4;
-pub const APP_CMD_CONTENT_RECT_CHANGED: libc::int32_t = 5;
-pub const APP_CMD_GAINED_FOCUS: libc::int32_t = 6;
-pub const APP_CMD_LOST_FOCUS: libc::int32_t = 7;
-pub const APP_CMD_CONFIG_CHANGED: libc::int32_t = 8;
-pub const APP_CMD_LOW_MEMORY: libc::int32_t = 9;
-pub const APP_CMD_START: libc::int32_t = 10;
-pub const APP_CMD_RESUME: libc::int32_t = 11;
-pub const APP_CMD_SAVE_STATE: libc::int32_t = 12;
-pub const APP_CMD_PAUSE: libc::int32_t = 13;
-pub const APP_CMD_STOP: libc::int32_t = 14;
-pub const APP_CMD_DESTROY: libc::int32_t = 15;
+pub const APP_CMD_INPUT_CHANGED: i32 = 0;
+pub const APP_CMD_INIT_WINDOW: i32 = 1;
+pub const APP_CMD_TERM_WINDOW: i32 = 2;
+pub const APP_CMD_WINDOW_RESIZED: i32 = 3;
+pub const APP_CMD_WINDOW_REDRAW_NEEDED: i32 = 4;
+pub const APP_CMD_CONTENT_RECT_CHANGED: i32 = 5;
+pub const APP_CMD_GAINED_FOCUS: i32 = 6;
+pub const APP_CMD_LOST_FOCUS: i32 = 7;
+pub const APP_CMD_CONFIG_CHANGED: i32 = 8;
+pub const APP_CMD_LOW_MEMORY: i32 = 9;
+pub const APP_CMD_START: i32 = 10;
+pub const APP_CMD_RESUME: i32 = 11;
+pub const APP_CMD_SAVE_STATE: i32 = 12;
+pub const APP_CMD_PAUSE: i32 = 13;
+pub const APP_CMD_STOP: i32 = 14;
+pub const APP_CMD_DESTROY: i32 = 15;
 
 extern {
     pub fn app_dummy();
 }
 
-pub const MODE_BUFFER: libc::int32_t = 3;
-pub const MODE_RANDOM: libc::int32_t = 1;
-pub const MODE_STREAMING: libc::int32_t = 2;
-pub const MODE_UNKNOWN: libc::int32_t = 0;
+pub const MODE_BUFFER: i32 = 3;
+pub const MODE_RANDOM: i32 = 1;
+pub const MODE_STREAMING: i32 = 2;
+pub const MODE_UNKNOWN: i32 = 0;
 
 //
 pub type Asset = AAsset;
@@ -80,30 +89,30 @@ extern {}
 //
 //       android/asset_manager.h
 //
-pub const AASSET_MODE_BUFFER: libc::int32_t = 3;
-pub const AASSET_MODE_RANDOM: libc::int32_t = 1;
-pub const AASSET_MODE_STREAMING: libc::int32_t = 2;
-pub const AASSET_MODE_UNKNOWN: libc::int32_t = 0;
+pub const AASSET_MODE_BUFFER: i32 = 3;
+pub const AASSET_MODE_RANDOM: i32 = 1;
+pub const AASSET_MODE_STREAMING: i32 = 2;
+pub const AASSET_MODE_UNKNOWN: i32 = 0;
 pub type AAsset = ();
 pub type AAssetDir = ();
 extern { pub fn AAssetDir_close(assetDir: *mut AAssetDir); }
-extern { pub fn AAssetDir_getNextFileName(assetDir: *mut AAssetDir) -> *const libc::c_char; }
+extern { pub fn AAssetDir_getNextFileName(assetDir: *mut AAssetDir) -> *const c_char; }
 extern { pub fn AAssetDir_rewind(assetDir: *mut AAssetDir); }
 pub type AAssetManager = ();
-extern { pub fn AAssetManager_open(mgr: *mut AAssetManager, filename: *const libc::c_char, mode: libc::c_int) -> *mut AAsset; }
-extern { pub fn AAssetManager_openDir(mgr: *mut AAssetManager, dirName: *const libc::c_char) -> *mut AAssetDir; }
+extern { pub fn AAssetManager_open(mgr: *mut AAssetManager, filename: *const c_char, mode: c_int) -> *mut AAsset; }
+extern { pub fn AAssetManager_openDir(mgr: *mut AAssetManager, dirName: *const c_char) -> *mut AAssetDir; }
 extern { pub fn AAsset_close(asset: *mut AAsset); }
-extern { pub fn AAsset_getBuffer(asset: *mut AAsset) -> *const libc::c_void; }
-extern { pub fn AAsset_getLength(asset: *mut AAsset) -> libc::off_t; }
+extern { pub fn AAsset_getBuffer(asset: *mut AAsset) -> *const c_void; }
+extern { pub fn AAsset_getLength(asset: *mut AAsset) -> isize; }
 extern { pub fn AAsset_getLength64(asset: *mut AAsset) -> u64; }
-extern { pub fn AAsset_getRemainingLength(asset: *mut AAsset) -> libc::off_t; }
+extern { pub fn AAsset_getRemainingLength(asset: *mut AAsset) -> isize; }
 extern { pub fn AAsset_getRemainingLength64(asset: *mut AAsset) -> u64; }
-extern { pub fn AAsset_isAllocated(asset: *mut AAsset) -> libc::c_int; }
-extern { pub fn AAsset_openFileDescriptor(asset: *mut AAsset, outStart: *mut libc::off_t, outLength: *mut libc::off_t) -> libc::c_int; }
-extern { pub fn AAsset_openFileDescriptor64(asset: *mut AAsset, outStart: *mut u64, outLength: *mut u64) -> libc::c_int; }
-extern { pub fn AAsset_read(asset: *mut AAsset, buf: *mut libc::c_void, count: libc::size_t) -> libc::c_int; }
-extern { pub fn AAsset_seek(asset: *mut AAsset, offset: libc::off_t, whence: libc::c_int) -> libc::off_t; }
-extern { pub fn AAsset_seek64(asset: *mut AAsset, offset: u64, whence: libc::c_int) -> u64; }
+extern { pub fn AAsset_isAllocated(asset: *mut AAsset) -> c_int; }
+extern { pub fn AAsset_openFileDescriptor(asset: *mut AAsset, outStart: *mut isize, outLength: *mut isize) -> c_int; }
+extern { pub fn AAsset_openFileDescriptor64(asset: *mut AAsset, outStart: *mut u64, outLength: *mut u64) -> c_int; }
+extern { pub fn AAsset_read(asset: *mut AAsset, buf: *mut c_void, count: usize) -> c_int; }
+extern { pub fn AAsset_seek(asset: *mut AAsset, offset: isize, whence: c_int) -> isize; }
+extern { pub fn AAsset_seek64(asset: *mut AAsset, offset: u64, whence: c_int) -> u64; }
 
 //
 //       android/asset_manager_jni.h
@@ -113,706 +122,706 @@ extern { pub fn AAssetManager_fromJava(env: *mut JNIEnv, assetManager: jobject) 
 //
 //       android/bitmap.h
 //
-pub const ANDROID_BITMAP_FORMAT_A_8: libc::int32_t = 8;
-pub const ANDROID_BITMAP_FORMAT_NONE: libc::int32_t = 0;
-pub const ANDROID_BITMAP_FORMAT_RGBA_4444: libc::int32_t = 7;
-pub const ANDROID_BITMAP_FORMAT_RGBA_8888: libc::int32_t = 1;
-pub const ANDROID_BITMAP_FORMAT_RGB_565: libc::int32_t = 4;
+pub const ANDROID_BITMAP_FORMAT_A_8: i32 = 8;
+pub const ANDROID_BITMAP_FORMAT_NONE: i32 = 0;
+pub const ANDROID_BITMAP_FORMAT_RGBA_4444: i32 = 7;
+pub const ANDROID_BITMAP_FORMAT_RGBA_8888: i32 = 1;
+pub const ANDROID_BITMAP_FORMAT_RGB_565: i32 = 4;
 #[repr(C)]
 pub struct AndroidBitmapInfo {
-     pub width:             libc::uint32_t,
-     pub height:                libc::uint32_t,
-     pub stride:                libc::uint32_t,
-     pub format:                libc::int32_t,
-     pub flags:             libc::uint32_t,
+     pub width:             u32,
+     pub height:                u32,
+     pub stride:                u32,
+     pub format:                i32,
+     pub flags:             u32,
 }
-extern { pub fn AndroidBitmap_getInfo(env: *mut JNIEnv, jbitmap: jobject, info: *mut AndroidBitmapInfo) -> libc::c_int; }
-extern { pub fn AndroidBitmap_lockPixels(env: *mut JNIEnv, jbitmap: jobject, addrPtr: *mut *mut libc::c_void) -> libc::c_int; }
-extern { pub fn AndroidBitmap_unlockPixels(env: *mut JNIEnv, jbitmap: jobject) -> libc::c_int; }
+extern { pub fn AndroidBitmap_getInfo(env: *mut JNIEnv, jbitmap: jobject, info: *mut AndroidBitmapInfo) -> c_int; }
+extern { pub fn AndroidBitmap_lockPixels(env: *mut JNIEnv, jbitmap: jobject, addrPtr: *mut *mut c_void) -> c_int; }
+extern { pub fn AndroidBitmap_unlockPixels(env: *mut JNIEnv, jbitmap: jobject) -> c_int; }
 
 //
 //       android/configuration.h
 //
-pub const ACONFIGURATION_DENSITY: libc::int32_t = 256;
-pub const ACONFIGURATION_DENSITY_ANY: libc::int32_t = 65534;
-pub const ACONFIGURATION_DENSITY_DEFAULT: libc::int32_t = 0;
-pub const ACONFIGURATION_DENSITY_HIGH: libc::int32_t = 240;
-pub const ACONFIGURATION_DENSITY_LOW: libc::int32_t = 120;
-pub const ACONFIGURATION_DENSITY_MEDIUM: libc::int32_t = 160;
-pub const ACONFIGURATION_DENSITY_NONE: libc::int32_t = 65535;
-pub const ACONFIGURATION_DENSITY_TV: libc::int32_t = 213;
-pub const ACONFIGURATION_DENSITY_XHIGH: libc::int32_t = 320;
-pub const ACONFIGURATION_DENSITY_XXHIGH: libc::int32_t = 480;
-pub const ACONFIGURATION_DENSITY_XXXHIGH: libc::int32_t = 640;
-pub const ACONFIGURATION_KEYBOARD: libc::int32_t = 16;
-pub const ACONFIGURATION_KEYBOARD_12KEY: libc::int32_t = 3;
-pub const ACONFIGURATION_KEYBOARD_ANY: libc::int32_t = 0;
-pub const ACONFIGURATION_KEYBOARD_HIDDEN: libc::int32_t = 32;
-pub const ACONFIGURATION_KEYBOARD_NOKEYS: libc::int32_t = 1;
-pub const ACONFIGURATION_KEYBOARD_QWERTY: libc::int32_t = 2;
-pub const ACONFIGURATION_KEYSHIDDEN_ANY: libc::int32_t = 0;
-pub const ACONFIGURATION_KEYSHIDDEN_NO: libc::int32_t = 1;
-pub const ACONFIGURATION_KEYSHIDDEN_SOFT: libc::int32_t = 3;
-pub const ACONFIGURATION_KEYSHIDDEN_YES: libc::int32_t = 2;
-pub const ACONFIGURATION_LAYOUTDIR: libc::int32_t = 16384;
-pub const ACONFIGURATION_LAYOUTDIR_ANY: libc::int32_t = 0;
-pub const ACONFIGURATION_LAYOUTDIR_LTR: libc::int32_t = 1;
-pub const ACONFIGURATION_LAYOUTDIR_RTL: libc::int32_t = 2;
-pub const ACONFIGURATION_LOCALE: libc::int32_t = 4;
-pub const ACONFIGURATION_MCC: libc::int32_t = 1;
-pub const ACONFIGURATION_MNC: libc::int32_t = 2;
-pub const ACONFIGURATION_MNC_ZERO: libc::int32_t = 65535;
-pub const ACONFIGURATION_NAVHIDDEN_ANY: libc::int32_t = 0;
-pub const ACONFIGURATION_NAVHIDDEN_NO: libc::int32_t = 1;
-pub const ACONFIGURATION_NAVHIDDEN_YES: libc::int32_t = 2;
-pub const ACONFIGURATION_NAVIGATION: libc::int32_t = 64;
-pub const ACONFIGURATION_NAVIGATION_ANY: libc::int32_t = 0;
-pub const ACONFIGURATION_NAVIGATION_DPAD: libc::int32_t = 2;
-pub const ACONFIGURATION_NAVIGATION_NONAV: libc::int32_t = 1;
-pub const ACONFIGURATION_NAVIGATION_TRACKBALL: libc::int32_t = 3;
-pub const ACONFIGURATION_NAVIGATION_WHEEL: libc::int32_t = 4;
-pub const ACONFIGURATION_ORIENTATION: libc::int32_t = 128;
-pub const ACONFIGURATION_ORIENTATION_ANY: libc::int32_t = 0;
-pub const ACONFIGURATION_ORIENTATION_LAND: libc::int32_t = 2;
-pub const ACONFIGURATION_ORIENTATION_PORT: libc::int32_t = 1;
-pub const ACONFIGURATION_ORIENTATION_SQUARE: libc::int32_t = 3;
-pub const ACONFIGURATION_SCREENLONG_ANY: libc::int32_t = 0;
-pub const ACONFIGURATION_SCREENLONG_NO: libc::int32_t = 1;
-pub const ACONFIGURATION_SCREENLONG_YES: libc::int32_t = 2;
-pub const ACONFIGURATION_SCREENSIZE_ANY: libc::int32_t = 0;
-pub const ACONFIGURATION_SCREENSIZE_LARGE: libc::int32_t = 3;
-pub const ACONFIGURATION_SCREENSIZE_NORMAL: libc::int32_t = 2;
-pub const ACONFIGURATION_SCREENSIZE_SMALL: libc::int32_t = 1;
-pub const ACONFIGURATION_SCREENSIZE_XLARGE: libc::int32_t = 4;
-pub const ACONFIGURATION_SCREEN_HEIGHT_DP_ANY: libc::int32_t = 0;
-pub const ACONFIGURATION_SCREEN_LAYOUT: libc::int32_t = 2048;
-pub const ACONFIGURATION_SCREEN_SIZE: libc::int32_t = 512;
-pub const ACONFIGURATION_SCREEN_WIDTH_DP_ANY: libc::int32_t = 0;
-pub const ACONFIGURATION_SMALLEST_SCREEN_SIZE: libc::int32_t = 8192;
-pub const ACONFIGURATION_SMALLEST_SCREEN_WIDTH_DP_ANY: libc::int32_t = 0;
-pub const ACONFIGURATION_TOUCHSCREEN: libc::int32_t = 8;
-pub const ACONFIGURATION_TOUCHSCREEN_ANY: libc::int32_t = 0;
-pub const ACONFIGURATION_TOUCHSCREEN_FINGER: libc::int32_t = 3;
-pub const ACONFIGURATION_TOUCHSCREEN_NOTOUCH: libc::int32_t = 1;
-pub const ACONFIGURATION_TOUCHSCREEN_STYLUS: libc::int32_t = 2;
-pub const ACONFIGURATION_UI_MODE: libc::int32_t = 4096;
-pub const ACONFIGURATION_UI_MODE_NIGHT_ANY: libc::int32_t = 0;
-pub const ACONFIGURATION_UI_MODE_NIGHT_NO: libc::int32_t = 1;
-pub const ACONFIGURATION_UI_MODE_NIGHT_YES: libc::int32_t = 2;
-pub const ACONFIGURATION_UI_MODE_TYPE_ANY: libc::int32_t = 0;
-pub const ACONFIGURATION_UI_MODE_TYPE_APPLIANCE: libc::int32_t = 5;
-pub const ACONFIGURATION_UI_MODE_TYPE_CAR: libc::int32_t = 3;
-pub const ACONFIGURATION_UI_MODE_TYPE_DESK: libc::int32_t = 2;
-pub const ACONFIGURATION_UI_MODE_TYPE_NORMAL: libc::int32_t = 1;
-pub const ACONFIGURATION_UI_MODE_TYPE_TELEVISION: libc::int32_t = 4;
-pub const ACONFIGURATION_UI_MODE_TYPE_WATCH: libc::int32_t = 6;
-pub const ACONFIGURATION_VERSION: libc::int32_t = 1024;
+pub const ACONFIGURATION_DENSITY: i32 = 256;
+pub const ACONFIGURATION_DENSITY_ANY: i32 = 65534;
+pub const ACONFIGURATION_DENSITY_DEFAULT: i32 = 0;
+pub const ACONFIGURATION_DENSITY_HIGH: i32 = 240;
+pub const ACONFIGURATION_DENSITY_LOW: i32 = 120;
+pub const ACONFIGURATION_DENSITY_MEDIUM: i32 = 160;
+pub const ACONFIGURATION_DENSITY_NONE: i32 = 65535;
+pub const ACONFIGURATION_DENSITY_TV: i32 = 213;
+pub const ACONFIGURATION_DENSITY_XHIGH: i32 = 320;
+pub const ACONFIGURATION_DENSITY_XXHIGH: i32 = 480;
+pub const ACONFIGURATION_DENSITY_XXXHIGH: i32 = 640;
+pub const ACONFIGURATION_KEYBOARD: i32 = 16;
+pub const ACONFIGURATION_KEYBOARD_12KEY: i32 = 3;
+pub const ACONFIGURATION_KEYBOARD_ANY: i32 = 0;
+pub const ACONFIGURATION_KEYBOARD_HIDDEN: i32 = 32;
+pub const ACONFIGURATION_KEYBOARD_NOKEYS: i32 = 1;
+pub const ACONFIGURATION_KEYBOARD_QWERTY: i32 = 2;
+pub const ACONFIGURATION_KEYSHIDDEN_ANY: i32 = 0;
+pub const ACONFIGURATION_KEYSHIDDEN_NO: i32 = 1;
+pub const ACONFIGURATION_KEYSHIDDEN_SOFT: i32 = 3;
+pub const ACONFIGURATION_KEYSHIDDEN_YES: i32 = 2;
+pub const ACONFIGURATION_LAYOUTDIR: i32 = 16384;
+pub const ACONFIGURATION_LAYOUTDIR_ANY: i32 = 0;
+pub const ACONFIGURATION_LAYOUTDIR_LTR: i32 = 1;
+pub const ACONFIGURATION_LAYOUTDIR_RTL: i32 = 2;
+pub const ACONFIGURATION_LOCALE: i32 = 4;
+pub const ACONFIGURATION_MCC: i32 = 1;
+pub const ACONFIGURATION_MNC: i32 = 2;
+pub const ACONFIGURATION_MNC_ZERO: i32 = 65535;
+pub const ACONFIGURATION_NAVHIDDEN_ANY: i32 = 0;
+pub const ACONFIGURATION_NAVHIDDEN_NO: i32 = 1;
+pub const ACONFIGURATION_NAVHIDDEN_YES: i32 = 2;
+pub const ACONFIGURATION_NAVIGATION: i32 = 64;
+pub const ACONFIGURATION_NAVIGATION_ANY: i32 = 0;
+pub const ACONFIGURATION_NAVIGATION_DPAD: i32 = 2;
+pub const ACONFIGURATION_NAVIGATION_NONAV: i32 = 1;
+pub const ACONFIGURATION_NAVIGATION_TRACKBALL: i32 = 3;
+pub const ACONFIGURATION_NAVIGATION_WHEEL: i32 = 4;
+pub const ACONFIGURATION_ORIENTATION: i32 = 128;
+pub const ACONFIGURATION_ORIENTATION_ANY: i32 = 0;
+pub const ACONFIGURATION_ORIENTATION_LAND: i32 = 2;
+pub const ACONFIGURATION_ORIENTATION_PORT: i32 = 1;
+pub const ACONFIGURATION_ORIENTATION_SQUARE: i32 = 3;
+pub const ACONFIGURATION_SCREENLONG_ANY: i32 = 0;
+pub const ACONFIGURATION_SCREENLONG_NO: i32 = 1;
+pub const ACONFIGURATION_SCREENLONG_YES: i32 = 2;
+pub const ACONFIGURATION_SCREENSIZE_ANY: i32 = 0;
+pub const ACONFIGURATION_SCREENSIZE_LARGE: i32 = 3;
+pub const ACONFIGURATION_SCREENSIZE_NORMAL: i32 = 2;
+pub const ACONFIGURATION_SCREENSIZE_SMALL: i32 = 1;
+pub const ACONFIGURATION_SCREENSIZE_XLARGE: i32 = 4;
+pub const ACONFIGURATION_SCREEN_HEIGHT_DP_ANY: i32 = 0;
+pub const ACONFIGURATION_SCREEN_LAYOUT: i32 = 2048;
+pub const ACONFIGURATION_SCREEN_SIZE: i32 = 512;
+pub const ACONFIGURATION_SCREEN_WIDTH_DP_ANY: i32 = 0;
+pub const ACONFIGURATION_SMALLEST_SCREEN_SIZE: i32 = 8192;
+pub const ACONFIGURATION_SMALLEST_SCREEN_WIDTH_DP_ANY: i32 = 0;
+pub const ACONFIGURATION_TOUCHSCREEN: i32 = 8;
+pub const ACONFIGURATION_TOUCHSCREEN_ANY: i32 = 0;
+pub const ACONFIGURATION_TOUCHSCREEN_FINGER: i32 = 3;
+pub const ACONFIGURATION_TOUCHSCREEN_NOTOUCH: i32 = 1;
+pub const ACONFIGURATION_TOUCHSCREEN_STYLUS: i32 = 2;
+pub const ACONFIGURATION_UI_MODE: i32 = 4096;
+pub const ACONFIGURATION_UI_MODE_NIGHT_ANY: i32 = 0;
+pub const ACONFIGURATION_UI_MODE_NIGHT_NO: i32 = 1;
+pub const ACONFIGURATION_UI_MODE_NIGHT_YES: i32 = 2;
+pub const ACONFIGURATION_UI_MODE_TYPE_ANY: i32 = 0;
+pub const ACONFIGURATION_UI_MODE_TYPE_APPLIANCE: i32 = 5;
+pub const ACONFIGURATION_UI_MODE_TYPE_CAR: i32 = 3;
+pub const ACONFIGURATION_UI_MODE_TYPE_DESK: i32 = 2;
+pub const ACONFIGURATION_UI_MODE_TYPE_NORMAL: i32 = 1;
+pub const ACONFIGURATION_UI_MODE_TYPE_TELEVISION: i32 = 4;
+pub const ACONFIGURATION_UI_MODE_TYPE_WATCH: i32 = 6;
+pub const ACONFIGURATION_VERSION: i32 = 1024;
 pub type AConfiguration = ();
 extern { pub fn AConfiguration_copy(dest: *mut AConfiguration, src: *mut AConfiguration); }
 extern { pub fn AConfiguration_delete(config: *mut AConfiguration); }
-extern { pub fn AConfiguration_diff(config1: *mut AConfiguration, config2: *mut AConfiguration) -> libc::int32_t; }
+extern { pub fn AConfiguration_diff(config1: *mut AConfiguration, config2: *mut AConfiguration) -> i32; }
 extern { pub fn AConfiguration_fromAssetManager(out: *mut AConfiguration, am: *mut AAssetManager); }
-extern { pub fn AConfiguration_getCountry(config: *mut AConfiguration, outCountry: *mut libc::c_char); }
-extern { pub fn AConfiguration_getDensity(config: *mut AConfiguration) -> libc::int32_t; }
-extern { pub fn AConfiguration_getKeyboard(config: *mut AConfiguration) -> libc::int32_t; }
-extern { pub fn AConfiguration_getKeysHidden(config: *mut AConfiguration) -> libc::int32_t; }
-extern { pub fn AConfiguration_getLanguage(config: *mut AConfiguration, outLanguage: *mut libc::c_char); }
-extern { pub fn AConfiguration_getLayoutDirection(config: *mut AConfiguration) -> libc::int32_t; }
-extern { pub fn AConfiguration_getMcc(config: *mut AConfiguration) -> libc::int32_t; }
-extern { pub fn AConfiguration_getMnc(config: *mut AConfiguration) -> libc::int32_t; }
-extern { pub fn AConfiguration_getNavHidden(config: *mut AConfiguration) -> libc::int32_t; }
-extern { pub fn AConfiguration_getNavigation(config: *mut AConfiguration) -> libc::int32_t; }
-extern { pub fn AConfiguration_getOrientation(config: *mut AConfiguration) -> libc::int32_t; }
-extern { pub fn AConfiguration_getScreenHeightDp(config: *mut AConfiguration) -> libc::int32_t; }
-extern { pub fn AConfiguration_getScreenLong(config: *mut AConfiguration) -> libc::int32_t; }
-extern { pub fn AConfiguration_getScreenSize(config: *mut AConfiguration) -> libc::int32_t; }
-extern { pub fn AConfiguration_getScreenWidthDp(config: *mut AConfiguration) -> libc::int32_t; }
-extern { pub fn AConfiguration_getSdkVersion(config: *mut AConfiguration) -> libc::int32_t; }
-extern { pub fn AConfiguration_getSmallestScreenWidthDp(config: *mut AConfiguration) -> libc::int32_t; }
-extern { pub fn AConfiguration_getTouchscreen(config: *mut AConfiguration) -> libc::int32_t; }
-extern { pub fn AConfiguration_getUiModeNight(config: *mut AConfiguration) -> libc::int32_t; }
-extern { pub fn AConfiguration_getUiModeType(config: *mut AConfiguration) -> libc::int32_t; }
-extern { pub fn AConfiguration_isBetterThan(base: *mut AConfiguration, test: *mut AConfiguration, requested: *mut AConfiguration) -> libc::int32_t; }
-extern { pub fn AConfiguration_match(base: *mut AConfiguration, requested: *mut AConfiguration) -> libc::int32_t; }
+extern { pub fn AConfiguration_getCountry(config: *mut AConfiguration, outCountry: *mut c_char); }
+extern { pub fn AConfiguration_getDensity(config: *mut AConfiguration) -> i32; }
+extern { pub fn AConfiguration_getKeyboard(config: *mut AConfiguration) -> i32; }
+extern { pub fn AConfiguration_getKeysHidden(config: *mut AConfiguration) -> i32; }
+extern { pub fn AConfiguration_getLanguage(config: *mut AConfiguration, outLanguage: *mut c_char); }
+extern { pub fn AConfiguration_getLayoutDirection(config: *mut AConfiguration) -> i32; }
+extern { pub fn AConfiguration_getMcc(config: *mut AConfiguration) -> i32; }
+extern { pub fn AConfiguration_getMnc(config: *mut AConfiguration) -> i32; }
+extern { pub fn AConfiguration_getNavHidden(config: *mut AConfiguration) -> i32; }
+extern { pub fn AConfiguration_getNavigation(config: *mut AConfiguration) -> i32; }
+extern { pub fn AConfiguration_getOrientation(config: *mut AConfiguration) -> i32; }
+extern { pub fn AConfiguration_getScreenHeightDp(config: *mut AConfiguration) -> i32; }
+extern { pub fn AConfiguration_getScreenLong(config: *mut AConfiguration) -> i32; }
+extern { pub fn AConfiguration_getScreenSize(config: *mut AConfiguration) -> i32; }
+extern { pub fn AConfiguration_getScreenWidthDp(config: *mut AConfiguration) -> i32; }
+extern { pub fn AConfiguration_getSdkVersion(config: *mut AConfiguration) -> i32; }
+extern { pub fn AConfiguration_getSmallestScreenWidthDp(config: *mut AConfiguration) -> i32; }
+extern { pub fn AConfiguration_getTouchscreen(config: *mut AConfiguration) -> i32; }
+extern { pub fn AConfiguration_getUiModeNight(config: *mut AConfiguration) -> i32; }
+extern { pub fn AConfiguration_getUiModeType(config: *mut AConfiguration) -> i32; }
+extern { pub fn AConfiguration_isBetterThan(base: *mut AConfiguration, test: *mut AConfiguration, requested: *mut AConfiguration) -> i32; }
+extern { pub fn AConfiguration_match(base: *mut AConfiguration, requested: *mut AConfiguration) -> i32; }
 extern { pub fn AConfiguration_new() -> *mut AConfiguration; }
-extern { pub fn AConfiguration_setCountry(config: *mut AConfiguration, country: *const libc::c_char); }
-extern { pub fn AConfiguration_setDensity(config: *mut AConfiguration, density: libc::int32_t); }
-extern { pub fn AConfiguration_setKeyboard(config: *mut AConfiguration, keyboard: libc::int32_t); }
-extern { pub fn AConfiguration_setKeysHidden(config: *mut AConfiguration, keysHidden: libc::int32_t); }
-extern { pub fn AConfiguration_setLanguage(config: *mut AConfiguration, language: *const libc::c_char); }
-extern { pub fn AConfiguration_setLayoutDirection(config: *mut AConfiguration, value: libc::int32_t); }
-extern { pub fn AConfiguration_setMcc(config: *mut AConfiguration, mcc: libc::int32_t); }
-extern { pub fn AConfiguration_setMnc(config: *mut AConfiguration, mnc: libc::int32_t); }
-extern { pub fn AConfiguration_setNavHidden(config: *mut AConfiguration, navHidden: libc::int32_t); }
-extern { pub fn AConfiguration_setNavigation(config: *mut AConfiguration, navigation: libc::int32_t); }
-extern { pub fn AConfiguration_setOrientation(config: *mut AConfiguration, orientation: libc::int32_t); }
-extern { pub fn AConfiguration_setScreenHeightDp(config: *mut AConfiguration, value: libc::int32_t); }
-extern { pub fn AConfiguration_setScreenLong(config: *mut AConfiguration, screenLong: libc::int32_t); }
-extern { pub fn AConfiguration_setScreenSize(config: *mut AConfiguration, screenSize: libc::int32_t); }
-extern { pub fn AConfiguration_setScreenWidthDp(config: *mut AConfiguration, value: libc::int32_t); }
-extern { pub fn AConfiguration_setSdkVersion(config: *mut AConfiguration, sdkVersion: libc::int32_t); }
-extern { pub fn AConfiguration_setSmallestScreenWidthDp(config: *mut AConfiguration, value: libc::int32_t); }
-extern { pub fn AConfiguration_setTouchscreen(config: *mut AConfiguration, touchscreen: libc::int32_t); }
-extern { pub fn AConfiguration_setUiModeNight(config: *mut AConfiguration, uiModeNight: libc::int32_t); }
-extern { pub fn AConfiguration_setUiModeType(config: *mut AConfiguration, uiModeType: libc::int32_t); }
+extern { pub fn AConfiguration_setCountry(config: *mut AConfiguration, country: *const c_char); }
+extern { pub fn AConfiguration_setDensity(config: *mut AConfiguration, density: i32); }
+extern { pub fn AConfiguration_setKeyboard(config: *mut AConfiguration, keyboard: i32); }
+extern { pub fn AConfiguration_setKeysHidden(config: *mut AConfiguration, keysHidden: i32); }
+extern { pub fn AConfiguration_setLanguage(config: *mut AConfiguration, language: *const c_char); }
+extern { pub fn AConfiguration_setLayoutDirection(config: *mut AConfiguration, value: i32); }
+extern { pub fn AConfiguration_setMcc(config: *mut AConfiguration, mcc: i32); }
+extern { pub fn AConfiguration_setMnc(config: *mut AConfiguration, mnc: i32); }
+extern { pub fn AConfiguration_setNavHidden(config: *mut AConfiguration, navHidden: i32); }
+extern { pub fn AConfiguration_setNavigation(config: *mut AConfiguration, navigation: i32); }
+extern { pub fn AConfiguration_setOrientation(config: *mut AConfiguration, orientation: i32); }
+extern { pub fn AConfiguration_setScreenHeightDp(config: *mut AConfiguration, value: i32); }
+extern { pub fn AConfiguration_setScreenLong(config: *mut AConfiguration, screenLong: i32); }
+extern { pub fn AConfiguration_setScreenSize(config: *mut AConfiguration, screenSize: i32); }
+extern { pub fn AConfiguration_setScreenWidthDp(config: *mut AConfiguration, value: i32); }
+extern { pub fn AConfiguration_setSdkVersion(config: *mut AConfiguration, sdkVersion: i32); }
+extern { pub fn AConfiguration_setSmallestScreenWidthDp(config: *mut AConfiguration, value: i32); }
+extern { pub fn AConfiguration_setTouchscreen(config: *mut AConfiguration, touchscreen: i32); }
+extern { pub fn AConfiguration_setUiModeNight(config: *mut AConfiguration, uiModeNight: i32); }
+extern { pub fn AConfiguration_setUiModeType(config: *mut AConfiguration, uiModeType: i32); }
 
 //
 //       android/dlext.h
 //
-pub const ANDROID_DLEXT_RESERVED_ADDRESS: libc::int32_t = 1;
-pub const ANDROID_DLEXT_RESERVED_ADDRESS_HINT: libc::int32_t = 2;
-pub const ANDROID_DLEXT_USE_LIBRARY_FD: libc::int32_t = 16;
-pub const ANDROID_DLEXT_USE_RELRO: libc::int32_t = 8;
-pub const ANDROID_DLEXT_VALID_FLAG_BITS: libc::int32_t = 31;
-pub const ANDROID_DLEXT_WRITE_RELRO: libc::int32_t = 4;
+pub const ANDROID_DLEXT_RESERVED_ADDRESS: i32 = 1;
+pub const ANDROID_DLEXT_RESERVED_ADDRESS_HINT: i32 = 2;
+pub const ANDROID_DLEXT_USE_LIBRARY_FD: i32 = 16;
+pub const ANDROID_DLEXT_USE_RELRO: i32 = 8;
+pub const ANDROID_DLEXT_VALID_FLAG_BITS: i32 = 31;
+pub const ANDROID_DLEXT_WRITE_RELRO: i32 = 4;
 #[repr(C)]
 pub struct android_dlextinfo {
-     pub flags:             libc::uint64_t,
-     pub reserved_addr:             *mut libc::c_void,
-     pub reserved_size:             libc::size_t,
-     pub relro_fd:              libc::c_int,
-     pub library_fd:                libc::c_int,
+     pub flags:             u64,
+     pub reserved_addr:             *mut c_void,
+     pub reserved_size:             usize,
+     pub relro_fd:              c_int,
+     pub library_fd:                c_int,
 }
-extern { pub fn android_dlopen_ext(filename: *const libc::c_char, flag: libc::c_int, extinfo: *const android_dlextinfo) -> *mut libc::c_void; }
+extern { pub fn android_dlopen_ext(filename: *const c_char, flag: c_int, extinfo: *const android_dlextinfo) -> *mut c_void; }
 
 //
 //       android/input.h
 //
-pub const AINPUT_EVENT_TYPE_KEY: libc::int32_t = 1;
-pub const AINPUT_EVENT_TYPE_MOTION: libc::int32_t = 2;
-pub const AINPUT_KEYBOARD_TYPE_ALPHABETIC: libc::int32_t = 2;
-pub const AINPUT_KEYBOARD_TYPE_NONE: libc::int32_t = 0;
-pub const AINPUT_KEYBOARD_TYPE_NON_ALPHABETIC: libc::int32_t = 1;
-pub const AINPUT_MOTION_RANGE_ORIENTATION: libc::int32_t = 8;
-pub const AINPUT_MOTION_RANGE_PRESSURE: libc::int32_t = 2;
-pub const AINPUT_MOTION_RANGE_SIZE: libc::int32_t = 3;
-pub const AINPUT_MOTION_RANGE_TOOL_MAJOR: libc::int32_t = 6;
-pub const AINPUT_MOTION_RANGE_TOOL_MINOR: libc::int32_t = 7;
-pub const AINPUT_MOTION_RANGE_TOUCH_MAJOR: libc::int32_t = 4;
-pub const AINPUT_MOTION_RANGE_TOUCH_MINOR: libc::int32_t = 5;
-pub const AINPUT_MOTION_RANGE_X: libc::int32_t = 0;
-pub const AINPUT_MOTION_RANGE_Y: libc::int32_t = 1;
-pub const AINPUT_SOURCE_ANY: libc::int32_t = -256;
-pub const AINPUT_SOURCE_CLASS_BUTTON: libc::int32_t = 1;
-pub const AINPUT_SOURCE_CLASS_JOYSTICK: libc::int32_t = 16;
-pub const AINPUT_SOURCE_CLASS_MASK: libc::int32_t = 255;
-pub const AINPUT_SOURCE_CLASS_NAVIGATION: libc::int32_t = 4;
-pub const AINPUT_SOURCE_CLASS_NONE: libc::int32_t = 0;
-pub const AINPUT_SOURCE_CLASS_POINTER: libc::int32_t = 2;
-pub const AINPUT_SOURCE_CLASS_POSITION: libc::int32_t = 8;
-pub const AINPUT_SOURCE_DPAD: libc::int32_t = 513;
-pub const AINPUT_SOURCE_GAMEPAD: libc::int32_t = 1025;
-pub const AINPUT_SOURCE_JOYSTICK: libc::int32_t = 16777232;
-pub const AINPUT_SOURCE_KEYBOARD: libc::int32_t = 257;
-pub const AINPUT_SOURCE_MOUSE: libc::int32_t = 8194;
-pub const AINPUT_SOURCE_STYLUS: libc::int32_t = 16386;
-pub const AINPUT_SOURCE_TOUCHPAD: libc::int32_t = 1048584;
-pub const AINPUT_SOURCE_TOUCHSCREEN: libc::int32_t = 4098;
-pub const AINPUT_SOURCE_TOUCH_NAVIGATION: libc::int32_t = 2097152;
-pub const AINPUT_SOURCE_TRACKBALL: libc::int32_t = 65540;
-pub const AINPUT_SOURCE_UNKNOWN: libc::int32_t = 0;
+pub const AINPUT_EVENT_TYPE_KEY: i32 = 1;
+pub const AINPUT_EVENT_TYPE_MOTION: i32 = 2;
+pub const AINPUT_KEYBOARD_TYPE_ALPHABETIC: i32 = 2;
+pub const AINPUT_KEYBOARD_TYPE_NONE: i32 = 0;
+pub const AINPUT_KEYBOARD_TYPE_NON_ALPHABETIC: i32 = 1;
+pub const AINPUT_MOTION_RANGE_ORIENTATION: i32 = 8;
+pub const AINPUT_MOTION_RANGE_PRESSURE: i32 = 2;
+pub const AINPUT_MOTION_RANGE_SIZE: i32 = 3;
+pub const AINPUT_MOTION_RANGE_TOOL_MAJOR: i32 = 6;
+pub const AINPUT_MOTION_RANGE_TOOL_MINOR: i32 = 7;
+pub const AINPUT_MOTION_RANGE_TOUCH_MAJOR: i32 = 4;
+pub const AINPUT_MOTION_RANGE_TOUCH_MINOR: i32 = 5;
+pub const AINPUT_MOTION_RANGE_X: i32 = 0;
+pub const AINPUT_MOTION_RANGE_Y: i32 = 1;
+pub const AINPUT_SOURCE_ANY: i32 = -256;
+pub const AINPUT_SOURCE_CLASS_BUTTON: i32 = 1;
+pub const AINPUT_SOURCE_CLASS_JOYSTICK: i32 = 16;
+pub const AINPUT_SOURCE_CLASS_MASK: i32 = 255;
+pub const AINPUT_SOURCE_CLASS_NAVIGATION: i32 = 4;
+pub const AINPUT_SOURCE_CLASS_NONE: i32 = 0;
+pub const AINPUT_SOURCE_CLASS_POINTER: i32 = 2;
+pub const AINPUT_SOURCE_CLASS_POSITION: i32 = 8;
+pub const AINPUT_SOURCE_DPAD: i32 = 513;
+pub const AINPUT_SOURCE_GAMEPAD: i32 = 1025;
+pub const AINPUT_SOURCE_JOYSTICK: i32 = 16777232;
+pub const AINPUT_SOURCE_KEYBOARD: i32 = 257;
+pub const AINPUT_SOURCE_MOUSE: i32 = 8194;
+pub const AINPUT_SOURCE_STYLUS: i32 = 16386;
+pub const AINPUT_SOURCE_TOUCHPAD: i32 = 1048584;
+pub const AINPUT_SOURCE_TOUCHSCREEN: i32 = 4098;
+pub const AINPUT_SOURCE_TOUCH_NAVIGATION: i32 = 2097152;
+pub const AINPUT_SOURCE_TRACKBALL: i32 = 65540;
+pub const AINPUT_SOURCE_UNKNOWN: i32 = 0;
 pub type AInputEvent = ();
-extern { pub fn AInputEvent_getDeviceId(event: *const AInputEvent) -> libc::int32_t; }
-extern { pub fn AInputEvent_getSource(event: *const AInputEvent) -> libc::int32_t; }
-extern { pub fn AInputEvent_getType(event: *const AInputEvent) -> libc::int32_t; }
+extern { pub fn AInputEvent_getDeviceId(event: *const AInputEvent) -> i32; }
+extern { pub fn AInputEvent_getSource(event: *const AInputEvent) -> i32; }
+extern { pub fn AInputEvent_getType(event: *const AInputEvent) -> i32; }
 pub type AInputQueue = ();
-extern { pub fn AInputQueue_attachLooper(queue: *mut AInputQueue, looper: *mut ALooper, ident: libc::c_int, callback: ALooper_callbackFunc, data: *mut libc::c_void); }
+extern { pub fn AInputQueue_attachLooper(queue: *mut AInputQueue, looper: *mut ALooper, ident: c_int, callback: ALooper_callbackFunc, data: *mut c_void); }
 extern { pub fn AInputQueue_detachLooper(queue: *mut AInputQueue); }
-extern { pub fn AInputQueue_finishEvent(queue: *mut AInputQueue, event: *mut AInputEvent, handled: libc::c_int); }
-extern { pub fn AInputQueue_getEvent(queue: *mut AInputQueue, outEvent: *mut *mut AInputEvent) -> libc::int32_t; }
-extern { pub fn AInputQueue_hasEvents(queue: *mut AInputQueue) -> libc::int32_t; }
-extern { pub fn AInputQueue_preDispatchEvent(queue: *mut AInputQueue, event: *mut AInputEvent) -> libc::int32_t; }
-pub const AKEY_EVENT_ACTION_DOWN: libc::int32_t = 0;
-pub const AKEY_EVENT_ACTION_MULTIPLE: libc::int32_t = 2;
-pub const AKEY_EVENT_ACTION_UP: libc::int32_t = 1;
-pub const AKEY_EVENT_FLAG_CANCELED: libc::int32_t = 32;
-pub const AKEY_EVENT_FLAG_CANCELED_LONG_PRESS: libc::int32_t = 256;
-pub const AKEY_EVENT_FLAG_EDITOR_ACTION: libc::int32_t = 16;
-pub const AKEY_EVENT_FLAG_FALLBACK: libc::int32_t = 1024;
-pub const AKEY_EVENT_FLAG_FROM_SYSTEM: libc::int32_t = 8;
-pub const AKEY_EVENT_FLAG_KEEP_TOUCH_MODE: libc::int32_t = 4;
-pub const AKEY_EVENT_FLAG_LONG_PRESS: libc::int32_t = 128;
-pub const AKEY_EVENT_FLAG_SOFT_KEYBOARD: libc::int32_t = 2;
-pub const AKEY_EVENT_FLAG_TRACKING: libc::int32_t = 512;
-pub const AKEY_EVENT_FLAG_VIRTUAL_HARD_KEY: libc::int32_t = 64;
-pub const AKEY_EVENT_FLAG_WOKE_HERE: libc::int32_t = 1;
-pub const AKEY_STATE_DOWN: libc::int32_t = 1;
-pub const AKEY_STATE_UNKNOWN: libc::int32_t = -1;
-pub const AKEY_STATE_UP: libc::int32_t = 0;
-pub const AKEY_STATE_VIRTUAL: libc::int32_t = 2;
-extern { pub fn AKeyEvent_getAction(key_event: *const AInputEvent) -> libc::int32_t; }
-extern { pub fn AKeyEvent_getDownTime(key_event: *const AInputEvent) -> libc::int64_t; }
-extern { pub fn AKeyEvent_getEventTime(key_event: *const AInputEvent) -> libc::int64_t; }
-extern { pub fn AKeyEvent_getFlags(key_event: *const AInputEvent) -> libc::int32_t; }
-extern { pub fn AKeyEvent_getKeyCode(key_event: *const AInputEvent) -> libc::int32_t; }
-extern { pub fn AKeyEvent_getMetaState(key_event: *const AInputEvent) -> libc::int32_t; }
-extern { pub fn AKeyEvent_getRepeatCount(key_event: *const AInputEvent) -> libc::int32_t; }
-extern { pub fn AKeyEvent_getScanCode(key_event: *const AInputEvent) -> libc::int32_t; }
-pub const AMETA_ALT_LEFT_ON: libc::int32_t = 16;
-pub const AMETA_ALT_ON: libc::int32_t = 2;
-pub const AMETA_ALT_RIGHT_ON: libc::int32_t = 32;
-pub const AMETA_CAPS_LOCK_ON: libc::int32_t = 1048576;
-pub const AMETA_CTRL_LEFT_ON: libc::int32_t = 8192;
-pub const AMETA_CTRL_ON: libc::int32_t = 4096;
-pub const AMETA_CTRL_RIGHT_ON: libc::int32_t = 16384;
-pub const AMETA_FUNCTION_ON: libc::int32_t = 8;
-pub const AMETA_META_LEFT_ON: libc::int32_t = 131072;
-pub const AMETA_META_ON: libc::int32_t = 65536;
-pub const AMETA_META_RIGHT_ON: libc::int32_t = 262144;
-pub const AMETA_NONE: libc::int32_t = 0;
-pub const AMETA_NUM_LOCK_ON: libc::int32_t = 2097152;
-pub const AMETA_SCROLL_LOCK_ON: libc::int32_t = 4194304;
-pub const AMETA_SHIFT_LEFT_ON: libc::int32_t = 64;
-pub const AMETA_SHIFT_ON: libc::int32_t = 1;
-pub const AMETA_SHIFT_RIGHT_ON: libc::int32_t = 128;
-pub const AMETA_SYM_ON: libc::int32_t = 4;
-pub const AMOTION_EVENT_ACTION_CANCEL: libc::int32_t = 3;
-pub const AMOTION_EVENT_ACTION_DOWN: libc::int32_t = 0;
-pub const AMOTION_EVENT_ACTION_HOVER_ENTER: libc::int32_t = 9;
-pub const AMOTION_EVENT_ACTION_HOVER_EXIT: libc::int32_t = 10;
-pub const AMOTION_EVENT_ACTION_HOVER_MOVE: libc::int32_t = 7;
-pub const AMOTION_EVENT_ACTION_MASK: libc::int32_t = 255;
-pub const AMOTION_EVENT_ACTION_MOVE: libc::int32_t = 2;
-pub const AMOTION_EVENT_ACTION_OUTSIDE: libc::int32_t = 4;
-pub const AMOTION_EVENT_ACTION_POINTER_DOWN: libc::int32_t = 5;
-pub const AMOTION_EVENT_ACTION_POINTER_INDEX_MASK: libc::int32_t = 65280;
-pub const AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT: libc::int32_t = 8;
-pub const AMOTION_EVENT_ACTION_POINTER_UP: libc::int32_t = 6;
-pub const AMOTION_EVENT_ACTION_SCROLL: libc::int32_t = 8;
-pub const AMOTION_EVENT_ACTION_UP: libc::int32_t = 1;
-pub const AMOTION_EVENT_AXIS_BRAKE: libc::int32_t = 23;
-pub const AMOTION_EVENT_AXIS_DISTANCE: libc::int32_t = 24;
-pub const AMOTION_EVENT_AXIS_GAS: libc::int32_t = 22;
-pub const AMOTION_EVENT_AXIS_GENERIC_1: libc::int32_t = 32;
-pub const AMOTION_EVENT_AXIS_GENERIC_10: libc::int32_t = 41;
-pub const AMOTION_EVENT_AXIS_GENERIC_11: libc::int32_t = 42;
-pub const AMOTION_EVENT_AXIS_GENERIC_12: libc::int32_t = 43;
-pub const AMOTION_EVENT_AXIS_GENERIC_13: libc::int32_t = 44;
-pub const AMOTION_EVENT_AXIS_GENERIC_14: libc::int32_t = 45;
-pub const AMOTION_EVENT_AXIS_GENERIC_15: libc::int32_t = 46;
-pub const AMOTION_EVENT_AXIS_GENERIC_16: libc::int32_t = 47;
-pub const AMOTION_EVENT_AXIS_GENERIC_2: libc::int32_t = 33;
-pub const AMOTION_EVENT_AXIS_GENERIC_3: libc::int32_t = 34;
-pub const AMOTION_EVENT_AXIS_GENERIC_4: libc::int32_t = 35;
-pub const AMOTION_EVENT_AXIS_GENERIC_5: libc::int32_t = 36;
-pub const AMOTION_EVENT_AXIS_GENERIC_6: libc::int32_t = 37;
-pub const AMOTION_EVENT_AXIS_GENERIC_7: libc::int32_t = 38;
-pub const AMOTION_EVENT_AXIS_GENERIC_8: libc::int32_t = 39;
-pub const AMOTION_EVENT_AXIS_GENERIC_9: libc::int32_t = 40;
-pub const AMOTION_EVENT_AXIS_HAT_X: libc::int32_t = 15;
-pub const AMOTION_EVENT_AXIS_HAT_Y: libc::int32_t = 16;
-pub const AMOTION_EVENT_AXIS_HSCROLL: libc::int32_t = 10;
-pub const AMOTION_EVENT_AXIS_LTRIGGER: libc::int32_t = 17;
-pub const AMOTION_EVENT_AXIS_ORIENTATION: libc::int32_t = 8;
-pub const AMOTION_EVENT_AXIS_PRESSURE: libc::int32_t = 2;
-pub const AMOTION_EVENT_AXIS_RTRIGGER: libc::int32_t = 18;
-pub const AMOTION_EVENT_AXIS_RUDDER: libc::int32_t = 20;
-pub const AMOTION_EVENT_AXIS_RX: libc::int32_t = 12;
-pub const AMOTION_EVENT_AXIS_RY: libc::int32_t = 13;
-pub const AMOTION_EVENT_AXIS_RZ: libc::int32_t = 14;
-pub const AMOTION_EVENT_AXIS_SIZE: libc::int32_t = 3;
-pub const AMOTION_EVENT_AXIS_THROTTLE: libc::int32_t = 19;
-pub const AMOTION_EVENT_AXIS_TILT: libc::int32_t = 25;
-pub const AMOTION_EVENT_AXIS_TOOL_MAJOR: libc::int32_t = 6;
-pub const AMOTION_EVENT_AXIS_TOOL_MINOR: libc::int32_t = 7;
-pub const AMOTION_EVENT_AXIS_TOUCH_MAJOR: libc::int32_t = 4;
-pub const AMOTION_EVENT_AXIS_TOUCH_MINOR: libc::int32_t = 5;
-pub const AMOTION_EVENT_AXIS_VSCROLL: libc::int32_t = 9;
-pub const AMOTION_EVENT_AXIS_WHEEL: libc::int32_t = 21;
-pub const AMOTION_EVENT_AXIS_X: libc::int32_t = 0;
-pub const AMOTION_EVENT_AXIS_Y: libc::int32_t = 1;
-pub const AMOTION_EVENT_AXIS_Z: libc::int32_t = 11;
-pub const AMOTION_EVENT_BUTTON_BACK: libc::int32_t = 8;
-pub const AMOTION_EVENT_BUTTON_FORWARD: libc::int32_t = 16;
-pub const AMOTION_EVENT_BUTTON_PRIMARY: libc::int32_t = 1;
-pub const AMOTION_EVENT_BUTTON_SECONDARY: libc::int32_t = 2;
-pub const AMOTION_EVENT_BUTTON_TERTIARY: libc::int32_t = 4;
-pub const AMOTION_EVENT_EDGE_FLAG_BOTTOM: libc::int32_t = 2;
-pub const AMOTION_EVENT_EDGE_FLAG_LEFT: libc::int32_t = 4;
-pub const AMOTION_EVENT_EDGE_FLAG_NONE: libc::int32_t = 0;
-pub const AMOTION_EVENT_EDGE_FLAG_RIGHT: libc::int32_t = 8;
-pub const AMOTION_EVENT_EDGE_FLAG_TOP: libc::int32_t = 1;
-pub const AMOTION_EVENT_FLAG_WINDOW_IS_OBSCURED: libc::int32_t = 1;
-pub const AMOTION_EVENT_TOOL_TYPE_ERASER: libc::int32_t = 4;
-pub const AMOTION_EVENT_TOOL_TYPE_FINGER: libc::int32_t = 1;
-pub const AMOTION_EVENT_TOOL_TYPE_MOUSE: libc::int32_t = 3;
-pub const AMOTION_EVENT_TOOL_TYPE_STYLUS: libc::int32_t = 2;
-pub const AMOTION_EVENT_TOOL_TYPE_UNKNOWN: libc::int32_t = 0;
-extern { pub fn AMotionEvent_getAction(motion_event: *const AInputEvent) -> libc::int32_t; }
-extern { pub fn AMotionEvent_getAxisValue(motion_event: *const AInputEvent, axis: libc::int32_t, pointer_index: libc::size_t) -> libc::c_float; }
-extern { pub fn AMotionEvent_getButtonState(motion_event: *const AInputEvent) -> libc::int32_t; }
-extern { pub fn AMotionEvent_getDownTime(motion_event: *const AInputEvent) -> libc::int64_t; }
-extern { pub fn AMotionEvent_getEdgeFlags(motion_event: *const AInputEvent) -> libc::int32_t; }
-extern { pub fn AMotionEvent_getEventTime(motion_event: *const AInputEvent) -> libc::int64_t; }
-extern { pub fn AMotionEvent_getFlags(motion_event: *const AInputEvent) -> libc::int32_t; }
-extern { pub fn AMotionEvent_getHistoricalAxisValue(motion_event: *const AInputEvent, axis: libc::int32_t, pointer_index: libc::size_t, history_index: libc::size_t) -> libc::c_float; }
-extern { pub fn AMotionEvent_getHistoricalEventTime(motion_event: *const AInputEvent, history_index: libc::size_t) -> libc::int64_t; }
-extern { pub fn AMotionEvent_getHistoricalOrientation(motion_event: *const AInputEvent, pointer_index: libc::size_t, history_index: libc::size_t) -> libc::c_float; }
-extern { pub fn AMotionEvent_getHistoricalPressure(motion_event: *const AInputEvent, pointer_index: libc::size_t, history_index: libc::size_t) -> libc::c_float; }
-extern { pub fn AMotionEvent_getHistoricalRawX(motion_event: *const AInputEvent, pointer_index: libc::size_t, history_index: libc::size_t) -> libc::c_float; }
-extern { pub fn AMotionEvent_getHistoricalRawY(motion_event: *const AInputEvent, pointer_index: libc::size_t, history_index: libc::size_t) -> libc::c_float; }
-extern { pub fn AMotionEvent_getHistoricalSize(motion_event: *const AInputEvent, pointer_index: libc::size_t, history_index: libc::size_t) -> libc::c_float; }
-extern { pub fn AMotionEvent_getHistoricalToolMajor(motion_event: *const AInputEvent, pointer_index: libc::size_t, history_index: libc::size_t) -> libc::c_float; }
-extern { pub fn AMotionEvent_getHistoricalToolMinor(motion_event: *const AInputEvent, pointer_index: libc::size_t, history_index: libc::size_t) -> libc::c_float; }
-extern { pub fn AMotionEvent_getHistoricalTouchMajor(motion_event: *const AInputEvent, pointer_index: libc::size_t, history_index: libc::size_t) -> libc::c_float; }
-extern { pub fn AMotionEvent_getHistoricalTouchMinor(motion_event: *const AInputEvent, pointer_index: libc::size_t, history_index: libc::size_t) -> libc::c_float; }
-extern { pub fn AMotionEvent_getHistoricalX(motion_event: *const AInputEvent, pointer_index: libc::size_t, history_index: libc::size_t) -> libc::c_float; }
-extern { pub fn AMotionEvent_getHistoricalY(motion_event: *const AInputEvent, pointer_index: libc::size_t, history_index: libc::size_t) -> libc::c_float; }
-extern { pub fn AMotionEvent_getHistorySize(motion_event: *const AInputEvent) -> libc::size_t; }
-extern { pub fn AMotionEvent_getMetaState(motion_event: *const AInputEvent) -> libc::int32_t; }
-extern { pub fn AMotionEvent_getOrientation(motion_event: *const AInputEvent, pointer_index: libc::size_t) -> libc::c_float; }
-extern { pub fn AMotionEvent_getPointerCount(motion_event: *const AInputEvent) -> libc::size_t; }
-extern { pub fn AMotionEvent_getPointerId(motion_event: *const AInputEvent, pointer_index: libc::size_t) -> libc::int32_t; }
-extern { pub fn AMotionEvent_getPressure(motion_event: *const AInputEvent, pointer_index: libc::size_t) -> libc::c_float; }
-extern { pub fn AMotionEvent_getRawX(motion_event: *const AInputEvent, pointer_index: libc::size_t) -> libc::c_float; }
-extern { pub fn AMotionEvent_getRawY(motion_event: *const AInputEvent, pointer_index: libc::size_t) -> libc::c_float; }
-extern { pub fn AMotionEvent_getSize(motion_event: *const AInputEvent, pointer_index: libc::size_t) -> libc::c_float; }
-extern { pub fn AMotionEvent_getToolMajor(motion_event: *const AInputEvent, pointer_index: libc::size_t) -> libc::c_float; }
-extern { pub fn AMotionEvent_getToolMinor(motion_event: *const AInputEvent, pointer_index: libc::size_t) -> libc::c_float; }
-extern { pub fn AMotionEvent_getToolType(motion_event: *const AInputEvent, pointer_index: libc::size_t) -> libc::int32_t; }
-extern { pub fn AMotionEvent_getTouchMajor(motion_event: *const AInputEvent, pointer_index: libc::size_t) -> libc::c_float; }
-extern { pub fn AMotionEvent_getTouchMinor(motion_event: *const AInputEvent, pointer_index: libc::size_t) -> libc::c_float; }
-extern { pub fn AMotionEvent_getX(motion_event: *const AInputEvent, pointer_index: libc::size_t) -> libc::c_float; }
-extern { pub fn AMotionEvent_getXOffset(motion_event: *const AInputEvent) -> libc::c_float; }
-extern { pub fn AMotionEvent_getXPrecision(motion_event: *const AInputEvent) -> libc::c_float; }
-extern { pub fn AMotionEvent_getY(motion_event: *const AInputEvent, pointer_index: libc::size_t) -> libc::c_float; }
-extern { pub fn AMotionEvent_getYOffset(motion_event: *const AInputEvent) -> libc::c_float; }
-extern { pub fn AMotionEvent_getYPrecision(motion_event: *const AInputEvent) -> libc::c_float; }
+extern { pub fn AInputQueue_finishEvent(queue: *mut AInputQueue, event: *mut AInputEvent, handled: c_int); }
+extern { pub fn AInputQueue_getEvent(queue: *mut AInputQueue, outEvent: *mut *mut AInputEvent) -> i32; }
+extern { pub fn AInputQueue_hasEvents(queue: *mut AInputQueue) -> i32; }
+extern { pub fn AInputQueue_preDispatchEvent(queue: *mut AInputQueue, event: *mut AInputEvent) -> i32; }
+pub const AKEY_EVENT_ACTION_DOWN: i32 = 0;
+pub const AKEY_EVENT_ACTION_MULTIPLE: i32 = 2;
+pub const AKEY_EVENT_ACTION_UP: i32 = 1;
+pub const AKEY_EVENT_FLAG_CANCELED: i32 = 32;
+pub const AKEY_EVENT_FLAG_CANCELED_LONG_PRESS: i32 = 256;
+pub const AKEY_EVENT_FLAG_EDITOR_ACTION: i32 = 16;
+pub const AKEY_EVENT_FLAG_FALLBACK: i32 = 1024;
+pub const AKEY_EVENT_FLAG_FROM_SYSTEM: i32 = 8;
+pub const AKEY_EVENT_FLAG_KEEP_TOUCH_MODE: i32 = 4;
+pub const AKEY_EVENT_FLAG_LONG_PRESS: i32 = 128;
+pub const AKEY_EVENT_FLAG_SOFT_KEYBOARD: i32 = 2;
+pub const AKEY_EVENT_FLAG_TRACKING: i32 = 512;
+pub const AKEY_EVENT_FLAG_VIRTUAL_HARD_KEY: i32 = 64;
+pub const AKEY_EVENT_FLAG_WOKE_HERE: i32 = 1;
+pub const AKEY_STATE_DOWN: i32 = 1;
+pub const AKEY_STATE_UNKNOWN: i32 = -1;
+pub const AKEY_STATE_UP: i32 = 0;
+pub const AKEY_STATE_VIRTUAL: i32 = 2;
+extern { pub fn AKeyEvent_getAction(key_event: *const AInputEvent) -> i32; }
+extern { pub fn AKeyEvent_getDownTime(key_event: *const AInputEvent) -> i64; }
+extern { pub fn AKeyEvent_getEventTime(key_event: *const AInputEvent) -> i64; }
+extern { pub fn AKeyEvent_getFlags(key_event: *const AInputEvent) -> i32; }
+extern { pub fn AKeyEvent_getKeyCode(key_event: *const AInputEvent) -> i32; }
+extern { pub fn AKeyEvent_getMetaState(key_event: *const AInputEvent) -> i32; }
+extern { pub fn AKeyEvent_getRepeatCount(key_event: *const AInputEvent) -> i32; }
+extern { pub fn AKeyEvent_getScanCode(key_event: *const AInputEvent) -> i32; }
+pub const AMETA_ALT_LEFT_ON: i32 = 16;
+pub const AMETA_ALT_ON: i32 = 2;
+pub const AMETA_ALT_RIGHT_ON: i32 = 32;
+pub const AMETA_CAPS_LOCK_ON: i32 = 1048576;
+pub const AMETA_CTRL_LEFT_ON: i32 = 8192;
+pub const AMETA_CTRL_ON: i32 = 4096;
+pub const AMETA_CTRL_RIGHT_ON: i32 = 16384;
+pub const AMETA_FUNCTION_ON: i32 = 8;
+pub const AMETA_META_LEFT_ON: i32 = 131072;
+pub const AMETA_META_ON: i32 = 65536;
+pub const AMETA_META_RIGHT_ON: i32 = 262144;
+pub const AMETA_NONE: i32 = 0;
+pub const AMETA_NUM_LOCK_ON: i32 = 2097152;
+pub const AMETA_SCROLL_LOCK_ON: i32 = 4194304;
+pub const AMETA_SHIFT_LEFT_ON: i32 = 64;
+pub const AMETA_SHIFT_ON: i32 = 1;
+pub const AMETA_SHIFT_RIGHT_ON: i32 = 128;
+pub const AMETA_SYM_ON: i32 = 4;
+pub const AMOTION_EVENT_ACTION_CANCEL: i32 = 3;
+pub const AMOTION_EVENT_ACTION_DOWN: i32 = 0;
+pub const AMOTION_EVENT_ACTION_HOVER_ENTER: i32 = 9;
+pub const AMOTION_EVENT_ACTION_HOVER_EXIT: i32 = 10;
+pub const AMOTION_EVENT_ACTION_HOVER_MOVE: i32 = 7;
+pub const AMOTION_EVENT_ACTION_MASK: i32 = 255;
+pub const AMOTION_EVENT_ACTION_MOVE: i32 = 2;
+pub const AMOTION_EVENT_ACTION_OUTSIDE: i32 = 4;
+pub const AMOTION_EVENT_ACTION_POINTER_DOWN: i32 = 5;
+pub const AMOTION_EVENT_ACTION_POINTER_INDEX_MASK: i32 = 65280;
+pub const AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT: i32 = 8;
+pub const AMOTION_EVENT_ACTION_POINTER_UP: i32 = 6;
+pub const AMOTION_EVENT_ACTION_SCROLL: i32 = 8;
+pub const AMOTION_EVENT_ACTION_UP: i32 = 1;
+pub const AMOTION_EVENT_AXIS_BRAKE: i32 = 23;
+pub const AMOTION_EVENT_AXIS_DISTANCE: i32 = 24;
+pub const AMOTION_EVENT_AXIS_GAS: i32 = 22;
+pub const AMOTION_EVENT_AXIS_GENERIC_1: i32 = 32;
+pub const AMOTION_EVENT_AXIS_GENERIC_10: i32 = 41;
+pub const AMOTION_EVENT_AXIS_GENERIC_11: i32 = 42;
+pub const AMOTION_EVENT_AXIS_GENERIC_12: i32 = 43;
+pub const AMOTION_EVENT_AXIS_GENERIC_13: i32 = 44;
+pub const AMOTION_EVENT_AXIS_GENERIC_14: i32 = 45;
+pub const AMOTION_EVENT_AXIS_GENERIC_15: i32 = 46;
+pub const AMOTION_EVENT_AXIS_GENERIC_16: i32 = 47;
+pub const AMOTION_EVENT_AXIS_GENERIC_2: i32 = 33;
+pub const AMOTION_EVENT_AXIS_GENERIC_3: i32 = 34;
+pub const AMOTION_EVENT_AXIS_GENERIC_4: i32 = 35;
+pub const AMOTION_EVENT_AXIS_GENERIC_5: i32 = 36;
+pub const AMOTION_EVENT_AXIS_GENERIC_6: i32 = 37;
+pub const AMOTION_EVENT_AXIS_GENERIC_7: i32 = 38;
+pub const AMOTION_EVENT_AXIS_GENERIC_8: i32 = 39;
+pub const AMOTION_EVENT_AXIS_GENERIC_9: i32 = 40;
+pub const AMOTION_EVENT_AXIS_HAT_X: i32 = 15;
+pub const AMOTION_EVENT_AXIS_HAT_Y: i32 = 16;
+pub const AMOTION_EVENT_AXIS_HSCROLL: i32 = 10;
+pub const AMOTION_EVENT_AXIS_LTRIGGER: i32 = 17;
+pub const AMOTION_EVENT_AXIS_ORIENTATION: i32 = 8;
+pub const AMOTION_EVENT_AXIS_PRESSURE: i32 = 2;
+pub const AMOTION_EVENT_AXIS_RTRIGGER: i32 = 18;
+pub const AMOTION_EVENT_AXIS_RUDDER: i32 = 20;
+pub const AMOTION_EVENT_AXIS_RX: i32 = 12;
+pub const AMOTION_EVENT_AXIS_RY: i32 = 13;
+pub const AMOTION_EVENT_AXIS_RZ: i32 = 14;
+pub const AMOTION_EVENT_AXIS_SIZE: i32 = 3;
+pub const AMOTION_EVENT_AXIS_THROTTLE: i32 = 19;
+pub const AMOTION_EVENT_AXIS_TILT: i32 = 25;
+pub const AMOTION_EVENT_AXIS_TOOL_MAJOR: i32 = 6;
+pub const AMOTION_EVENT_AXIS_TOOL_MINOR: i32 = 7;
+pub const AMOTION_EVENT_AXIS_TOUCH_MAJOR: i32 = 4;
+pub const AMOTION_EVENT_AXIS_TOUCH_MINOR: i32 = 5;
+pub const AMOTION_EVENT_AXIS_VSCROLL: i32 = 9;
+pub const AMOTION_EVENT_AXIS_WHEEL: i32 = 21;
+pub const AMOTION_EVENT_AXIS_X: i32 = 0;
+pub const AMOTION_EVENT_AXIS_Y: i32 = 1;
+pub const AMOTION_EVENT_AXIS_Z: i32 = 11;
+pub const AMOTION_EVENT_BUTTON_BACK: i32 = 8;
+pub const AMOTION_EVENT_BUTTON_FORWARD: i32 = 16;
+pub const AMOTION_EVENT_BUTTON_PRIMARY: i32 = 1;
+pub const AMOTION_EVENT_BUTTON_SECONDARY: i32 = 2;
+pub const AMOTION_EVENT_BUTTON_TERTIARY: i32 = 4;
+pub const AMOTION_EVENT_EDGE_FLAG_BOTTOM: i32 = 2;
+pub const AMOTION_EVENT_EDGE_FLAG_LEFT: i32 = 4;
+pub const AMOTION_EVENT_EDGE_FLAG_NONE: i32 = 0;
+pub const AMOTION_EVENT_EDGE_FLAG_RIGHT: i32 = 8;
+pub const AMOTION_EVENT_EDGE_FLAG_TOP: i32 = 1;
+pub const AMOTION_EVENT_FLAG_WINDOW_IS_OBSCURED: i32 = 1;
+pub const AMOTION_EVENT_TOOL_TYPE_ERASER: i32 = 4;
+pub const AMOTION_EVENT_TOOL_TYPE_FINGER: i32 = 1;
+pub const AMOTION_EVENT_TOOL_TYPE_MOUSE: i32 = 3;
+pub const AMOTION_EVENT_TOOL_TYPE_STYLUS: i32 = 2;
+pub const AMOTION_EVENT_TOOL_TYPE_UNKNOWN: i32 = 0;
+extern { pub fn AMotionEvent_getAction(motion_event: *const AInputEvent) -> i32; }
+extern { pub fn AMotionEvent_getAxisValue(motion_event: *const AInputEvent, axis: i32, pointer_index: usize) -> c_float; }
+extern { pub fn AMotionEvent_getButtonState(motion_event: *const AInputEvent) -> i32; }
+extern { pub fn AMotionEvent_getDownTime(motion_event: *const AInputEvent) -> i64; }
+extern { pub fn AMotionEvent_getEdgeFlags(motion_event: *const AInputEvent) -> i32; }
+extern { pub fn AMotionEvent_getEventTime(motion_event: *const AInputEvent) -> i64; }
+extern { pub fn AMotionEvent_getFlags(motion_event: *const AInputEvent) -> i32; }
+extern { pub fn AMotionEvent_getHistoricalAxisValue(motion_event: *const AInputEvent, axis: i32, pointer_index: usize, history_index: usize) -> c_float; }
+extern { pub fn AMotionEvent_getHistoricalEventTime(motion_event: *const AInputEvent, history_index: usize) -> i64; }
+extern { pub fn AMotionEvent_getHistoricalOrientation(motion_event: *const AInputEvent, pointer_index: usize, history_index: usize) -> c_float; }
+extern { pub fn AMotionEvent_getHistoricalPressure(motion_event: *const AInputEvent, pointer_index: usize, history_index: usize) -> c_float; }
+extern { pub fn AMotionEvent_getHistoricalRawX(motion_event: *const AInputEvent, pointer_index: usize, history_index: usize) -> c_float; }
+extern { pub fn AMotionEvent_getHistoricalRawY(motion_event: *const AInputEvent, pointer_index: usize, history_index: usize) -> c_float; }
+extern { pub fn AMotionEvent_getHistoricalSize(motion_event: *const AInputEvent, pointer_index: usize, history_index: usize) -> c_float; }
+extern { pub fn AMotionEvent_getHistoricalToolMajor(motion_event: *const AInputEvent, pointer_index: usize, history_index: usize) -> c_float; }
+extern { pub fn AMotionEvent_getHistoricalToolMinor(motion_event: *const AInputEvent, pointer_index: usize, history_index: usize) -> c_float; }
+extern { pub fn AMotionEvent_getHistoricalTouchMajor(motion_event: *const AInputEvent, pointer_index: usize, history_index: usize) -> c_float; }
+extern { pub fn AMotionEvent_getHistoricalTouchMinor(motion_event: *const AInputEvent, pointer_index: usize, history_index: usize) -> c_float; }
+extern { pub fn AMotionEvent_getHistoricalX(motion_event: *const AInputEvent, pointer_index: usize, history_index: usize) -> c_float; }
+extern { pub fn AMotionEvent_getHistoricalY(motion_event: *const AInputEvent, pointer_index: usize, history_index: usize) -> c_float; }
+extern { pub fn AMotionEvent_getHistorySize(motion_event: *const AInputEvent) -> usize; }
+extern { pub fn AMotionEvent_getMetaState(motion_event: *const AInputEvent) -> i32; }
+extern { pub fn AMotionEvent_getOrientation(motion_event: *const AInputEvent, pointer_index: usize) -> c_float; }
+extern { pub fn AMotionEvent_getPointerCount(motion_event: *const AInputEvent) -> usize; }
+extern { pub fn AMotionEvent_getPointerId(motion_event: *const AInputEvent, pointer_index: usize) -> i32; }
+extern { pub fn AMotionEvent_getPressure(motion_event: *const AInputEvent, pointer_index: usize) -> c_float; }
+extern { pub fn AMotionEvent_getRawX(motion_event: *const AInputEvent, pointer_index: usize) -> c_float; }
+extern { pub fn AMotionEvent_getRawY(motion_event: *const AInputEvent, pointer_index: usize) -> c_float; }
+extern { pub fn AMotionEvent_getSize(motion_event: *const AInputEvent, pointer_index: usize) -> c_float; }
+extern { pub fn AMotionEvent_getToolMajor(motion_event: *const AInputEvent, pointer_index: usize) -> c_float; }
+extern { pub fn AMotionEvent_getToolMinor(motion_event: *const AInputEvent, pointer_index: usize) -> c_float; }
+extern { pub fn AMotionEvent_getToolType(motion_event: *const AInputEvent, pointer_index: usize) -> i32; }
+extern { pub fn AMotionEvent_getTouchMajor(motion_event: *const AInputEvent, pointer_index: usize) -> c_float; }
+extern { pub fn AMotionEvent_getTouchMinor(motion_event: *const AInputEvent, pointer_index: usize) -> c_float; }
+extern { pub fn AMotionEvent_getX(motion_event: *const AInputEvent, pointer_index: usize) -> c_float; }
+extern { pub fn AMotionEvent_getXOffset(motion_event: *const AInputEvent) -> c_float; }
+extern { pub fn AMotionEvent_getXPrecision(motion_event: *const AInputEvent) -> c_float; }
+extern { pub fn AMotionEvent_getY(motion_event: *const AInputEvent, pointer_index: usize) -> c_float; }
+extern { pub fn AMotionEvent_getYOffset(motion_event: *const AInputEvent) -> c_float; }
+extern { pub fn AMotionEvent_getYPrecision(motion_event: *const AInputEvent) -> c_float; }
 
 //
 //       android/keycodes.h
 //
-pub const AKEYCODE_0: libc::int32_t = 7;
-pub const AKEYCODE_1: libc::int32_t = 8;
-pub const AKEYCODE_11: libc::int32_t = 227;
-pub const AKEYCODE_12: libc::int32_t = 228;
-pub const AKEYCODE_2: libc::int32_t = 9;
-pub const AKEYCODE_3: libc::int32_t = 10;
-pub const AKEYCODE_3D_MODE: libc::int32_t = 206;
-pub const AKEYCODE_4: libc::int32_t = 11;
-pub const AKEYCODE_5: libc::int32_t = 12;
-pub const AKEYCODE_6: libc::int32_t = 13;
-pub const AKEYCODE_7: libc::int32_t = 14;
-pub const AKEYCODE_8: libc::int32_t = 15;
-pub const AKEYCODE_9: libc::int32_t = 16;
-pub const AKEYCODE_A: libc::int32_t = 29;
-pub const AKEYCODE_ALT_LEFT: libc::int32_t = 57;
-pub const AKEYCODE_ALT_RIGHT: libc::int32_t = 58;
-pub const AKEYCODE_APOSTROPHE: libc::int32_t = 75;
-pub const AKEYCODE_APP_SWITCH: libc::int32_t = 187;
-pub const AKEYCODE_ASSIST: libc::int32_t = 219;
-pub const AKEYCODE_AT: libc::int32_t = 77;
-pub const AKEYCODE_AVR_INPUT: libc::int32_t = 182;
-pub const AKEYCODE_AVR_POWER: libc::int32_t = 181;
-pub const AKEYCODE_B: libc::int32_t = 30;
-pub const AKEYCODE_BACK: libc::int32_t = 4;
-pub const AKEYCODE_BACKSLASH: libc::int32_t = 73;
-pub const AKEYCODE_BOOKMARK: libc::int32_t = 174;
-pub const AKEYCODE_BREAK: libc::int32_t = 121;
-pub const AKEYCODE_BRIGHTNESS_DOWN: libc::int32_t = 220;
-pub const AKEYCODE_BRIGHTNESS_UP: libc::int32_t = 221;
-pub const AKEYCODE_BUTTON_1: libc::int32_t = 188;
-pub const AKEYCODE_BUTTON_10: libc::int32_t = 197;
-pub const AKEYCODE_BUTTON_11: libc::int32_t = 198;
-pub const AKEYCODE_BUTTON_12: libc::int32_t = 199;
-pub const AKEYCODE_BUTTON_13: libc::int32_t = 200;
-pub const AKEYCODE_BUTTON_14: libc::int32_t = 201;
-pub const AKEYCODE_BUTTON_15: libc::int32_t = 202;
-pub const AKEYCODE_BUTTON_16: libc::int32_t = 203;
-pub const AKEYCODE_BUTTON_2: libc::int32_t = 189;
-pub const AKEYCODE_BUTTON_3: libc::int32_t = 190;
-pub const AKEYCODE_BUTTON_4: libc::int32_t = 191;
-pub const AKEYCODE_BUTTON_5: libc::int32_t = 192;
-pub const AKEYCODE_BUTTON_6: libc::int32_t = 193;
-pub const AKEYCODE_BUTTON_7: libc::int32_t = 194;
-pub const AKEYCODE_BUTTON_8: libc::int32_t = 195;
-pub const AKEYCODE_BUTTON_9: libc::int32_t = 196;
-pub const AKEYCODE_BUTTON_A: libc::int32_t = 96;
-pub const AKEYCODE_BUTTON_B: libc::int32_t = 97;
-pub const AKEYCODE_BUTTON_C: libc::int32_t = 98;
-pub const AKEYCODE_BUTTON_L1: libc::int32_t = 102;
-pub const AKEYCODE_BUTTON_L2: libc::int32_t = 104;
-pub const AKEYCODE_BUTTON_MODE: libc::int32_t = 110;
-pub const AKEYCODE_BUTTON_R1: libc::int32_t = 103;
-pub const AKEYCODE_BUTTON_R2: libc::int32_t = 105;
-pub const AKEYCODE_BUTTON_SELECT: libc::int32_t = 109;
-pub const AKEYCODE_BUTTON_START: libc::int32_t = 108;
-pub const AKEYCODE_BUTTON_THUMBL: libc::int32_t = 106;
-pub const AKEYCODE_BUTTON_THUMBR: libc::int32_t = 107;
-pub const AKEYCODE_BUTTON_X: libc::int32_t = 99;
-pub const AKEYCODE_BUTTON_Y: libc::int32_t = 100;
-pub const AKEYCODE_BUTTON_Z: libc::int32_t = 101;
-pub const AKEYCODE_C: libc::int32_t = 31;
-pub const AKEYCODE_CALCULATOR: libc::int32_t = 210;
-pub const AKEYCODE_CALENDAR: libc::int32_t = 208;
-pub const AKEYCODE_CALL: libc::int32_t = 5;
-pub const AKEYCODE_CAMERA: libc::int32_t = 27;
-pub const AKEYCODE_CAPS_LOCK: libc::int32_t = 115;
-pub const AKEYCODE_CAPTIONS: libc::int32_t = 175;
-pub const AKEYCODE_CHANNEL_DOWN: libc::int32_t = 167;
-pub const AKEYCODE_CHANNEL_UP: libc::int32_t = 166;
-pub const AKEYCODE_CLEAR: libc::int32_t = 28;
-pub const AKEYCODE_COMMA: libc::int32_t = 55;
-pub const AKEYCODE_CONTACTS: libc::int32_t = 207;
-pub const AKEYCODE_CTRL_LEFT: libc::int32_t = 113;
-pub const AKEYCODE_CTRL_RIGHT: libc::int32_t = 114;
-pub const AKEYCODE_D: libc::int32_t = 32;
-pub const AKEYCODE_DEL: libc::int32_t = 67;
-pub const AKEYCODE_DPAD_CENTER: libc::int32_t = 23;
-pub const AKEYCODE_DPAD_DOWN: libc::int32_t = 20;
-pub const AKEYCODE_DPAD_LEFT: libc::int32_t = 21;
-pub const AKEYCODE_DPAD_RIGHT: libc::int32_t = 22;
-pub const AKEYCODE_DPAD_UP: libc::int32_t = 19;
-pub const AKEYCODE_DVR: libc::int32_t = 173;
-pub const AKEYCODE_E: libc::int32_t = 33;
-pub const AKEYCODE_EISU: libc::int32_t = 212;
-pub const AKEYCODE_ENDCALL: libc::int32_t = 6;
-pub const AKEYCODE_ENTER: libc::int32_t = 66;
-pub const AKEYCODE_ENVELOPE: libc::int32_t = 65;
-pub const AKEYCODE_EQUALS: libc::int32_t = 70;
-pub const AKEYCODE_ESCAPE: libc::int32_t = 111;
-pub const AKEYCODE_EXPLORER: libc::int32_t = 64;
-pub const AKEYCODE_F: libc::int32_t = 34;
-pub const AKEYCODE_F1: libc::int32_t = 131;
-pub const AKEYCODE_F10: libc::int32_t = 140;
-pub const AKEYCODE_F11: libc::int32_t = 141;
-pub const AKEYCODE_F12: libc::int32_t = 142;
-pub const AKEYCODE_F2: libc::int32_t = 132;
-pub const AKEYCODE_F3: libc::int32_t = 133;
-pub const AKEYCODE_F4: libc::int32_t = 134;
-pub const AKEYCODE_F5: libc::int32_t = 135;
-pub const AKEYCODE_F6: libc::int32_t = 136;
-pub const AKEYCODE_F7: libc::int32_t = 137;
-pub const AKEYCODE_F8: libc::int32_t = 138;
-pub const AKEYCODE_F9: libc::int32_t = 139;
-pub const AKEYCODE_FOCUS: libc::int32_t = 80;
-pub const AKEYCODE_FORWARD: libc::int32_t = 125;
-pub const AKEYCODE_FORWARD_DEL: libc::int32_t = 112;
-pub const AKEYCODE_FUNCTION: libc::int32_t = 119;
-pub const AKEYCODE_G: libc::int32_t = 35;
-pub const AKEYCODE_GRAVE: libc::int32_t = 68;
-pub const AKEYCODE_GUIDE: libc::int32_t = 172;
-pub const AKEYCODE_H: libc::int32_t = 36;
-pub const AKEYCODE_HEADSETHOOK: libc::int32_t = 79;
-pub const AKEYCODE_HELP: libc::int32_t = 259;
-pub const AKEYCODE_HENKAN: libc::int32_t = 214;
-pub const AKEYCODE_HOME: libc::int32_t = 3;
-pub const AKEYCODE_I: libc::int32_t = 37;
-pub const AKEYCODE_INFO: libc::int32_t = 165;
-pub const AKEYCODE_INSERT: libc::int32_t = 124;
-pub const AKEYCODE_J: libc::int32_t = 38;
-pub const AKEYCODE_K: libc::int32_t = 39;
-pub const AKEYCODE_KANA: libc::int32_t = 218;
-pub const AKEYCODE_KATAKANA_HIRAGANA: libc::int32_t = 215;
-pub const AKEYCODE_L: libc::int32_t = 40;
-pub const AKEYCODE_LANGUAGE_SWITCH: libc::int32_t = 204;
-pub const AKEYCODE_LAST_CHANNEL: libc::int32_t = 229;
-pub const AKEYCODE_LEFT_BRACKET: libc::int32_t = 71;
-pub const AKEYCODE_M: libc::int32_t = 41;
-pub const AKEYCODE_MANNER_MODE: libc::int32_t = 205;
-pub const AKEYCODE_MEDIA_AUDIO_TRACK: libc::int32_t = 222;
-pub const AKEYCODE_MEDIA_CLOSE: libc::int32_t = 128;
-pub const AKEYCODE_MEDIA_EJECT: libc::int32_t = 129;
-pub const AKEYCODE_MEDIA_FAST_FORWARD: libc::int32_t = 90;
-pub const AKEYCODE_MEDIA_NEXT: libc::int32_t = 87;
-pub const AKEYCODE_MEDIA_PAUSE: libc::int32_t = 127;
-pub const AKEYCODE_MEDIA_PLAY: libc::int32_t = 126;
-pub const AKEYCODE_MEDIA_PLAY_PAUSE: libc::int32_t = 85;
-pub const AKEYCODE_MEDIA_PREVIOUS: libc::int32_t = 88;
-pub const AKEYCODE_MEDIA_RECORD: libc::int32_t = 130;
-pub const AKEYCODE_MEDIA_REWIND: libc::int32_t = 89;
-pub const AKEYCODE_MEDIA_STOP: libc::int32_t = 86;
-pub const AKEYCODE_MEDIA_TOP_MENU: libc::int32_t = 226;
-pub const AKEYCODE_MENU: libc::int32_t = 82;
-pub const AKEYCODE_META_LEFT: libc::int32_t = 117;
-pub const AKEYCODE_META_RIGHT: libc::int32_t = 118;
-pub const AKEYCODE_MINUS: libc::int32_t = 69;
-pub const AKEYCODE_MOVE_END: libc::int32_t = 123;
-pub const AKEYCODE_MOVE_HOME: libc::int32_t = 122;
-pub const AKEYCODE_MUHENKAN: libc::int32_t = 213;
-pub const AKEYCODE_MUSIC: libc::int32_t = 209;
-pub const AKEYCODE_MUTE: libc::int32_t = 91;
-pub const AKEYCODE_N: libc::int32_t = 42;
-pub const AKEYCODE_NOTIFICATION: libc::int32_t = 83;
-pub const AKEYCODE_NUM: libc::int32_t = 78;
-pub const AKEYCODE_NUMPAD_0: libc::int32_t = 144;
-pub const AKEYCODE_NUMPAD_1: libc::int32_t = 145;
-pub const AKEYCODE_NUMPAD_2: libc::int32_t = 146;
-pub const AKEYCODE_NUMPAD_3: libc::int32_t = 147;
-pub const AKEYCODE_NUMPAD_4: libc::int32_t = 148;
-pub const AKEYCODE_NUMPAD_5: libc::int32_t = 149;
-pub const AKEYCODE_NUMPAD_6: libc::int32_t = 150;
-pub const AKEYCODE_NUMPAD_7: libc::int32_t = 151;
-pub const AKEYCODE_NUMPAD_8: libc::int32_t = 152;
-pub const AKEYCODE_NUMPAD_9: libc::int32_t = 153;
-pub const AKEYCODE_NUMPAD_ADD: libc::int32_t = 157;
-pub const AKEYCODE_NUMPAD_COMMA: libc::int32_t = 159;
-pub const AKEYCODE_NUMPAD_DIVIDE: libc::int32_t = 154;
-pub const AKEYCODE_NUMPAD_DOT: libc::int32_t = 158;
-pub const AKEYCODE_NUMPAD_ENTER: libc::int32_t = 160;
-pub const AKEYCODE_NUMPAD_EQUALS: libc::int32_t = 161;
-pub const AKEYCODE_NUMPAD_LEFT_PAREN: libc::int32_t = 162;
-pub const AKEYCODE_NUMPAD_MULTIPLY: libc::int32_t = 155;
-pub const AKEYCODE_NUMPAD_RIGHT_PAREN: libc::int32_t = 163;
-pub const AKEYCODE_NUMPAD_SUBTRACT: libc::int32_t = 156;
-pub const AKEYCODE_NUM_LOCK: libc::int32_t = 143;
-pub const AKEYCODE_O: libc::int32_t = 43;
-pub const AKEYCODE_P: libc::int32_t = 44;
-pub const AKEYCODE_PAGE_DOWN: libc::int32_t = 93;
-pub const AKEYCODE_PAGE_UP: libc::int32_t = 92;
-pub const AKEYCODE_PAIRING: libc::int32_t = 225;
-pub const AKEYCODE_PERIOD: libc::int32_t = 56;
-pub const AKEYCODE_PICTSYMBOLS: libc::int32_t = 94;
-pub const AKEYCODE_PLUS: libc::int32_t = 81;
-pub const AKEYCODE_POUND: libc::int32_t = 18;
-pub const AKEYCODE_POWER: libc::int32_t = 26;
-pub const AKEYCODE_PROG_BLUE: libc::int32_t = 186;
-pub const AKEYCODE_PROG_GREEN: libc::int32_t = 184;
-pub const AKEYCODE_PROG_RED: libc::int32_t = 183;
-pub const AKEYCODE_PROG_YELLOW: libc::int32_t = 185;
-pub const AKEYCODE_Q: libc::int32_t = 45;
-pub const AKEYCODE_R: libc::int32_t = 46;
-pub const AKEYCODE_RIGHT_BRACKET: libc::int32_t = 72;
-pub const AKEYCODE_RO: libc::int32_t = 217;
-pub const AKEYCODE_S: libc::int32_t = 47;
-pub const AKEYCODE_SCROLL_LOCK: libc::int32_t = 116;
-pub const AKEYCODE_SEARCH: libc::int32_t = 84;
-pub const AKEYCODE_SEMICOLON: libc::int32_t = 74;
-pub const AKEYCODE_SETTINGS: libc::int32_t = 176;
-pub const AKEYCODE_SHIFT_LEFT: libc::int32_t = 59;
-pub const AKEYCODE_SHIFT_RIGHT: libc::int32_t = 60;
-pub const AKEYCODE_SLASH: libc::int32_t = 76;
-pub const AKEYCODE_SLEEP: libc::int32_t = 223;
-pub const AKEYCODE_SOFT_LEFT: libc::int32_t = 1;
-pub const AKEYCODE_SOFT_RIGHT: libc::int32_t = 2;
-pub const AKEYCODE_SPACE: libc::int32_t = 62;
-pub const AKEYCODE_STAR: libc::int32_t = 17;
-pub const AKEYCODE_STB_INPUT: libc::int32_t = 180;
-pub const AKEYCODE_STB_POWER: libc::int32_t = 179;
-pub const AKEYCODE_SWITCH_CHARSET: libc::int32_t = 95;
-pub const AKEYCODE_SYM: libc::int32_t = 63;
-pub const AKEYCODE_SYSRQ: libc::int32_t = 120;
-pub const AKEYCODE_T: libc::int32_t = 48;
-pub const AKEYCODE_TAB: libc::int32_t = 61;
-pub const AKEYCODE_TV: libc::int32_t = 170;
-pub const AKEYCODE_TV_ANTENNA_CABLE: libc::int32_t = 242;
-pub const AKEYCODE_TV_AUDIO_DESCRIPTION: libc::int32_t = 252;
-pub const AKEYCODE_TV_AUDIO_DESCRIPTION_MIX_DOWN: libc::int32_t = 254;
-pub const AKEYCODE_TV_AUDIO_DESCRIPTION_MIX_UP: libc::int32_t = 253;
-pub const AKEYCODE_TV_CONTENTS_MENU: libc::int32_t = 256;
-pub const AKEYCODE_TV_DATA_SERVICE: libc::int32_t = 230;
-pub const AKEYCODE_TV_INPUT: libc::int32_t = 178;
-pub const AKEYCODE_TV_INPUT_COMPONENT_1: libc::int32_t = 249;
-pub const AKEYCODE_TV_INPUT_COMPONENT_2: libc::int32_t = 250;
-pub const AKEYCODE_TV_INPUT_COMPOSITE_1: libc::int32_t = 247;
-pub const AKEYCODE_TV_INPUT_COMPOSITE_2: libc::int32_t = 248;
-pub const AKEYCODE_TV_INPUT_HDMI_1: libc::int32_t = 243;
-pub const AKEYCODE_TV_INPUT_HDMI_2: libc::int32_t = 244;
-pub const AKEYCODE_TV_INPUT_HDMI_3: libc::int32_t = 245;
-pub const AKEYCODE_TV_INPUT_HDMI_4: libc::int32_t = 246;
-pub const AKEYCODE_TV_INPUT_VGA_1: libc::int32_t = 251;
-pub const AKEYCODE_TV_MEDIA_CONTEXT_MENU: libc::int32_t = 257;
-pub const AKEYCODE_TV_NETWORK: libc::int32_t = 241;
-pub const AKEYCODE_TV_NUMBER_ENTRY: libc::int32_t = 234;
-pub const AKEYCODE_TV_POWER: libc::int32_t = 177;
-pub const AKEYCODE_TV_RADIO_SERVICE: libc::int32_t = 232;
-pub const AKEYCODE_TV_SATELLITE: libc::int32_t = 237;
-pub const AKEYCODE_TV_SATELLITE_BS: libc::int32_t = 238;
-pub const AKEYCODE_TV_SATELLITE_CS: libc::int32_t = 239;
-pub const AKEYCODE_TV_SATELLITE_SERVICE: libc::int32_t = 240;
-pub const AKEYCODE_TV_TELETEXT: libc::int32_t = 233;
-pub const AKEYCODE_TV_TERRESTRIAL_ANALOG: libc::int32_t = 235;
-pub const AKEYCODE_TV_TERRESTRIAL_DIGITAL: libc::int32_t = 236;
-pub const AKEYCODE_TV_TIMER_PROGRAMMING: libc::int32_t = 258;
-pub const AKEYCODE_TV_ZOOM_MODE: libc::int32_t = 255;
-pub const AKEYCODE_U: libc::int32_t = 49;
-pub const AKEYCODE_UNKNOWN: libc::int32_t = 0;
-pub const AKEYCODE_V: libc::int32_t = 50;
-pub const AKEYCODE_VOICE_ASSIST: libc::int32_t = 231;
-pub const AKEYCODE_VOLUME_DOWN: libc::int32_t = 25;
-pub const AKEYCODE_VOLUME_MUTE: libc::int32_t = 164;
-pub const AKEYCODE_VOLUME_UP: libc::int32_t = 24;
-pub const AKEYCODE_W: libc::int32_t = 51;
-pub const AKEYCODE_WAKEUP: libc::int32_t = 224;
-pub const AKEYCODE_WINDOW: libc::int32_t = 171;
-pub const AKEYCODE_X: libc::int32_t = 52;
-pub const AKEYCODE_Y: libc::int32_t = 53;
-pub const AKEYCODE_YEN: libc::int32_t = 216;
-pub const AKEYCODE_Z: libc::int32_t = 54;
-pub const AKEYCODE_ZENKAKU_HANKAKU: libc::int32_t = 211;
-pub const AKEYCODE_ZOOM_IN: libc::int32_t = 168;
-pub const AKEYCODE_ZOOM_OUT: libc::int32_t = 169;
+pub const AKEYCODE_0: i32 = 7;
+pub const AKEYCODE_1: i32 = 8;
+pub const AKEYCODE_11: i32 = 227;
+pub const AKEYCODE_12: i32 = 228;
+pub const AKEYCODE_2: i32 = 9;
+pub const AKEYCODE_3: i32 = 10;
+pub const AKEYCODE_3D_MODE: i32 = 206;
+pub const AKEYCODE_4: i32 = 11;
+pub const AKEYCODE_5: i32 = 12;
+pub const AKEYCODE_6: i32 = 13;
+pub const AKEYCODE_7: i32 = 14;
+pub const AKEYCODE_8: i32 = 15;
+pub const AKEYCODE_9: i32 = 16;
+pub const AKEYCODE_A: i32 = 29;
+pub const AKEYCODE_ALT_LEFT: i32 = 57;
+pub const AKEYCODE_ALT_RIGHT: i32 = 58;
+pub const AKEYCODE_APOSTROPHE: i32 = 75;
+pub const AKEYCODE_APP_SWITCH: i32 = 187;
+pub const AKEYCODE_ASSIST: i32 = 219;
+pub const AKEYCODE_AT: i32 = 77;
+pub const AKEYCODE_AVR_INPUT: i32 = 182;
+pub const AKEYCODE_AVR_POWER: i32 = 181;
+pub const AKEYCODE_B: i32 = 30;
+pub const AKEYCODE_BACK: i32 = 4;
+pub const AKEYCODE_BACKSLASH: i32 = 73;
+pub const AKEYCODE_BOOKMARK: i32 = 174;
+pub const AKEYCODE_BREAK: i32 = 121;
+pub const AKEYCODE_BRIGHTNESS_DOWN: i32 = 220;
+pub const AKEYCODE_BRIGHTNESS_UP: i32 = 221;
+pub const AKEYCODE_BUTTON_1: i32 = 188;
+pub const AKEYCODE_BUTTON_10: i32 = 197;
+pub const AKEYCODE_BUTTON_11: i32 = 198;
+pub const AKEYCODE_BUTTON_12: i32 = 199;
+pub const AKEYCODE_BUTTON_13: i32 = 200;
+pub const AKEYCODE_BUTTON_14: i32 = 201;
+pub const AKEYCODE_BUTTON_15: i32 = 202;
+pub const AKEYCODE_BUTTON_16: i32 = 203;
+pub const AKEYCODE_BUTTON_2: i32 = 189;
+pub const AKEYCODE_BUTTON_3: i32 = 190;
+pub const AKEYCODE_BUTTON_4: i32 = 191;
+pub const AKEYCODE_BUTTON_5: i32 = 192;
+pub const AKEYCODE_BUTTON_6: i32 = 193;
+pub const AKEYCODE_BUTTON_7: i32 = 194;
+pub const AKEYCODE_BUTTON_8: i32 = 195;
+pub const AKEYCODE_BUTTON_9: i32 = 196;
+pub const AKEYCODE_BUTTON_A: i32 = 96;
+pub const AKEYCODE_BUTTON_B: i32 = 97;
+pub const AKEYCODE_BUTTON_C: i32 = 98;
+pub const AKEYCODE_BUTTON_L1: i32 = 102;
+pub const AKEYCODE_BUTTON_L2: i32 = 104;
+pub const AKEYCODE_BUTTON_MODE: i32 = 110;
+pub const AKEYCODE_BUTTON_R1: i32 = 103;
+pub const AKEYCODE_BUTTON_R2: i32 = 105;
+pub const AKEYCODE_BUTTON_SELECT: i32 = 109;
+pub const AKEYCODE_BUTTON_START: i32 = 108;
+pub const AKEYCODE_BUTTON_THUMBL: i32 = 106;
+pub const AKEYCODE_BUTTON_THUMBR: i32 = 107;
+pub const AKEYCODE_BUTTON_X: i32 = 99;
+pub const AKEYCODE_BUTTON_Y: i32 = 100;
+pub const AKEYCODE_BUTTON_Z: i32 = 101;
+pub const AKEYCODE_C: i32 = 31;
+pub const AKEYCODE_CALCULATOR: i32 = 210;
+pub const AKEYCODE_CALENDAR: i32 = 208;
+pub const AKEYCODE_CALL: i32 = 5;
+pub const AKEYCODE_CAMERA: i32 = 27;
+pub const AKEYCODE_CAPS_LOCK: i32 = 115;
+pub const AKEYCODE_CAPTIONS: i32 = 175;
+pub const AKEYCODE_CHANNEL_DOWN: i32 = 167;
+pub const AKEYCODE_CHANNEL_UP: i32 = 166;
+pub const AKEYCODE_CLEAR: i32 = 28;
+pub const AKEYCODE_COMMA: i32 = 55;
+pub const AKEYCODE_CONTACTS: i32 = 207;
+pub const AKEYCODE_CTRL_LEFT: i32 = 113;
+pub const AKEYCODE_CTRL_RIGHT: i32 = 114;
+pub const AKEYCODE_D: i32 = 32;
+pub const AKEYCODE_DEL: i32 = 67;
+pub const AKEYCODE_DPAD_CENTER: i32 = 23;
+pub const AKEYCODE_DPAD_DOWN: i32 = 20;
+pub const AKEYCODE_DPAD_LEFT: i32 = 21;
+pub const AKEYCODE_DPAD_RIGHT: i32 = 22;
+pub const AKEYCODE_DPAD_UP: i32 = 19;
+pub const AKEYCODE_DVR: i32 = 173;
+pub const AKEYCODE_E: i32 = 33;
+pub const AKEYCODE_EISU: i32 = 212;
+pub const AKEYCODE_ENDCALL: i32 = 6;
+pub const AKEYCODE_ENTER: i32 = 66;
+pub const AKEYCODE_ENVELOPE: i32 = 65;
+pub const AKEYCODE_EQUALS: i32 = 70;
+pub const AKEYCODE_ESCAPE: i32 = 111;
+pub const AKEYCODE_EXPLORER: i32 = 64;
+pub const AKEYCODE_F: i32 = 34;
+pub const AKEYCODE_F1: i32 = 131;
+pub const AKEYCODE_F10: i32 = 140;
+pub const AKEYCODE_F11: i32 = 141;
+pub const AKEYCODE_F12: i32 = 142;
+pub const AKEYCODE_F2: i32 = 132;
+pub const AKEYCODE_F3: i32 = 133;
+pub const AKEYCODE_F4: i32 = 134;
+pub const AKEYCODE_F5: i32 = 135;
+pub const AKEYCODE_F6: i32 = 136;
+pub const AKEYCODE_F7: i32 = 137;
+pub const AKEYCODE_F8: i32 = 138;
+pub const AKEYCODE_F9: i32 = 139;
+pub const AKEYCODE_FOCUS: i32 = 80;
+pub const AKEYCODE_FORWARD: i32 = 125;
+pub const AKEYCODE_FORWARD_DEL: i32 = 112;
+pub const AKEYCODE_FUNCTION: i32 = 119;
+pub const AKEYCODE_G: i32 = 35;
+pub const AKEYCODE_GRAVE: i32 = 68;
+pub const AKEYCODE_GUIDE: i32 = 172;
+pub const AKEYCODE_H: i32 = 36;
+pub const AKEYCODE_HEADSETHOOK: i32 = 79;
+pub const AKEYCODE_HELP: i32 = 259;
+pub const AKEYCODE_HENKAN: i32 = 214;
+pub const AKEYCODE_HOME: i32 = 3;
+pub const AKEYCODE_I: i32 = 37;
+pub const AKEYCODE_INFO: i32 = 165;
+pub const AKEYCODE_INSERT: i32 = 124;
+pub const AKEYCODE_J: i32 = 38;
+pub const AKEYCODE_K: i32 = 39;
+pub const AKEYCODE_KANA: i32 = 218;
+pub const AKEYCODE_KATAKANA_HIRAGANA: i32 = 215;
+pub const AKEYCODE_L: i32 = 40;
+pub const AKEYCODE_LANGUAGE_SWITCH: i32 = 204;
+pub const AKEYCODE_LAST_CHANNEL: i32 = 229;
+pub const AKEYCODE_LEFT_BRACKET: i32 = 71;
+pub const AKEYCODE_M: i32 = 41;
+pub const AKEYCODE_MANNER_MODE: i32 = 205;
+pub const AKEYCODE_MEDIA_AUDIO_TRACK: i32 = 222;
+pub const AKEYCODE_MEDIA_CLOSE: i32 = 128;
+pub const AKEYCODE_MEDIA_EJECT: i32 = 129;
+pub const AKEYCODE_MEDIA_FAST_FORWARD: i32 = 90;
+pub const AKEYCODE_MEDIA_NEXT: i32 = 87;
+pub const AKEYCODE_MEDIA_PAUSE: i32 = 127;
+pub const AKEYCODE_MEDIA_PLAY: i32 = 126;
+pub const AKEYCODE_MEDIA_PLAY_PAUSE: i32 = 85;
+pub const AKEYCODE_MEDIA_PREVIOUS: i32 = 88;
+pub const AKEYCODE_MEDIA_RECORD: i32 = 130;
+pub const AKEYCODE_MEDIA_REWIND: i32 = 89;
+pub const AKEYCODE_MEDIA_STOP: i32 = 86;
+pub const AKEYCODE_MEDIA_TOP_MENU: i32 = 226;
+pub const AKEYCODE_MENU: i32 = 82;
+pub const AKEYCODE_META_LEFT: i32 = 117;
+pub const AKEYCODE_META_RIGHT: i32 = 118;
+pub const AKEYCODE_MINUS: i32 = 69;
+pub const AKEYCODE_MOVE_END: i32 = 123;
+pub const AKEYCODE_MOVE_HOME: i32 = 122;
+pub const AKEYCODE_MUHENKAN: i32 = 213;
+pub const AKEYCODE_MUSIC: i32 = 209;
+pub const AKEYCODE_MUTE: i32 = 91;
+pub const AKEYCODE_N: i32 = 42;
+pub const AKEYCODE_NOTIFICATION: i32 = 83;
+pub const AKEYCODE_NUM: i32 = 78;
+pub const AKEYCODE_NUMPAD_0: i32 = 144;
+pub const AKEYCODE_NUMPAD_1: i32 = 145;
+pub const AKEYCODE_NUMPAD_2: i32 = 146;
+pub const AKEYCODE_NUMPAD_3: i32 = 147;
+pub const AKEYCODE_NUMPAD_4: i32 = 148;
+pub const AKEYCODE_NUMPAD_5: i32 = 149;
+pub const AKEYCODE_NUMPAD_6: i32 = 150;
+pub const AKEYCODE_NUMPAD_7: i32 = 151;
+pub const AKEYCODE_NUMPAD_8: i32 = 152;
+pub const AKEYCODE_NUMPAD_9: i32 = 153;
+pub const AKEYCODE_NUMPAD_ADD: i32 = 157;
+pub const AKEYCODE_NUMPAD_COMMA: i32 = 159;
+pub const AKEYCODE_NUMPAD_DIVIDE: i32 = 154;
+pub const AKEYCODE_NUMPAD_DOT: i32 = 158;
+pub const AKEYCODE_NUMPAD_ENTER: i32 = 160;
+pub const AKEYCODE_NUMPAD_EQUALS: i32 = 161;
+pub const AKEYCODE_NUMPAD_LEFT_PAREN: i32 = 162;
+pub const AKEYCODE_NUMPAD_MULTIPLY: i32 = 155;
+pub const AKEYCODE_NUMPAD_RIGHT_PAREN: i32 = 163;
+pub const AKEYCODE_NUMPAD_SUBTRACT: i32 = 156;
+pub const AKEYCODE_NUM_LOCK: i32 = 143;
+pub const AKEYCODE_O: i32 = 43;
+pub const AKEYCODE_P: i32 = 44;
+pub const AKEYCODE_PAGE_DOWN: i32 = 93;
+pub const AKEYCODE_PAGE_UP: i32 = 92;
+pub const AKEYCODE_PAIRING: i32 = 225;
+pub const AKEYCODE_PERIOD: i32 = 56;
+pub const AKEYCODE_PICTSYMBOLS: i32 = 94;
+pub const AKEYCODE_PLUS: i32 = 81;
+pub const AKEYCODE_POUND: i32 = 18;
+pub const AKEYCODE_POWER: i32 = 26;
+pub const AKEYCODE_PROG_BLUE: i32 = 186;
+pub const AKEYCODE_PROG_GREEN: i32 = 184;
+pub const AKEYCODE_PROG_RED: i32 = 183;
+pub const AKEYCODE_PROG_YELLOW: i32 = 185;
+pub const AKEYCODE_Q: i32 = 45;
+pub const AKEYCODE_R: i32 = 46;
+pub const AKEYCODE_RIGHT_BRACKET: i32 = 72;
+pub const AKEYCODE_RO: i32 = 217;
+pub const AKEYCODE_S: i32 = 47;
+pub const AKEYCODE_SCROLL_LOCK: i32 = 116;
+pub const AKEYCODE_SEARCH: i32 = 84;
+pub const AKEYCODE_SEMICOLON: i32 = 74;
+pub const AKEYCODE_SETTINGS: i32 = 176;
+pub const AKEYCODE_SHIFT_LEFT: i32 = 59;
+pub const AKEYCODE_SHIFT_RIGHT: i32 = 60;
+pub const AKEYCODE_SLASH: i32 = 76;
+pub const AKEYCODE_SLEEP: i32 = 223;
+pub const AKEYCODE_SOFT_LEFT: i32 = 1;
+pub const AKEYCODE_SOFT_RIGHT: i32 = 2;
+pub const AKEYCODE_SPACE: i32 = 62;
+pub const AKEYCODE_STAR: i32 = 17;
+pub const AKEYCODE_STB_INPUT: i32 = 180;
+pub const AKEYCODE_STB_POWER: i32 = 179;
+pub const AKEYCODE_SWITCH_CHARSET: i32 = 95;
+pub const AKEYCODE_SYM: i32 = 63;
+pub const AKEYCODE_SYSRQ: i32 = 120;
+pub const AKEYCODE_T: i32 = 48;
+pub const AKEYCODE_TAB: i32 = 61;
+pub const AKEYCODE_TV: i32 = 170;
+pub const AKEYCODE_TV_ANTENNA_CABLE: i32 = 242;
+pub const AKEYCODE_TV_AUDIO_DESCRIPTION: i32 = 252;
+pub const AKEYCODE_TV_AUDIO_DESCRIPTION_MIX_DOWN: i32 = 254;
+pub const AKEYCODE_TV_AUDIO_DESCRIPTION_MIX_UP: i32 = 253;
+pub const AKEYCODE_TV_CONTENTS_MENU: i32 = 256;
+pub const AKEYCODE_TV_DATA_SERVICE: i32 = 230;
+pub const AKEYCODE_TV_INPUT: i32 = 178;
+pub const AKEYCODE_TV_INPUT_COMPONENT_1: i32 = 249;
+pub const AKEYCODE_TV_INPUT_COMPONENT_2: i32 = 250;
+pub const AKEYCODE_TV_INPUT_COMPOSITE_1: i32 = 247;
+pub const AKEYCODE_TV_INPUT_COMPOSITE_2: i32 = 248;
+pub const AKEYCODE_TV_INPUT_HDMI_1: i32 = 243;
+pub const AKEYCODE_TV_INPUT_HDMI_2: i32 = 244;
+pub const AKEYCODE_TV_INPUT_HDMI_3: i32 = 245;
+pub const AKEYCODE_TV_INPUT_HDMI_4: i32 = 246;
+pub const AKEYCODE_TV_INPUT_VGA_1: i32 = 251;
+pub const AKEYCODE_TV_MEDIA_CONTEXT_MENU: i32 = 257;
+pub const AKEYCODE_TV_NETWORK: i32 = 241;
+pub const AKEYCODE_TV_NUMBER_ENTRY: i32 = 234;
+pub const AKEYCODE_TV_POWER: i32 = 177;
+pub const AKEYCODE_TV_RADIO_SERVICE: i32 = 232;
+pub const AKEYCODE_TV_SATELLITE: i32 = 237;
+pub const AKEYCODE_TV_SATELLITE_BS: i32 = 238;
+pub const AKEYCODE_TV_SATELLITE_CS: i32 = 239;
+pub const AKEYCODE_TV_SATELLITE_SERVICE: i32 = 240;
+pub const AKEYCODE_TV_TELETEXT: i32 = 233;
+pub const AKEYCODE_TV_TERRESTRIAL_ANALOG: i32 = 235;
+pub const AKEYCODE_TV_TERRESTRIAL_DIGITAL: i32 = 236;
+pub const AKEYCODE_TV_TIMER_PROGRAMMING: i32 = 258;
+pub const AKEYCODE_TV_ZOOM_MODE: i32 = 255;
+pub const AKEYCODE_U: i32 = 49;
+pub const AKEYCODE_UNKNOWN: i32 = 0;
+pub const AKEYCODE_V: i32 = 50;
+pub const AKEYCODE_VOICE_ASSIST: i32 = 231;
+pub const AKEYCODE_VOLUME_DOWN: i32 = 25;
+pub const AKEYCODE_VOLUME_MUTE: i32 = 164;
+pub const AKEYCODE_VOLUME_UP: i32 = 24;
+pub const AKEYCODE_W: i32 = 51;
+pub const AKEYCODE_WAKEUP: i32 = 224;
+pub const AKEYCODE_WINDOW: i32 = 171;
+pub const AKEYCODE_X: i32 = 52;
+pub const AKEYCODE_Y: i32 = 53;
+pub const AKEYCODE_YEN: i32 = 216;
+pub const AKEYCODE_Z: i32 = 54;
+pub const AKEYCODE_ZENKAKU_HANKAKU: i32 = 211;
+pub const AKEYCODE_ZOOM_IN: i32 = 168;
+pub const AKEYCODE_ZOOM_OUT: i32 = 169;
 
 //
 //       android/log.h
 //
-pub const ANDROID_LOG_DEBUG: libc::int32_t = 3;
-pub const ANDROID_LOG_DEFAULT: libc::int32_t = 1;
-pub const ANDROID_LOG_ERROR: libc::int32_t = 6;
-pub const ANDROID_LOG_FATAL: libc::int32_t = 7;
-pub const ANDROID_LOG_INFO: libc::int32_t = 4;
-pub const ANDROID_LOG_SILENT: libc::int32_t = 8;
-pub const ANDROID_LOG_UNKNOWN: libc::int32_t = 0;
-pub const ANDROID_LOG_VERBOSE: libc::int32_t = 2;
-pub const ANDROID_LOG_WARN: libc::int32_t = 5;
-extern { pub fn __android_log_vprint(prio: libc::c_int, tag: *const libc::c_char, fmt: *const libc::c_char, ap: *mut __va_list_tag) -> libc::c_int; }
-extern { pub fn __android_log_write(prio: libc::c_int, tag: *const libc::c_char, text: *const libc::c_char) -> libc::c_int; }
+pub const ANDROID_LOG_DEBUG: i32 = 3;
+pub const ANDROID_LOG_DEFAULT: i32 = 1;
+pub const ANDROID_LOG_ERROR: i32 = 6;
+pub const ANDROID_LOG_FATAL: i32 = 7;
+pub const ANDROID_LOG_INFO: i32 = 4;
+pub const ANDROID_LOG_SILENT: i32 = 8;
+pub const ANDROID_LOG_UNKNOWN: i32 = 0;
+pub const ANDROID_LOG_VERBOSE: i32 = 2;
+pub const ANDROID_LOG_WARN: i32 = 5;
+extern { pub fn __android_log_vprint(prio: c_int, tag: *const c_char, fmt: *const c_char, ap: *mut __va_list_tag) -> c_int; }
+extern { pub fn __android_log_write(prio: c_int, tag: *const c_char, text: *const c_char) -> c_int; }
 pub type android_LogPriority = i32;
 
 //
 //       android/looper.h
 //
-pub const ALOOPER_EVENT_ERROR: libc::int32_t = 4;
-pub const ALOOPER_EVENT_HANGUP: libc::int32_t = 8;
-pub const ALOOPER_EVENT_INPUT: libc::int32_t = 1;
-pub const ALOOPER_EVENT_INVALID: libc::int32_t = 16;
-pub const ALOOPER_EVENT_OUTPUT: libc::int32_t = 2;
-pub const ALOOPER_POLL_CALLBACK: libc::int32_t = -2;
-pub const ALOOPER_POLL_ERROR: libc::int32_t = -4;
-pub const ALOOPER_POLL_TIMEOUT: libc::int32_t = -3;
-pub const ALOOPER_POLL_WAKE: libc::int32_t = -1;
-pub const ALOOPER_PREPARE_ALLOW_NON_CALLBACKS: libc::int32_t = 1;
+pub const ALOOPER_EVENT_ERROR: i32 = 4;
+pub const ALOOPER_EVENT_HANGUP: i32 = 8;
+pub const ALOOPER_EVENT_INPUT: i32 = 1;
+pub const ALOOPER_EVENT_INVALID: i32 = 16;
+pub const ALOOPER_EVENT_OUTPUT: i32 = 2;
+pub const ALOOPER_POLL_CALLBACK: i32 = -2;
+pub const ALOOPER_POLL_ERROR: i32 = -4;
+pub const ALOOPER_POLL_TIMEOUT: i32 = -3;
+pub const ALOOPER_POLL_WAKE: i32 = -1;
+pub const ALOOPER_PREPARE_ALLOW_NON_CALLBACKS: i32 = 1;
 pub type ALooper = ();
 extern { pub fn ALooper_acquire(looper: *mut ALooper); }
-extern { pub fn ALooper_addFd(looper: *mut ALooper, fd: libc::c_int, ident: libc::c_int, events: libc::c_int, callback: ALooper_callbackFunc, data: *mut libc::c_void) -> libc::c_int; }
-pub type ALooper_callbackFunc = extern fn(libc::c_int, libc::c_int, *mut libc::c_void) -> libc::c_int;
+extern { pub fn ALooper_addFd(looper: *mut ALooper, fd: c_int, ident: c_int, events: c_int, callback: ALooper_callbackFunc, data: *mut c_void) -> c_int; }
+pub type ALooper_callbackFunc = extern fn(c_int, c_int, *mut c_void) -> c_int;
 extern { pub fn ALooper_forThread() -> *mut ALooper; }
-extern { pub fn ALooper_pollAll(timeoutMillis: libc::c_int, outFd: *mut libc::c_int, outEvents: *mut libc::c_int, outData: *mut *mut libc::c_void) -> libc::c_int; }
-extern { pub fn ALooper_pollOnce(timeoutMillis: libc::c_int, outFd: *mut libc::c_int, outEvents: *mut libc::c_int, outData: *mut *mut libc::c_void) -> libc::c_int; }
-extern { pub fn ALooper_prepare(opts: libc::c_int) -> *mut ALooper; }
+extern { pub fn ALooper_pollAll(timeoutMillis: c_int, outFd: *mut c_int, outEvents: *mut c_int, outData: *mut *mut c_void) -> c_int; }
+extern { pub fn ALooper_pollOnce(timeoutMillis: c_int, outFd: *mut c_int, outEvents: *mut c_int, outData: *mut *mut c_void) -> c_int; }
+extern { pub fn ALooper_prepare(opts: c_int) -> *mut ALooper; }
 extern { pub fn ALooper_release(looper: *mut ALooper); }
-extern { pub fn ALooper_removeFd(looper: *mut ALooper, fd: libc::c_int) -> libc::c_int; }
+extern { pub fn ALooper_removeFd(looper: *mut ALooper, fd: c_int) -> c_int; }
 extern { pub fn ALooper_wake(looper: *mut ALooper); }
 
 //
 //       android/native_activity.h
 //
-pub const ANATIVEACTIVITY_HIDE_SOFT_INPUT_IMPLICIT_ONLY: libc::int32_t = 1;
-pub const ANATIVEACTIVITY_HIDE_SOFT_INPUT_NOT_ALWAYS: libc::int32_t = 2;
-pub const ANATIVEACTIVITY_SHOW_SOFT_INPUT_FORCED: libc::int32_t = 2;
-pub const ANATIVEACTIVITY_SHOW_SOFT_INPUT_IMPLICIT: libc::int32_t = 1;
+pub const ANATIVEACTIVITY_HIDE_SOFT_INPUT_IMPLICIT_ONLY: i32 = 1;
+pub const ANATIVEACTIVITY_HIDE_SOFT_INPUT_NOT_ALWAYS: i32 = 2;
+pub const ANATIVEACTIVITY_SHOW_SOFT_INPUT_FORCED: i32 = 2;
+pub const ANATIVEACTIVITY_SHOW_SOFT_INPUT_IMPLICIT: i32 = 1;
 #[repr(C)]
 pub struct ANativeActivity {
      pub callbacks:             *mut ANativeActivityCallbacks,
      pub vm:                *mut JavaVM,
      pub env:               *mut JNIEnv,
      pub clazz:             jobject,
-     pub internalDataPath:              *const libc::c_char,
-     pub externalDataPath:              *const libc::c_char,
-     pub sdkVersion:                libc::int32_t,
-     pub instance:              *mut libc::c_void,
+     pub internalDataPath:              *const c_char,
+     pub externalDataPath:              *const c_char,
+     pub sdkVersion:                i32,
+     pub instance:              *mut c_void,
      pub assetManager:              *mut AAssetManager,
-     pub obbPath:               *const libc::c_char,
+     pub obbPath:               *const c_char,
 }
 #[repr(C)]
 pub struct ANativeActivityCallbacks {
      pub onStart:               extern fn(*mut ANativeActivity),
      pub onResume:              extern fn(*mut ANativeActivity),
-     pub onSaveInstanceState:               extern fn(*mut ANativeActivity, *mut libc::size_t) -> *mut libc::c_void,
+     pub onSaveInstanceState:               extern fn(*mut ANativeActivity, *mut usize) -> *mut c_void,
      pub onPause:               extern fn(*mut ANativeActivity),
      pub onStop:                extern fn(*mut ANativeActivity),
      pub onDestroy:             extern fn(*mut ANativeActivity),
-     pub onWindowFocusChanged:              extern fn(*mut ANativeActivity, libc::c_int),
+     pub onWindowFocusChanged:              extern fn(*mut ANativeActivity, c_int),
      pub onNativeWindowCreated:             extern fn(*mut ANativeActivity, *mut ANativeWindow),
      pub onNativeWindowResized:             extern fn(*mut ANativeActivity, *mut ANativeWindow),
      pub onNativeWindowRedrawNeeded:                extern fn(*mut ANativeActivity, *mut ANativeWindow),
@@ -823,12 +832,12 @@ pub struct ANativeActivityCallbacks {
      pub onConfigurationChanged:                extern fn(*mut ANativeActivity),
      pub onLowMemory:               extern fn(*mut ANativeActivity),
 }
-pub type ANativeActivity_createFunc = extern fn(*mut ANativeActivity, *mut libc::c_void, libc::size_t);
+pub type ANativeActivity_createFunc = extern fn(*mut ANativeActivity, *mut c_void, usize);
 extern { pub fn ANativeActivity_finish(activity: *mut ANativeActivity); }
-extern { pub fn ANativeActivity_hideSoftInput(activity: *mut ANativeActivity, flags: libc::uint32_t); }
-extern { pub fn ANativeActivity_setWindowFlags(activity: *mut ANativeActivity, addFlags: libc::uint32_t, removeFlags: libc::uint32_t); }
-extern { pub fn ANativeActivity_setWindowFormat(activity: *mut ANativeActivity, format: libc::int32_t); }
-extern { pub fn ANativeActivity_showSoftInput(activity: *mut ANativeActivity, flags: libc::uint32_t); }
+extern { pub fn ANativeActivity_hideSoftInput(activity: *mut ANativeActivity, flags: u32); }
+extern { pub fn ANativeActivity_setWindowFlags(activity: *mut ANativeActivity, addFlags: u32, removeFlags: u32); }
+extern { pub fn ANativeActivity_setWindowFormat(activity: *mut ANativeActivity, format: i32); }
+extern { pub fn ANativeActivity_showSoftInput(activity: *mut ANativeActivity, flags: u32); }
 
 //
 //       android/native_window.h
@@ -836,24 +845,24 @@ extern { pub fn ANativeActivity_showSoftInput(activity: *mut ANativeActivity, fl
 pub type ANativeWindow = ();
 #[repr(C)]
 pub struct ANativeWindow_Buffer {
-     pub width:             libc::int32_t,
-     pub height:                libc::int32_t,
-     pub stride:                libc::int32_t,
-     pub format:                libc::int32_t,
-     pub bits:              *mut libc::c_void,
-     pub reserved:              [libc::uint32_t; 5],
+     pub width:             i32,
+     pub height:                i32,
+     pub stride:                i32,
+     pub format:                i32,
+     pub bits:              *mut c_void,
+     pub reserved:              [u32; 5],
 }
 extern { pub fn ANativeWindow_acquire(window: *mut ANativeWindow); }
-extern { pub fn ANativeWindow_getFormat(window: *mut ANativeWindow) -> libc::int32_t; }
-extern { pub fn ANativeWindow_getHeight(window: *mut ANativeWindow) -> libc::int32_t; }
-extern { pub fn ANativeWindow_getWidth(window: *mut ANativeWindow) -> libc::int32_t; }
-extern { pub fn ANativeWindow_lock(window: *mut ANativeWindow, outBuffer: *mut ANativeWindow_Buffer, inOutDirtyBounds: *mut ARect) -> libc::int32_t; }
+extern { pub fn ANativeWindow_getFormat(window: *mut ANativeWindow) -> i32; }
+extern { pub fn ANativeWindow_getHeight(window: *mut ANativeWindow) -> i32; }
+extern { pub fn ANativeWindow_getWidth(window: *mut ANativeWindow) -> i32; }
+extern { pub fn ANativeWindow_lock(window: *mut ANativeWindow, outBuffer: *mut ANativeWindow_Buffer, inOutDirtyBounds: *mut ARect) -> i32; }
 extern { pub fn ANativeWindow_release(window: *mut ANativeWindow); }
-extern { pub fn ANativeWindow_setBuffersGeometry(window: *mut ANativeWindow, width: libc::int32_t, height: libc::int32_t, format: libc::int32_t) -> libc::int32_t; }
-extern { pub fn ANativeWindow_unlockAndPost(window: *mut ANativeWindow) -> libc::int32_t; }
-pub const WINDOW_FORMAT_RGBA_8888: libc::int32_t = 1;
-pub const WINDOW_FORMAT_RGBX_8888: libc::int32_t = 2;
-pub const WINDOW_FORMAT_RGB_565: libc::int32_t = 4;
+extern { pub fn ANativeWindow_setBuffersGeometry(window: *mut ANativeWindow, width: i32, height: i32, format: i32) -> i32; }
+extern { pub fn ANativeWindow_unlockAndPost(window: *mut ANativeWindow) -> i32; }
+pub const WINDOW_FORMAT_RGBA_8888: i32 = 1;
+pub const WINDOW_FORMAT_RGBX_8888: i32 = 2;
+pub const WINDOW_FORMAT_RGB_565: i32 = 4;
 
 //
 //       android/native_window_jni.h
@@ -863,95 +872,95 @@ extern { pub fn ANativeWindow_fromSurface(env: *mut JNIEnv, surface: jobject) ->
 //
 //       android/obb.h
 //
-pub const AOBBINFO_OVERLAY: libc::int32_t = 1;
+pub const AOBBINFO_OVERLAY: i32 = 1;
 pub type AObbInfo = ();
 extern { pub fn AObbInfo_delete(obbInfo: *mut AObbInfo); }
-extern { pub fn AObbInfo_getFlags(obbInfo: *mut AObbInfo) -> libc::int32_t; }
-extern { pub fn AObbInfo_getPackageName(obbInfo: *mut AObbInfo) -> *const libc::c_char; }
-extern { pub fn AObbInfo_getVersion(obbInfo: *mut AObbInfo) -> libc::int32_t; }
-extern { pub fn AObbScanner_getObbInfo(filename: *const libc::c_char) -> *mut AObbInfo; }
+extern { pub fn AObbInfo_getFlags(obbInfo: *mut AObbInfo) -> i32; }
+extern { pub fn AObbInfo_getPackageName(obbInfo: *mut AObbInfo) -> *const c_char; }
+extern { pub fn AObbInfo_getVersion(obbInfo: *mut AObbInfo) -> i32; }
+extern { pub fn AObbScanner_getObbInfo(filename: *const c_char) -> *mut AObbInfo; }
 
 //
 //       android/rect.h
 //
 #[repr(C)]
 pub struct ARect {
-     pub left:              libc::int32_t,
-     pub top:               libc::int32_t,
-     pub right:             libc::int32_t,
-     pub bottom:                libc::int32_t,
+     pub left:              i32,
+     pub top:               i32,
+     pub right:             i32,
+     pub bottom:                i32,
 }
-pub type value_type = libc::int32_t;
+pub type value_type = i32;
 
 //
 //       android/sensor.h
 //
 #[repr(C)]
 pub struct AHeartRateEvent {
-     pub bpm:               libc::c_float,
-     pub status:                libc::int8_t,
+     pub bpm:               c_float,
+     pub status:                i8,
 }
 #[repr(C)]
 pub struct AMetaDataEvent {
-     pub what:              libc::int32_t,
-     pub sensor:                libc::int32_t,
+     pub what:              i32,
+     pub sensor:                i32,
 }
-pub const AREPORTING_MODE_CONTINUOUS: libc::int32_t = 0;
-pub const AREPORTING_MODE_ONE_SHOT: libc::int32_t = 2;
-pub const AREPORTING_MODE_ON_CHANGE: libc::int32_t = 1;
-pub const AREPORTING_MODE_SPECIAL_TRIGGER: libc::int32_t = 3;
-pub const ASENSOR_STATUS_ACCURACY_HIGH: libc::int32_t = 3;
-pub const ASENSOR_STATUS_ACCURACY_LOW: libc::int32_t = 1;
-pub const ASENSOR_STATUS_ACCURACY_MEDIUM: libc::int32_t = 2;
-pub const ASENSOR_STATUS_NO_CONTACT: libc::int32_t = -1;
-pub const ASENSOR_STATUS_UNRELIABLE: libc::int32_t = 0;
-pub const ASENSOR_TYPE_ACCELEROMETER: libc::int32_t = 1;
-pub const ASENSOR_TYPE_GYROSCOPE: libc::int32_t = 4;
-pub const ASENSOR_TYPE_LIGHT: libc::int32_t = 5;
-pub const ASENSOR_TYPE_MAGNETIC_FIELD: libc::int32_t = 2;
-pub const ASENSOR_TYPE_PROXIMITY: libc::int32_t = 8;
+pub const AREPORTING_MODE_CONTINUOUS: i32 = 0;
+pub const AREPORTING_MODE_ONE_SHOT: i32 = 2;
+pub const AREPORTING_MODE_ON_CHANGE: i32 = 1;
+pub const AREPORTING_MODE_SPECIAL_TRIGGER: i32 = 3;
+pub const ASENSOR_STATUS_ACCURACY_HIGH: i32 = 3;
+pub const ASENSOR_STATUS_ACCURACY_LOW: i32 = 1;
+pub const ASENSOR_STATUS_ACCURACY_MEDIUM: i32 = 2;
+pub const ASENSOR_STATUS_NO_CONTACT: i32 = -1;
+pub const ASENSOR_STATUS_UNRELIABLE: i32 = 0;
+pub const ASENSOR_TYPE_ACCELEROMETER: i32 = 1;
+pub const ASENSOR_TYPE_GYROSCOPE: i32 = 4;
+pub const ASENSOR_TYPE_LIGHT: i32 = 5;
+pub const ASENSOR_TYPE_MAGNETIC_FIELD: i32 = 2;
+pub const ASENSOR_TYPE_PROXIMITY: i32 = 8;
 pub type ASensor = ();
 #[repr(C)]
 pub struct ASensorEvent {
-     pub version:           libc::int32_t,
-     pub sensor:            libc::int32_t,
-     pub xtype:             libc::int32_t,
-     pub reserved0:         libc::int32_t,
-     pub timestamp:         libc::int64_t,
-     pub data:              [libc::c_float; 16],
-     pub flags:             libc::uint32_t,
-     pub reserved1:         [libc::int32_t; 2],
+     pub version:           i32,
+     pub sensor:            i32,
+     pub xtype:             i32,
+     pub reserved0:         i32,
+     pub timestamp:         i64,
+     pub data:              [c_float; 16],
+     pub flags:             u32,
+     pub reserved1:         [i32; 2],
 }
 pub type ASensorEventQueue = ();
-extern { pub fn ASensorEventQueue_disableSensor(queue: *mut ASensorEventQueue, sensor: *const ASensor) -> libc::c_int; }
-extern { pub fn ASensorEventQueue_enableSensor(queue: *mut ASensorEventQueue, sensor: *const ASensor) -> libc::c_int; }
-extern { pub fn ASensorEventQueue_getEvents(queue: *mut ASensorEventQueue, events: *mut ASensorEvent, count: libc::size_t) -> libc::ssize_t; }
-extern { pub fn ASensorEventQueue_hasEvents(queue: *mut ASensorEventQueue) -> libc::c_int; }
-extern { pub fn ASensorEventQueue_setEventRate(queue: *mut ASensorEventQueue, sensor: *const ASensor, usec: libc::int32_t) -> libc::c_int; }
+extern { pub fn ASensorEventQueue_disableSensor(queue: *mut ASensorEventQueue, sensor: *const ASensor) -> c_int; }
+extern { pub fn ASensorEventQueue_enableSensor(queue: *mut ASensorEventQueue, sensor: *const ASensor) -> c_int; }
+extern { pub fn ASensorEventQueue_getEvents(queue: *mut ASensorEventQueue, events: *mut ASensorEvent, count: usize) -> isize; }
+extern { pub fn ASensorEventQueue_hasEvents(queue: *mut ASensorEventQueue) -> c_int; }
+extern { pub fn ASensorEventQueue_setEventRate(queue: *mut ASensorEventQueue, sensor: *const ASensor, usec: i32) -> c_int; }
 pub type ASensorList = *const ASensorRef;
 pub type ASensorManager = ();
-extern { pub fn ASensorManager_createEventQueue(manager: *mut ASensorManager, looper: *mut ALooper, ident: libc::c_int, callback: ALooper_callbackFunc, data: *mut libc::c_void) -> *mut ASensorEventQueue; }
-extern { pub fn ASensorManager_destroyEventQueue(manager: *mut ASensorManager, queue: *mut ASensorEventQueue) -> libc::c_int; }
-extern { pub fn ASensorManager_getDefaultSensor(manager: *mut ASensorManager, xtype: libc::c_int) -> *const ASensor; }
-extern { pub fn ASensorManager_getDefaultSensorEx(manager: *mut ASensorManager, xtype: libc::c_int, wakeUp: bool) -> *const ASensor; }
+extern { pub fn ASensorManager_createEventQueue(manager: *mut ASensorManager, looper: *mut ALooper, ident: c_int, callback: ALooper_callbackFunc, data: *mut c_void) -> *mut ASensorEventQueue; }
+extern { pub fn ASensorManager_destroyEventQueue(manager: *mut ASensorManager, queue: *mut ASensorEventQueue) -> c_int; }
+extern { pub fn ASensorManager_getDefaultSensor(manager: *mut ASensorManager, xtype: c_int) -> *const ASensor; }
+extern { pub fn ASensorManager_getDefaultSensorEx(manager: *mut ASensorManager, xtype: c_int, wakeUp: bool) -> *const ASensor; }
 extern { pub fn ASensorManager_getInstance() -> *mut ASensorManager; }
-extern { pub fn ASensorManager_getSensorList(manager: *mut ASensorManager, list: *mut ASensorList) -> libc::c_int; }
+extern { pub fn ASensorManager_getSensorList(manager: *mut ASensorManager, list: *mut ASensorList) -> c_int; }
 pub type ASensorRef = *const ASensor;
 #[repr(C)]
 pub struct ASensorVector {
      pub unnamed0:              [u8; 12],
-     pub status:                libc::int8_t,
-     pub reserved:              [libc::uint8_t; 2],
+     pub status:                i8,
+     pub reserved:              [u8; 2],
 }
-extern { pub fn ASensor_getFifoMaxEventCount(sensor: *const ASensor) -> libc::c_int; }
-extern { pub fn ASensor_getFifoReservedEventCount(sensor: *const ASensor) -> libc::c_int; }
-extern { pub fn ASensor_getMinDelay(sensor: *const ASensor) -> libc::c_int; }
-extern { pub fn ASensor_getName(sensor: *const ASensor) -> *const libc::c_char; }
-extern { pub fn ASensor_getReportingMode(sensor: *const ASensor) -> libc::c_int; }
-extern { pub fn ASensor_getResolution(sensor: *const ASensor) -> libc::c_float; }
-extern { pub fn ASensor_getStringType(sensor: *const ASensor) -> *const libc::c_char; }
-extern { pub fn ASensor_getType(sensor: *const ASensor) -> libc::c_int; }
-extern { pub fn ASensor_getVendor(sensor: *const ASensor) -> *const libc::c_char; }
+extern { pub fn ASensor_getFifoMaxEventCount(sensor: *const ASensor) -> c_int; }
+extern { pub fn ASensor_getFifoReservedEventCount(sensor: *const ASensor) -> c_int; }
+extern { pub fn ASensor_getMinDelay(sensor: *const ASensor) -> c_int; }
+extern { pub fn ASensor_getName(sensor: *const ASensor) -> *const c_char; }
+extern { pub fn ASensor_getReportingMode(sensor: *const ASensor) -> c_int; }
+extern { pub fn ASensor_getResolution(sensor: *const ASensor) -> c_float; }
+extern { pub fn ASensor_getStringType(sensor: *const ASensor) -> *const c_char; }
+extern { pub fn ASensor_getType(sensor: *const ASensor) -> c_int; }
+extern { pub fn ASensor_getVendor(sensor: *const ASensor) -> *const c_char; }
 extern { pub fn ASensor_isWakeUpSensor(sensor: *const ASensor) -> bool; }
 #[repr(C)]
 pub struct AUncalibratedEvent {
@@ -960,150 +969,150 @@ pub struct AUncalibratedEvent {
 }
 #[repr(C)]
 pub struct unknown_1714 {
-     pub x_uncalib:             libc::c_float,
-     pub y_uncalib:             libc::c_float,
-     pub z_uncalib:             libc::c_float,
+     pub x_uncalib:             c_float,
+     pub y_uncalib:             c_float,
+     pub z_uncalib:             c_float,
 }
 #[repr(C)]
 pub struct unknown_1717 {
-     pub x_bias:                libc::c_float,
-     pub y_bias:                libc::c_float,
-     pub z_bias:                libc::c_float,
+     pub x_bias:                c_float,
+     pub y_bias:                c_float,
+     pub z_bias:                c_float,
 }
 #[repr(C)]
 pub struct unknown_1758 {
-     pub x:             libc::c_float,
-     pub y:             libc::c_float,
-     pub z:             libc::c_float,
+     pub x:             c_float,
+     pub y:             c_float,
+     pub z:             c_float,
 }
 #[repr(C)]
 pub struct unknown_1759 {
-     pub azimuth:               libc::c_float,
-     pub pitch:             libc::c_float,
-     pub roll:              libc::c_float,
+     pub azimuth:               c_float,
+     pub pitch:             c_float,
+     pub roll:              c_float,
 }
 
 //
 //       android/storage_manager.h
 //
-pub const AOBB_STATE_ERROR_ALREADY_MOUNTED: libc::int32_t = 24;
-pub const AOBB_STATE_ERROR_COULD_NOT_MOUNT: libc::int32_t = 21;
-pub const AOBB_STATE_ERROR_COULD_NOT_UNMOUNT: libc::int32_t = 22;
-pub const AOBB_STATE_ERROR_INTERNAL: libc::int32_t = 20;
-pub const AOBB_STATE_ERROR_NOT_MOUNTED: libc::int32_t = 23;
-pub const AOBB_STATE_ERROR_PERMISSION_DENIED: libc::int32_t = 25;
-pub const AOBB_STATE_MOUNTED: libc::int32_t = 1;
-pub const AOBB_STATE_UNMOUNTED: libc::int32_t = 2;
+pub const AOBB_STATE_ERROR_ALREADY_MOUNTED: i32 = 24;
+pub const AOBB_STATE_ERROR_COULD_NOT_MOUNT: i32 = 21;
+pub const AOBB_STATE_ERROR_COULD_NOT_UNMOUNT: i32 = 22;
+pub const AOBB_STATE_ERROR_INTERNAL: i32 = 20;
+pub const AOBB_STATE_ERROR_NOT_MOUNTED: i32 = 23;
+pub const AOBB_STATE_ERROR_PERMISSION_DENIED: i32 = 25;
+pub const AOBB_STATE_MOUNTED: i32 = 1;
+pub const AOBB_STATE_UNMOUNTED: i32 = 2;
 pub type AStorageManager = ();
 extern { pub fn AStorageManager_delete(mgr: *mut AStorageManager); }
-extern { pub fn AStorageManager_getMountedObbPath(mgr: *mut AStorageManager, filename: *const libc::c_char) -> *const libc::c_char; }
-extern { pub fn AStorageManager_isObbMounted(mgr: *mut AStorageManager, filename: *const libc::c_char) -> libc::c_int; }
-extern { pub fn AStorageManager_mountObb(mgr: *mut AStorageManager, filename: *const libc::c_char, key: *const libc::c_char, cb: AStorageManager_obbCallbackFunc, data: *mut libc::c_void); }
+extern { pub fn AStorageManager_getMountedObbPath(mgr: *mut AStorageManager, filename: *const c_char) -> *const c_char; }
+extern { pub fn AStorageManager_isObbMounted(mgr: *mut AStorageManager, filename: *const c_char) -> c_int; }
+extern { pub fn AStorageManager_mountObb(mgr: *mut AStorageManager, filename: *const c_char, key: *const c_char, cb: AStorageManager_obbCallbackFunc, data: *mut c_void); }
 extern { pub fn AStorageManager_new() -> *mut AStorageManager; }
-pub type AStorageManager_obbCallbackFunc = extern fn(*const libc::c_char, libc::int32_t, *mut libc::c_void);
-extern { pub fn AStorageManager_unmountObb(mgr: *mut AStorageManager, filename: *const libc::c_char, force: libc::c_int, cb: AStorageManager_obbCallbackFunc, data: *mut libc::c_void); }
+pub type AStorageManager_obbCallbackFunc = extern fn(*const c_char, i32, *mut c_void);
+extern { pub fn AStorageManager_unmountObb(mgr: *mut AStorageManager, filename: *const c_char, force: c_int, cb: AStorageManager_obbCallbackFunc, data: *mut c_void); }
 
 //
 //       android/tts.h
 //
-pub const ANDROID_TTS_AUDIO_FORMAT_DEFAULT: libc::int32_t = 0;
-pub const ANDROID_TTS_AUDIO_FORMAT_INVALID: libc::int32_t = -1;
-pub const ANDROID_TTS_AUDIO_FORMAT_PCM_16_BIT: libc::int32_t = 1;
-pub const ANDROID_TTS_AUDIO_FORMAT_PCM_8_BIT: libc::int32_t = 2;
-pub const ANDROID_TTS_CALLBACK_CONTINUE: libc::int32_t = 1;
-pub const ANDROID_TTS_CALLBACK_HALT: libc::int32_t = 0;
-pub const ANDROID_TTS_FAILURE: libc::int32_t = -1;
-pub const ANDROID_TTS_FEATURE_UNSUPPORTED: libc::int32_t = -2;
-pub const ANDROID_TTS_LANG_AVAILABLE: libc::int32_t = 0;
-pub const ANDROID_TTS_LANG_COUNTRY_AVAILABLE: libc::int32_t = 1;
-pub const ANDROID_TTS_LANG_COUNTRY_VAR_AVAILABLE: libc::int32_t = 2;
-pub const ANDROID_TTS_LANG_MISSING_DATA: libc::int32_t = -1;
-pub const ANDROID_TTS_LANG_NOT_SUPPORTED: libc::int32_t = -2;
-pub const ANDROID_TTS_MISSING_RESOURCES: libc::int32_t = -6;
-pub const ANDROID_TTS_PROPERTY_SIZE_TOO_SMALL: libc::int32_t = -5;
-pub const ANDROID_TTS_PROPERTY_UNSUPPORTED: libc::int32_t = -4;
-pub const ANDROID_TTS_SUCCESS: libc::int32_t = 0;
-pub const ANDROID_TTS_SYNTH_DONE: libc::int32_t = 0;
-pub const ANDROID_TTS_SYNTH_PENDING: libc::int32_t = 1;
-pub const ANDROID_TTS_VALUE_INVALID: libc::int32_t = -3;
+pub const ANDROID_TTS_AUDIO_FORMAT_DEFAULT: i32 = 0;
+pub const ANDROID_TTS_AUDIO_FORMAT_INVALID: i32 = -1;
+pub const ANDROID_TTS_AUDIO_FORMAT_PCM_16_BIT: i32 = 1;
+pub const ANDROID_TTS_AUDIO_FORMAT_PCM_8_BIT: i32 = 2;
+pub const ANDROID_TTS_CALLBACK_CONTINUE: i32 = 1;
+pub const ANDROID_TTS_CALLBACK_HALT: i32 = 0;
+pub const ANDROID_TTS_FAILURE: i32 = -1;
+pub const ANDROID_TTS_FEATURE_UNSUPPORTED: i32 = -2;
+pub const ANDROID_TTS_LANG_AVAILABLE: i32 = 0;
+pub const ANDROID_TTS_LANG_COUNTRY_AVAILABLE: i32 = 1;
+pub const ANDROID_TTS_LANG_COUNTRY_VAR_AVAILABLE: i32 = 2;
+pub const ANDROID_TTS_LANG_MISSING_DATA: i32 = -1;
+pub const ANDROID_TTS_LANG_NOT_SUPPORTED: i32 = -2;
+pub const ANDROID_TTS_MISSING_RESOURCES: i32 = -6;
+pub const ANDROID_TTS_PROPERTY_SIZE_TOO_SMALL: i32 = -5;
+pub const ANDROID_TTS_PROPERTY_UNSUPPORTED: i32 = -4;
+pub const ANDROID_TTS_SUCCESS: i32 = 0;
+pub const ANDROID_TTS_SYNTH_DONE: i32 = 0;
+pub const ANDROID_TTS_SYNTH_PENDING: i32 = 1;
+pub const ANDROID_TTS_VALUE_INVALID: i32 = -3;
 extern { pub fn android_getTtsEngine() -> *mut android_tts_engine_t; }
 #[repr(C)]
 pub struct android_tts_engine_funcs_t {
-     pub reserved:              *mut libc::c_void,
-     pub init:              extern fn(*mut libc::c_void, android_tts_synth_cb_t, *const libc::c_char) -> i32,
-     pub shutdown:              extern fn(*mut libc::c_void) -> i32,
-     pub stop:              extern fn(*mut libc::c_void) -> i32,
-     pub isLanguageAvailable:               extern fn(*mut libc::c_void, *const libc::c_char, *const libc::c_char, *const libc::c_char) -> i32,
-     pub loadLanguage:              extern fn(*mut libc::c_void, *const libc::c_char, *const libc::c_char, *const libc::c_char) -> i32,
-     pub setLanguage:               extern fn(*mut libc::c_void, *const libc::c_char, *const libc::c_char, *const libc::c_char) -> i32,
-     pub getLanguage:               extern fn(*mut libc::c_void, *mut libc::c_char, *mut libc::c_char, *mut libc::c_char) -> i32,
-     pub setAudioFormat:                extern fn(*mut libc::c_void, *mut i32, *mut libc::uint32_t, *mut libc::c_int) -> i32,
-     pub setProperty:               extern fn(*mut libc::c_void, *const libc::c_char, *const libc::c_char, libc::size_t) -> i32,
-     pub getProperty:               extern fn(*mut libc::c_void, *const libc::c_char, *mut libc::c_char, *mut libc::size_t) -> i32,
-     pub synthesizeText:                extern fn(*mut libc::c_void, *const libc::c_char, *mut libc::int8_t, libc::size_t, *mut libc::c_void) -> i32,
+     pub reserved:              *mut c_void,
+     pub init:              extern fn(*mut c_void, android_tts_synth_cb_t, *const c_char) -> i32,
+     pub shutdown:              extern fn(*mut c_void) -> i32,
+     pub stop:              extern fn(*mut c_void) -> i32,
+     pub isLanguageAvailable:               extern fn(*mut c_void, *const c_char, *const c_char, *const c_char) -> i32,
+     pub loadLanguage:              extern fn(*mut c_void, *const c_char, *const c_char, *const c_char) -> i32,
+     pub setLanguage:               extern fn(*mut c_void, *const c_char, *const c_char, *const c_char) -> i32,
+     pub getLanguage:               extern fn(*mut c_void, *mut c_char, *mut c_char, *mut c_char) -> i32,
+     pub setAudioFormat:                extern fn(*mut c_void, *mut i32, *mut u32, *mut c_int) -> i32,
+     pub setProperty:               extern fn(*mut c_void, *const c_char, *const c_char, usize) -> i32,
+     pub getProperty:               extern fn(*mut c_void, *const c_char, *mut c_char, *mut usize) -> i32,
+     pub synthesizeText:                extern fn(*mut c_void, *const c_char, *mut i8, usize, *mut c_void) -> i32,
 }
 #[repr(C)]
 pub struct android_tts_engine_t {
      pub funcs:             *mut android_tts_engine_funcs_t,
 }
-pub type android_tts_synth_cb_t = extern fn(*mut *mut libc::c_void, libc::uint32_t, i32, libc::c_int, *mut *mut libc::int8_t, *mut libc::size_t, i32) -> i32;
+pub type android_tts_synth_cb_t = extern fn(*mut *mut c_void, u32, i32, c_int, *mut *mut i8, *mut usize, i32) -> i32;
 extern { pub fn getTtsEngine() -> *mut android_tts_engine_t; }
 
 //
 //       android/window.h
 //
-pub const AWINDOW_FLAG_ALLOW_LOCK_WHILE_SCREEN_ON: libc::int32_t = 1;
-pub const AWINDOW_FLAG_ALT_FOCUSABLE_IM: libc::int32_t = 131072;
-pub const AWINDOW_FLAG_BLUR_BEHIND: libc::int32_t = 4;
-pub const AWINDOW_FLAG_DIM_BEHIND: libc::int32_t = 2;
-pub const AWINDOW_FLAG_DISMISS_KEYGUARD: libc::int32_t = 4194304;
-pub const AWINDOW_FLAG_DITHER: libc::int32_t = 4096;
-pub const AWINDOW_FLAG_FORCE_NOT_FULLSCREEN: libc::int32_t = 2048;
-pub const AWINDOW_FLAG_FULLSCREEN: libc::int32_t = 1024;
-pub const AWINDOW_FLAG_IGNORE_CHEEK_PRESSES: libc::int32_t = 32768;
-pub const AWINDOW_FLAG_KEEP_SCREEN_ON: libc::int32_t = 128;
-pub const AWINDOW_FLAG_LAYOUT_INSET_DECOR: libc::int32_t = 65536;
-pub const AWINDOW_FLAG_LAYOUT_IN_SCREEN: libc::int32_t = 256;
-pub const AWINDOW_FLAG_LAYOUT_NO_LIMITS: libc::int32_t = 512;
-pub const AWINDOW_FLAG_NOT_FOCUSABLE: libc::int32_t = 8;
-pub const AWINDOW_FLAG_NOT_TOUCHABLE: libc::int32_t = 16;
-pub const AWINDOW_FLAG_NOT_TOUCH_MODAL: libc::int32_t = 32;
-pub const AWINDOW_FLAG_SCALED: libc::int32_t = 16384;
-pub const AWINDOW_FLAG_SECURE: libc::int32_t = 8192;
-pub const AWINDOW_FLAG_SHOW_WALLPAPER: libc::int32_t = 1048576;
-pub const AWINDOW_FLAG_SHOW_WHEN_LOCKED: libc::int32_t = 524288;
-pub const AWINDOW_FLAG_TOUCHABLE_WHEN_WAKING: libc::int32_t = 64;
-pub const AWINDOW_FLAG_TURN_SCREEN_ON: libc::int32_t = 2097152;
-pub const AWINDOW_FLAG_WATCH_OUTSIDE_TOUCH: libc::int32_t = 262144;
+pub const AWINDOW_FLAG_ALLOW_LOCK_WHILE_SCREEN_ON: i32 = 1;
+pub const AWINDOW_FLAG_ALT_FOCUSABLE_IM: i32 = 131072;
+pub const AWINDOW_FLAG_BLUR_BEHIND: i32 = 4;
+pub const AWINDOW_FLAG_DIM_BEHIND: i32 = 2;
+pub const AWINDOW_FLAG_DISMISS_KEYGUARD: i32 = 4194304;
+pub const AWINDOW_FLAG_DITHER: i32 = 4096;
+pub const AWINDOW_FLAG_FORCE_NOT_FULLSCREEN: i32 = 2048;
+pub const AWINDOW_FLAG_FULLSCREEN: i32 = 1024;
+pub const AWINDOW_FLAG_IGNORE_CHEEK_PRESSES: i32 = 32768;
+pub const AWINDOW_FLAG_KEEP_SCREEN_ON: i32 = 128;
+pub const AWINDOW_FLAG_LAYOUT_INSET_DECOR: i32 = 65536;
+pub const AWINDOW_FLAG_LAYOUT_IN_SCREEN: i32 = 256;
+pub const AWINDOW_FLAG_LAYOUT_NO_LIMITS: i32 = 512;
+pub const AWINDOW_FLAG_NOT_FOCUSABLE: i32 = 8;
+pub const AWINDOW_FLAG_NOT_TOUCHABLE: i32 = 16;
+pub const AWINDOW_FLAG_NOT_TOUCH_MODAL: i32 = 32;
+pub const AWINDOW_FLAG_SCALED: i32 = 16384;
+pub const AWINDOW_FLAG_SECURE: i32 = 8192;
+pub const AWINDOW_FLAG_SHOW_WALLPAPER: i32 = 1048576;
+pub const AWINDOW_FLAG_SHOW_WHEN_LOCKED: i32 = 524288;
+pub const AWINDOW_FLAG_TOUCHABLE_WHEN_WAKING: i32 = 64;
+pub const AWINDOW_FLAG_TURN_SCREEN_ON: i32 = 2097152;
+pub const AWINDOW_FLAG_WATCH_OUTSIDE_TOUCH: i32 = 262144;
 
 //
 //       jni.h
 //
 pub type C_JNIEnv = *const JNINativeInterface;
 pub type JNIEnv = _JNIEnv;
-pub const JNIGlobalRefType: libc::int32_t = 2;
-pub const JNIInvalidRefType: libc::int32_t = 0;
+pub const JNIGlobalRefType: i32 = 2;
+pub const JNIInvalidRefType: i32 = 0;
 #[repr(C)]
 pub struct JNIInvokeInterface {
-     pub reserved0:             *mut libc::c_void,
-     pub reserved1:             *mut libc::c_void,
-     pub reserved2:             *mut libc::c_void,
+     pub reserved0:             *mut c_void,
+     pub reserved1:             *mut c_void,
+     pub reserved2:             *mut c_void,
      pub DestroyJavaVM:             extern fn(*mut JavaVM) -> jint,
-     pub AttachCurrentThread:               extern fn(*mut JavaVM, *mut *mut JNIEnv, *mut libc::c_void) -> jint,
+     pub AttachCurrentThread:               extern fn(*mut JavaVM, *mut *mut JNIEnv, *mut c_void) -> jint,
      pub DetachCurrentThread:               extern fn(*mut JavaVM) -> jint,
-     pub GetEnv:                extern fn(*mut JavaVM, *mut *mut libc::c_void, jint) -> jint,
-     pub AttachCurrentThreadAsDaemon:               extern fn(*mut JavaVM, *mut *mut JNIEnv, *mut libc::c_void) -> jint,
+     pub GetEnv:                extern fn(*mut JavaVM, *mut *mut c_void, jint) -> jint,
+     pub AttachCurrentThreadAsDaemon:               extern fn(*mut JavaVM, *mut *mut JNIEnv, *mut c_void) -> jint,
 }
-pub const JNILocalRefType: libc::int32_t = 1;
+pub const JNILocalRefType: i32 = 1;
 #[repr(C)]
 pub struct JNINativeInterface {
-     pub reserved0:             *mut libc::c_void,
-     pub reserved1:             *mut libc::c_void,
-     pub reserved2:             *mut libc::c_void,
-     pub reserved3:             *mut libc::c_void,
+     pub reserved0:             *mut c_void,
+     pub reserved1:             *mut c_void,
+     pub reserved2:             *mut c_void,
+     pub reserved3:             *mut c_void,
      pub GetVersion:                extern fn(*mut JNIEnv) -> jint,
-     pub DefineClass:               extern fn(*mut JNIEnv, *const libc::c_char, jobject, *const jbyte, jsize) -> jclass,
-     pub FindClass:             extern fn(*mut JNIEnv, *const libc::c_char) -> jclass,
+     pub DefineClass:               extern fn(*mut JNIEnv, *const c_char, jobject, *const jbyte, jsize) -> jclass,
+     pub FindClass:             extern fn(*mut JNIEnv, *const c_char) -> jclass,
      pub FromReflectedMethod:               extern fn(*mut JNIEnv, jobject) -> jmethodID,
      pub FromReflectedField:                extern fn(*mut JNIEnv, jobject) -> jfieldID,
      pub ToReflectedMethod:             extern fn(*mut JNIEnv, jclass, jmethodID, jboolean) -> jobject,
@@ -1111,11 +1120,11 @@ pub struct JNINativeInterface {
      pub IsAssignableFrom:              extern fn(*mut JNIEnv, jclass, jclass) -> jboolean,
      pub ToReflectedField:              extern fn(*mut JNIEnv, jclass, jfieldID, jboolean) -> jobject,
      pub Throw:             extern fn(*mut JNIEnv, jthrowable) -> jint,
-     pub ThrowNew:              extern fn(*mut JNIEnv, jclass, *const libc::c_char) -> jint,
+     pub ThrowNew:              extern fn(*mut JNIEnv, jclass, *const c_char) -> jint,
      pub ExceptionOccurred:             extern fn(*mut JNIEnv) -> jthrowable,
      pub ExceptionDescribe:             extern fn(*mut JNIEnv),
      pub ExceptionClear:                extern fn(*mut JNIEnv),
-     pub FatalError:                extern fn(*mut JNIEnv, *const libc::c_char),
+     pub FatalError:                extern fn(*mut JNIEnv, *const c_char),
      pub PushLocalFrame:                extern fn(*mut JNIEnv, jint) -> jint,
      pub PopLocalFrame:             extern fn(*mut JNIEnv, jobject) -> jobject,
      pub NewGlobalRef:              extern fn(*mut JNIEnv, jobject) -> jobject,
@@ -1130,7 +1139,7 @@ pub struct JNINativeInterface {
      pub NewObjectA:                extern fn(*mut JNIEnv, jclass, jmethodID, *mut jvalue) -> jobject,
      pub GetObjectClass:                extern fn(*mut JNIEnv, jobject) -> jclass,
      pub IsInstanceOf:              extern fn(*mut JNIEnv, jobject, jclass) -> jboolean,
-     pub GetMethodID:               extern fn(*mut JNIEnv, jclass, *const libc::c_char, *const libc::c_char) -> jmethodID,
+     pub GetMethodID:               extern fn(*mut JNIEnv, jclass, *const c_char, *const c_char) -> jmethodID,
      pub CallObjectMethod:              extern fn(*mut JNIEnv, jobject, jmethodID, ...) -> jobject,
      pub CallObjectMethodV:             extern fn(*mut JNIEnv, jobject, jmethodID, *mut __va_list_tag) -> jobject,
      pub CallObjectMethodA:             extern fn(*mut JNIEnv, jobject, jmethodID, *mut jvalue) -> jobject,
@@ -1191,7 +1200,7 @@ pub struct JNINativeInterface {
      pub CallNonvirtualVoidMethod:              extern fn(*mut JNIEnv, jobject, jclass, jmethodID, ...),
      pub CallNonvirtualVoidMethodV:             extern fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut __va_list_tag),
      pub CallNonvirtualVoidMethodA:             extern fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut jvalue),
-     pub GetFieldID:                extern fn(*mut JNIEnv, jclass, *const libc::c_char, *const libc::c_char) -> jfieldID,
+     pub GetFieldID:                extern fn(*mut JNIEnv, jclass, *const c_char, *const c_char) -> jfieldID,
      pub GetObjectField:                extern fn(*mut JNIEnv, jobject, jfieldID) -> jobject,
      pub GetBooleanField:               extern fn(*mut JNIEnv, jobject, jfieldID) -> jboolean,
      pub GetByteField:              extern fn(*mut JNIEnv, jobject, jfieldID) -> jbyte,
@@ -1210,7 +1219,7 @@ pub struct JNINativeInterface {
      pub SetLongField:              extern fn(*mut JNIEnv, jobject, jfieldID, jlong),
      pub SetFloatField:             extern fn(*mut JNIEnv, jobject, jfieldID, jfloat),
      pub SetDoubleField:                extern fn(*mut JNIEnv, jobject, jfieldID, jdouble),
-     pub GetStaticMethodID:             extern fn(*mut JNIEnv, jclass, *const libc::c_char, *const libc::c_char) -> jmethodID,
+     pub GetStaticMethodID:             extern fn(*mut JNIEnv, jclass, *const c_char, *const c_char) -> jmethodID,
      pub CallStaticObjectMethod:                extern fn(*mut JNIEnv, jclass, jmethodID, ...) -> jobject,
      pub CallStaticObjectMethodV:               extern fn(*mut JNIEnv, jclass, jmethodID, *mut __va_list_tag) -> jobject,
      pub CallStaticObjectMethodA:               extern fn(*mut JNIEnv, jclass, jmethodID, *mut jvalue) -> jobject,
@@ -1241,7 +1250,7 @@ pub struct JNINativeInterface {
      pub CallStaticVoidMethod:              extern fn(*mut JNIEnv, jclass, jmethodID, ...),
      pub CallStaticVoidMethodV:             extern fn(*mut JNIEnv, jclass, jmethodID, *mut __va_list_tag),
      pub CallStaticVoidMethodA:             extern fn(*mut JNIEnv, jclass, jmethodID, *mut jvalue),
-     pub GetStaticFieldID:              extern fn(*mut JNIEnv, jclass, *const libc::c_char, *const libc::c_char) -> jfieldID,
+     pub GetStaticFieldID:              extern fn(*mut JNIEnv, jclass, *const c_char, *const c_char) -> jfieldID,
      pub GetStaticObjectField:              extern fn(*mut JNIEnv, jclass, jfieldID) -> jobject,
      pub GetStaticBooleanField:             extern fn(*mut JNIEnv, jclass, jfieldID) -> jboolean,
      pub GetStaticByteField:                extern fn(*mut JNIEnv, jclass, jfieldID) -> jbyte,
@@ -1264,10 +1273,10 @@ pub struct JNINativeInterface {
      pub GetStringLength:               extern fn(*mut JNIEnv, jstring) -> jsize,
      pub GetStringChars:                extern fn(*mut JNIEnv, jstring, *mut jboolean) -> *const jchar,
      pub ReleaseStringChars:                extern fn(*mut JNIEnv, jstring, *const jchar),
-     pub NewStringUTF:              extern fn(*mut JNIEnv, *const libc::c_char) -> jstring,
+     pub NewStringUTF:              extern fn(*mut JNIEnv, *const c_char) -> jstring,
      pub GetStringUTFLength:                extern fn(*mut JNIEnv, jstring) -> jsize,
-     pub GetStringUTFChars:             extern fn(*mut JNIEnv, jstring, *mut jboolean) -> *const libc::c_char,
-     pub ReleaseStringUTFChars:             extern fn(*mut JNIEnv, jstring, *const libc::c_char),
+     pub GetStringUTFChars:             extern fn(*mut JNIEnv, jstring, *mut jboolean) -> *const c_char,
+     pub ReleaseStringUTFChars:             extern fn(*mut JNIEnv, jstring, *const c_char),
      pub GetArrayLength:                extern fn(*mut JNIEnv, jarray) -> jsize,
      pub NewObjectArray:                extern fn(*mut JNIEnv, jsize, jclass, jobject) -> jobjectArray,
      pub GetObjectArrayElement:             extern fn(*mut JNIEnv, jobjectArray, jsize) -> jobject,
@@ -1318,33 +1327,33 @@ pub struct JNINativeInterface {
      pub MonitorExit:               extern fn(*mut JNIEnv, jobject) -> jint,
      pub GetJavaVM:             extern fn(*mut JNIEnv, *mut *mut JavaVM) -> jint,
      pub GetStringRegion:               extern fn(*mut JNIEnv, jstring, jsize, jsize, *mut jchar),
-     pub GetStringUTFRegion:                extern fn(*mut JNIEnv, jstring, jsize, jsize, *mut libc::c_char),
-     pub GetPrimitiveArrayCritical:             extern fn(*mut JNIEnv, jarray, *mut jboolean) -> *mut libc::c_void,
-     pub ReleasePrimitiveArrayCritical:             extern fn(*mut JNIEnv, jarray, *mut libc::c_void, jint),
+     pub GetStringUTFRegion:                extern fn(*mut JNIEnv, jstring, jsize, jsize, *mut c_char),
+     pub GetPrimitiveArrayCritical:             extern fn(*mut JNIEnv, jarray, *mut jboolean) -> *mut c_void,
+     pub ReleasePrimitiveArrayCritical:             extern fn(*mut JNIEnv, jarray, *mut c_void, jint),
      pub GetStringCritical:             extern fn(*mut JNIEnv, jstring, *mut jboolean) -> *const jchar,
      pub ReleaseStringCritical:             extern fn(*mut JNIEnv, jstring, *const jchar),
      pub NewWeakGlobalRef:              extern fn(*mut JNIEnv, jobject) -> jweak,
      pub DeleteWeakGlobalRef:               extern fn(*mut JNIEnv, jweak),
      pub ExceptionCheck:                extern fn(*mut JNIEnv) -> jboolean,
-     pub NewDirectByteBuffer:               extern fn(*mut JNIEnv, *mut libc::c_void, jlong) -> jobject,
-     pub GetDirectBufferAddress:                extern fn(*mut JNIEnv, jobject) -> *mut libc::c_void,
+     pub NewDirectByteBuffer:               extern fn(*mut JNIEnv, *mut c_void, jlong) -> jobject,
+     pub GetDirectBufferAddress:                extern fn(*mut JNIEnv, jobject) -> *mut c_void,
      pub GetDirectBufferCapacity:               extern fn(*mut JNIEnv, jobject) -> jlong,
      pub GetObjectRefType:              extern fn(*mut JNIEnv, jobject) -> jobjectRefType,
 }
 #[repr(C)]
 pub struct JNINativeMethod {
-     pub name:              *const libc::c_char,
-     pub signature:             *const libc::c_char,
-     pub fnPtr:             *mut libc::c_void,
+     pub name:              *const c_char,
+     pub signature:             *const c_char,
+     pub fnPtr:             *mut c_void,
 }
-pub const JNIWeakGlobalRefType: libc::int32_t = 3;
-extern { pub fn JNI_OnLoad(vm: *mut JavaVM, reserved: *mut libc::c_void) -> jint; }
-extern { pub fn JNI_OnUnload(vm: *mut JavaVM, reserved: *mut libc::c_void); }
+pub const JNIWeakGlobalRefType: i32 = 3;
+extern { pub fn JNI_OnLoad(vm: *mut JavaVM, reserved: *mut c_void) -> jint; }
+extern { pub fn JNI_OnUnload(vm: *mut JavaVM, reserved: *mut c_void); }
 pub type JavaVM = _JavaVM;
 #[repr(C)]
 pub struct JavaVMAttachArgs {
      pub version:               jint,
-     pub name:              *const libc::c_char,
+     pub name:              *const c_char,
      pub group:             jobject,
 }
 #[repr(C)]
@@ -1356,8 +1365,8 @@ pub struct JavaVMInitArgs {
 }
 #[repr(C)]
 pub struct JavaVMOption {
-     pub optionString:              *const libc::c_char,
-     pub extraInfo:             *mut libc::c_void,
+     pub optionString:              *const c_char,
+     pub extraInfo:             *mut c_void,
 }
 #[repr(C)]
 pub struct _JNIEnv {
@@ -1398,27 +1407,27 @@ pub type class__jstring = ();
 // CLASS
 pub type class__jthrowable = ();
 pub type jarray = *mut class__jarray;
-pub type jboolean = libc::c_uchar;
+pub type jboolean = c_uchar;
 pub type jbooleanArray = *mut class__jbooleanArray;
-pub type jbyte = libc::c_schar;
+pub type jbyte = c_schar;
 pub type jbyteArray = *mut class__jbyteArray;
-pub type jchar = libc::c_ushort;
+pub type jchar = c_ushort;
 pub type jcharArray = *mut class__jcharArray;
 pub type jclass = *mut class__jclass;
-pub type jdouble = libc::c_double;
+pub type jdouble = c_double;
 pub type jdoubleArray = *mut class__jdoubleArray;
 pub type jfieldID = *mut _jfieldID;
-pub type jfloat = libc::c_float;
+pub type jfloat = c_float;
 pub type jfloatArray = *mut class__jfloatArray;
-pub type jint = libc::c_int;
+pub type jint = c_int;
 pub type jintArray = *mut class__jintArray;
-pub type jlong = libc::c_longlong;
+pub type jlong = c_longlong;
 pub type jlongArray = *mut class__jlongArray;
 pub type jmethodID = *mut _jmethodID;
 pub type jobject = *mut class__jobject;
 pub type jobjectArray = *mut class__jobjectArray;
 pub type jobjectRefType = i32;
-pub type jshort = libc::c_short;
+pub type jshort = c_short;
 pub type jshortArray = *mut class__jshortArray;
 pub type jsize = jint;
 pub type jstring = *mut class__jstring;
