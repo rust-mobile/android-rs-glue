@@ -6,6 +6,8 @@ use std::cell::{Cell};
 use std::ffi::{CString};
 use std::mem;
 use std::os::raw::c_void;
+use std::os::raw::c_int;
+use std::os::raw::c_long;
 use std::ptr;
 use std::sync::mpsc::{Sender, Receiver, TryRecvError, channel};
 use std::sync::Mutex;
@@ -13,6 +15,15 @@ use std::thread;
 use std::slice;
 use std::sync::atomic::{AtomicUsize, AtomicBool, Ordering};
 use std::io::Write;
+
+pub type pthread_t = c_long;
+pub type pthread_mutexattr_t = c_long;
+pub type pthread_attr_t = c_void;       // FIXME: wrong
+
+extern {
+    fn pthread_create(_: *mut pthread_t, _: *const pthread_attr_t,
+                      _: extern fn(*mut c_void) -> *mut c_void, _: *mut c_void) -> c_int;
+}
 
 #[doc(hidden)]
 pub mod ffi;
@@ -147,12 +158,10 @@ pub fn get_app<'a>() -> &'a mut ffi::android_app {
 pub fn android_main2<F>(app: *mut (), main_function: F)
     where F: FnOnce(), F: 'static, F: Send
 {
-    use std::{mem, ptr};
-
     write_log("Entering android_main");
 
-    unsafe { ANDROID_APP = std::mem::transmute(app) };
-    let app: &mut ffi::android_app = unsafe { std::mem::transmute(app) };
+    unsafe { ANDROID_APP = mem::transmute(app) };
+    let app: &mut ffi::android_app = unsafe { mem::transmute(app) };
 
     // creating the context that will be passed to the callback
     let context = Context {
@@ -181,7 +190,7 @@ pub fn android_main2<F>(app: *mut (), main_function: F)
     if terminated.1 {
         // A little debug message for helping to diagnose problems in your
         // main thread.
-        write_log("abnormal exit of main application thread detected");
+        write_log("Abnormal exit of main application thread detected");
     }
 
     // If the thread is still alive we will continue as normal, but we will NOT
@@ -190,24 +199,38 @@ pub fn android_main2<F>(app: *mut (), main_function: F)
     // and will result in the entire process being terminated for being unresponsive
     // which is likely the least desired behavior.
     if terminated.0 {
-        let (mtx, mrx) = channel::<()>();
+        write_log("Creating application thread");
 
-        // executing the main function in parallel
-        thread::spawn(move || {
-            std::io::set_print(Box::new(ToLogWriter::new()));
-            std::io::set_panic(Box::new(ToLogWriter::new()));
-            main_function();
-            mtx.send(()).unwrap();
-        });
+        let main_function = Box::into_raw(Box::new(main_function));
+
+        extern fn main_thread<F>(main_function: *mut c_void) -> *mut c_void
+            where F: FnOnce() + 'static + Send
+        {
+            unsafe {
+                let main_function: Box<F> = Box::from_raw(main_function as *mut _);
+                std::io::set_print(Box::new(ToLogWriter::new()));
+                std::io::set_panic(Box::new(ToLogWriter::new()));
+                (*main_function)();
+                ptr::null_mut()
+            }
+        }
+
+        let result = unsafe {
+            let mut out: pthread_t = -1;
+            pthread_create(&mut out, ptr::null(), main_thread::<F>,
+                           main_function as *mut _)
+        };
+
+        assert!(result == 0);
 
         // We have to store the JoinGuard off the stack, in the heap, so if we are
         // recalled after a Destroy event/command, then we can make check if the
         // main application thread we created above is still running, and if it is
         // we should wait on it to exit.
-        unsafe { g_mainthread_boxed = Option::Some(std::mem::transmute(Box::new(mrx))) };
-        write_log("created application thread");
+        //unsafe { g_mainthread_boxed = Option::Some(std::mem::transmute(Box::new(mrx))) };
+
     } else {
-        write_log("application thread was still running - not creating new one");
+        write_log("Application thread was still running - not creating new one");
     }
 
     // Polling for events forever, until shutdown signal is set.
@@ -250,7 +273,7 @@ pub fn android_main2<F>(app: *mut (), main_function: F)
         }
     }
 
-    // terminating the application
+    // Terminating the application
     unsafe { ANDROID_APP = 0 as *mut ffi::android_app };
 }
 
