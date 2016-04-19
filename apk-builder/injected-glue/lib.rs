@@ -150,32 +150,33 @@ fn is_app_thread_terminated() -> (bool, bool) {
 
 /// Return a reference to the application structure.
 pub fn get_app<'a>() -> &'a mut ffi::android_app {
-    unsafe { std::mem::transmute(ANDROID_APP) }
+    unsafe { &mut *ANDROID_APP }
 }
 
 /// This is the function that must be called by `android_main`
 #[doc(hidden)]
-pub fn android_main2<F>(app: *mut (), main_function: F)
+pub fn android_main2<F>(app: *mut ffi::android_app, main_function: F)
     where F: FnOnce(), F: 'static, F: Send
 {
     write_log("Entering android_main");
 
-    unsafe { ANDROID_APP = mem::transmute(app) };
-    let app: &mut ffi::android_app = unsafe { mem::transmute(app) };
+    unsafe { ANDROID_APP = app; };
+    let app: &mut ffi::android_app = unsafe { &mut *app };
 
-    // creating the context that will be passed to the callback
+    // Creating the context that will be passed to the callback
     let context = Context {
-        senders:    Mutex::new(Vec::new()),
-        missed:     Mutex::new(Vec::new()),
-        missedcnt:  AtomicUsize::new(0),
-        missedmax:  1024,
-        shutdown:   AtomicBool::new(false),
+        senders: Mutex::new(Vec::new()),
+        missed: Mutex::new(Vec::new()),
+        missedcnt: AtomicUsize::new(0),
+        missedmax: 1024,
+        shutdown: AtomicBool::new(false),
         multitouch: Cell::new(false),
         primary_pointer_id: Cell::new(0),
     };
+
     app.onAppCmd = commands_callback;
     app.onInputEvent = inputs_callback;
-    app.userData = unsafe { std::mem::transmute(&context) };
+    app.userData = unsafe { &context as *const Context as *mut Context as *mut _ };
 
     // Set our stdout and stderr so that panics are directed to the log.
     std::io::set_print(Box::new(ToLogWriter::new()));
@@ -234,22 +235,23 @@ pub fn android_main2<F>(app: *mut (), main_function: F)
     }
 
     // Polling for events forever, until shutdown signal is set.
-    // note: that this must be done in the same thread as android_main because
-    //       ALooper are thread-local
+    // Note: This must be done in the same thread as android_main because
+    //       ALooper are thread-local.
     unsafe {
         loop {
-            let mut events = mem::uninitialized();
-            let mut source = mem::uninitialized();
-
+            // If the APP_CMD_DESTROY event has been received, we exit the loop.
             if context.shutdown.load(Ordering::Relaxed) {
                 break;
             }
+
+            let mut events = mem::uninitialized();
+            let mut source: *mut ffi::android_poll_source = mem::uninitialized();
 
             // A `-1` means to block forever, but any other positive value
             // specifies the number of milliseconds to block for, before
             // returning.
             ffi::ALooper_pollAll(-1, ptr::null_mut(), &mut events,
-                &mut source);
+                                 &mut source as *mut _ as *mut _);
 
             // If the application thread has exited then we need to exit also.
             if is_app_thread_terminated().0 {
@@ -265,15 +267,15 @@ pub fn android_main2<F>(app: *mut (), main_function: F)
                 // process. So we continue processing events..
             }
 
-            // processing the event
+            // Processing the event
             if !source.is_null() {
-                let source: *mut ffi::android_poll_source = mem::transmute(source);
                 ((*source).process)(ANDROID_APP, source);
             }
         }
     }
 
-    // Terminating the application
+    // Terminating the application. This kills the thread the Rust main thread.
+    // TODO: consider waiting on thread?
     unsafe { ANDROID_APP = 0 as *mut ffi::android_app };
 }
 

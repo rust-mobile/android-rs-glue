@@ -15,5 +15,5 @@ pub fn start(_: isize, _: *const *const u8) -> isize {
 #[inline(never)]
 #[allow(non_snake_case)]
 pub extern "C" fn android_main(app: *mut ()) {
-    cargo_apk_injected_glue::android_main2(app, move || unsafe { main() });
+    cargo_apk_injected_glue::android_main2(app as *mut _, move || unsafe { main() });
 }
