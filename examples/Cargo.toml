@@ -1,7 +1,7 @@
 [package]
 
 name = "android_glue_example"
-version = "0.0.1"
+version = "0.1.0"
 authors = ["Pierre Krieger <pierre.krieger1708@gmail.com>"]
 
 [[bin]]
@@ -10,6 +10,3 @@ path = "src/basic.rs"
 
 [dependencies.android_glue]
 path = "../glue"
-
-#[dependencies.apk-builder]
-#path = "../apk-builder"

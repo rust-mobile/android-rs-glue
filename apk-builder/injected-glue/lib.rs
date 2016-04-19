@@ -4,6 +4,9 @@ extern crate libc;
 
 use std::cell::{Cell};
 use std::ffi::{CString};
+use std::mem;
+use std::os::raw::c_void;
+use std::ptr;
 use std::sync::mpsc::{Sender, Receiver, TryRecvError, channel};
 use std::sync::Mutex;
 use std::thread;
@@ -13,6 +16,34 @@ use std::io::Write;
 
 #[doc(hidden)]
 pub mod ffi;
+
+#[no_mangle]
+pub unsafe extern fn cargo_apk_injected_glue_get_native_window() -> *const c_void {
+    get_native_window() as *const _
+}
+
+#[no_mangle]
+pub unsafe extern fn cargo_apk_injected_glue_add_sender(sender: *mut ()) {
+    let sender: Box<Sender<Event>> = Box::from_raw(sender as *mut _);
+    add_sender(*sender);
+}
+
+#[no_mangle]
+pub unsafe extern fn cargo_apk_injected_glue_add_sender_missing(sender: *mut ()) {
+    let sender: Box<Sender<Event>> = Box::from_raw(sender as *mut _);
+    add_sender_missing(*sender);
+}
+
+#[no_mangle]
+pub unsafe extern fn cargo_apk_injected_glue_set_multitouch(multitouch: bool) {
+    set_multitouch(multitouch);
+}
+
+#[no_mangle]
+pub unsafe extern fn cargo_apk_injected_glue_write_log(ptr: *const (), len: usize) {
+    let message: &str = mem::transmute((ptr, len));
+    write_log(message);
+}
 
 /// This static variable  will store the android_app* on creation, and set it back to 0 at
 ///  destruction.
