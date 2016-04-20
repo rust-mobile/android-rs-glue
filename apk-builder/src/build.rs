@@ -5,6 +5,7 @@ use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::io::Write;
+use std::os::unix::fs::symlink;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::exit;
@@ -245,6 +246,7 @@ fn build_android_artifacts_dir(path: &Path, config: &Config) {
     build_build_xml(path, config);
     build_local_properties(path, config);
     build_project_properties(path, config);
+    build_assets(path, config);
 
     for target in config.build_targets.iter() {
         if fs::metadata(path.join(target)).is_err() {
@@ -330,6 +332,18 @@ fn build_manifest(path: &Path, config: &Config, activity_name: &str) {
 </manifest>
 <!-- END_INCLUDE(manifest) -->
 "#, config.package_label, activity_name).unwrap()
+}
+
+fn build_assets(path: &Path, config: &Config) {
+    let src_path = match config.assets_path {
+        None => return,
+        Some(ref p) => p,
+    };
+
+    let dst_path = path.join("assets");
+    fs::create_dir_all(&dst_path).unwrap();
+
+    symlink(&src_path, &dst_path).expect("Can not create symlink to assets");
 }
 
 fn build_build_xml(path: &Path, config: &Config) {

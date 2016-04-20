@@ -19,6 +19,11 @@ pub struct Config {
 
     /// Version of android for which to compile. TODO: ensure that >=18 because Rustc only supports 18+
     pub android_version: u32,
+
+    /// If `Some`, a path that contains the list of assets to ship as part of the package.
+    ///
+    /// The assets can later be loaded with the runtime library.
+    pub assets_path: Option<PathBuf>,
 }
 
 pub fn load(/*manifest_path: &Path*/) -> Config {
@@ -45,5 +50,6 @@ pub fn load(/*manifest_path: &Path*/) -> Config {
         package_label: "My Rust program".to_owned(),
         build_targets: vec!["arm-linux-androideabi".to_owned()],
         android_version: 23,
+        assets_path: None,
     }
 }
