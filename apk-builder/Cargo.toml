@@ -3,9 +3,6 @@ name = "cargo-apk"
 version = "0.0.1"
 authors = ["Pierre Krieger <pierre.krieger1708@gmail.com>"]
 
-[features]
-assets_hack = []
-
 [dependencies]
 rustc-serialize = "0.3.19"
 toml = "0.1.28"
