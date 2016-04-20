@@ -3,9 +3,21 @@ use std::path::Path;
 use std::path::PathBuf;
 
 pub struct Config {
+    /// Path to the root of the Android SDK.
     pub sdk_path: PathBuf,
+    /// Path to the root of the Android NDK.
     pub ndk_path: PathBuf,
+
+    /// Name of the project to feed to the SDK. This will be the name of the APK file.
+    /// Should be a "system-ish" name, like `my-project`.
+    pub project_name: String,
+    /// Label for the package.
+    pub package_label: String,
+
+    /// List of targets to build the app for. Eg. `arm-linux-androideabi`.
     pub build_targets: Vec<String>,
+
+    /// Version of android for which to compile. TODO: ensure that >=18 because Rustc only supports 18+
     pub android_version: u32,
 }
 
@@ -29,6 +41,8 @@ pub fn load(/*manifest_path: &Path*/) -> Config {
     Config {
         sdk_path: Path::new(&sdk_path).to_owned(),
         ndk_path: Path::new(&ndk_path).to_owned(),
+        project_name: "rust-android".to_owned(),
+        package_label: "My Rust program".to_owned(),
         build_targets: vec!["arm-linux-androideabi".to_owned()],
         android_version: 23,
     }

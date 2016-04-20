@@ -221,7 +221,7 @@ pub fn build(manifest_path: &Path, config: &Config) -> BuildResult {
     }
 
     BuildResult {
-        apk_path: android_artifacts_dir.join("build/bin/rust-android-debug.apk"),
+        apk_path: android_artifacts_dir.join(format!("build/bin/{}-debug.apk", config.project_name)),
     }
 }
 
@@ -241,8 +241,8 @@ fn build_android_artifacts_dir(path: &Path, config: &Config) {
     }
 
     build_linker(path);
-    build_manifest(path, "test", "rust.glutin.MainActivity");
-    build_build_xml(path);
+    build_manifest(path, config, "rust.glutin.MainActivity");
+    build_build_xml(path, config);
     build_local_properties(path, config);
     build_project_properties(path, config);
 
@@ -297,7 +297,7 @@ public class MainActivity extends android.app.NativeActivity {{
 }}"#, libs_string).unwrap();
 }
 
-fn build_manifest(path: &Path, crate_name: &str, activity_name: &str) {
+fn build_manifest(path: &Path, config: &Config, activity_name: &str) {
     let file = path.join("build/AndroidManifest.xml");
     //if fs::metadata(&file).is_ok() { return; }
     let mut file = File::create(&file).unwrap();
@@ -329,22 +329,22 @@ fn build_manifest(path: &Path, crate_name: &str, activity_name: &str) {
 
 </manifest>
 <!-- END_INCLUDE(manifest) -->
-"#, crate_name, activity_name).unwrap()
+"#, config.package_label, activity_name).unwrap()
 }
 
-fn build_build_xml(path: &Path) {
+fn build_build_xml(path: &Path, config: &Config) {
     let file = path.join("build/build.xml");
     //if fs::metadata(&file).is_ok() { return; }
     let mut file = File::create(&file).unwrap();
 
     write!(file, r#"<?xml version="1.0" encoding="UTF-8"?>
-<project name="rust-android" default="help">
+<project name="{project_name}" default="help">
     <property file="local.properties" />
     <loadproperties srcFile="project.properties" />
     <import file="custom_rules.xml" optional="true" />
     <import file="${{sdk.dir}}/tools/ant/build.xml" />
 </project>
-"#).unwrap()
+"#, project_name = config.project_name).unwrap()
 }
 
 fn build_local_properties(path: &Path, config: &Config) {
