@@ -9,4 +9,4 @@ name = "example"
 path = "src/basic.rs"
 
 [dependencies.android_glue]
-path = "../glue"
+path = "../../glue"
