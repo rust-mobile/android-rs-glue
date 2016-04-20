@@ -1,4 +1,5 @@
 extern crate rustc_serialize;
+extern crate toml;
 
 use std::env;
 use std::path::Path;
@@ -16,7 +17,7 @@ fn main() {
     let current_manifest = current_manifest_path();
 
     // Fetching the configuration for the build.
-    let config = config::load();
+    let config = config::load(&current_manifest);
 
     if command.as_ref().map(|s| &s[..]) == Some("install") {
         install::install(&current_manifest, &config);
@@ -25,6 +26,7 @@ fn main() {
     }
 }
 
+/// Returns the path of the `Cargo.toml` that we want to build.
 fn current_manifest_path() -> PathBuf {
     let output = Command::new("cargo").arg("locate-project").output().unwrap();
 

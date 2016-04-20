@@ -8,3 +8,4 @@ assets_hack = []
 
 [dependencies]
 rustc-serialize = "0.3.19"
+toml = "0.1.28"

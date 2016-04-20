@@ -1,6 +1,10 @@
 use std::env;
+use std::fs::File;
+use std::io::Read;
 use std::path::Path;
 use std::path::PathBuf;
+use toml;
+use toml::Parser as TomlParser;
 
 pub struct Config {
     /// Path to the root of the Android SDK.
@@ -26,8 +30,21 @@ pub struct Config {
     pub assets_path: Option<PathBuf>,
 }
 
-pub fn load(/*manifest_path: &Path*/) -> Config {
-    // For the moment we just build a dummy configuration.
+pub fn load(manifest_path: &Path) -> Config {
+    // For the moment some fields of the config are dummies.
+
+    let manifest_content = {
+        let content = {
+            let mut file = File::open(manifest_path).unwrap();
+            let mut content = String::new();
+            file.read_to_string(&mut content).unwrap();
+            content
+        };
+
+        let toml = TomlParser::new(&content).parse().unwrap();
+        let decoded: TomlPackage = toml::decode(toml["package"].clone()).unwrap();
+        decoded.metadata.and_then(|m| m.android)
+    };
 
     let ndk_path = env::var("NDK_HOME").expect("Please set the path to the Android NDK with the \
                                                 $NDK_HOME environment variable.");
@@ -47,9 +64,25 @@ pub fn load(/*manifest_path: &Path*/) -> Config {
         sdk_path: Path::new(&sdk_path).to_owned(),
         ndk_path: Path::new(&ndk_path).to_owned(),
         project_name: "rust-android".to_owned(),
-        package_label: "My Rust program".to_owned(),
+        package_label: manifest_content.and_then(|a| a.label.clone())
+                                       .unwrap_or_else(|| "My Rust program".to_owned()),
         build_targets: vec!["arm-linux-androideabi".to_owned()],
         android_version: 23,
         assets_path: None,
     }
+}
+
+#[derive(Debug, Clone, RustcDecodable)]
+struct TomlPackage {
+    metadata: Option<TomlMetadata>,
+}
+
+#[derive(Debug, Clone, RustcDecodable)]
+struct TomlMetadata {
+    android: Option<TomlAndroid>,
+}
+
+#[derive(Debug, Clone, RustcDecodable)]
+struct TomlAndroid {
+    label: Option<String>,
 }
