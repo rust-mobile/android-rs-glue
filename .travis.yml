@@ -2,6 +2,7 @@ language: rust
 sudo: false
 
 script:
+    - cargo build --verbose --manifest-path glue/Cargo.toml
     - cargo build --verbose --manifest-path cargo-apk/Cargo.toml
 
 after_success: 
@@ -9,3 +10,7 @@ after_success:
         [ $TRAVIS_BRANCH = master ] &&
         [ $TRAVIS_PULL_REQUEST = false ] &&
         cargo publish --token ${CRATESIO_TOKEN} --manifest-path glue/Cargo.toml --no-verify
+    - |
+        [ $TRAVIS_BRANCH = master ] &&
+        [ $TRAVIS_PULL_REQUEST = false ] &&
+        cargo publish --token ${CRATESIO_TOKEN} --manifest-path cargo-apk/Cargo.toml --no-verify
