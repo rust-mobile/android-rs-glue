@@ -1,9 +1,8 @@
-#![feature(set_stdio)]
-
 use std::cell::{Cell};
 use std::ffi::{CString};
 use std::mem;
 use std::os::raw::c_void;
+use std::os::raw::c_char;
 use std::os::raw::c_int;
 use std::os::raw::c_long;
 use std::ptr;
@@ -19,8 +18,12 @@ pub type pthread_mutexattr_t = c_long;
 pub type pthread_attr_t = c_void;       // FIXME: wrong
 
 extern {
+    fn pipe(_: *mut c_int) -> c_int;
+    fn dup2(fildes: c_int, fildes2: c_int) -> c_int;
+    fn read(fd: c_int, buf: *mut c_void, count: usize) -> isize;
     fn pthread_create(_: *mut pthread_t, _: *const pthread_attr_t,
                       _: extern fn(*mut c_void) -> *mut c_void, _: *mut c_void) -> c_int;
+    fn pthread_detach(thread: pthread_t) -> c_int;
 }
 
 #[doc(hidden)]
@@ -154,7 +157,7 @@ pub fn get_app<'a>() -> &'a mut ffi::android_app {
 /// This is the function that must be called by `android_main`
 #[doc(hidden)]
 pub fn android_main2<F>(app: *mut ffi::android_app, main_function: F)
-    where F: FnOnce(), F: 'static, F: Send
+    where F: FnOnce(isize, *const *const u8) + 'static + Send
 {
     write_log("Entering android_main");
 
@@ -176,10 +179,6 @@ pub fn android_main2<F>(app: *mut ffi::android_app, main_function: F)
     app.onInputEvent = inputs_callback;
     app.userData = unsafe { &context as *const Context as *mut Context as *mut _ };
 
-    // Set our stdout and stderr so that panics are directed to the log.
-    std::io::set_print(Box::new(ToLogWriter::new()));
-    std::io::set_panic(Box::new(ToLogWriter::new()));
-
     // We have to take into consideration that the application we are wrapping
     // may not have been designed for android very well. It may not listen for
     // the destroy command/event, therefore it might not have shutdown and we
@@ -200,16 +199,60 @@ pub fn android_main2<F>(app: *mut ffi::android_app, main_function: F)
     if terminated.0 {
         write_log("Creating application thread");
 
+        // The first step is to redirect stdout and stderr to the logs.
+        unsafe {
+            // We redirect stdout and stderr to a custom descriptor.
+            let mut pfd: [c_int; 2] = [0, 0];
+            pipe(pfd.as_mut_ptr());
+            dup2(pfd[1], 1);
+            dup2(pfd[1], 2);
+
+            // Then we spawn a thread whose only job is to read from the other side of the
+            // pipe and redirect to the logs.
+            extern fn logging_thread(descriptor: *mut c_void) -> *mut c_void {
+                unsafe {
+                    let descriptor = descriptor as usize as c_int;
+                    let mut buf: Vec<c_char> = Vec::with_capacity(512);
+
+                    // TODO: shouldn't use Rust stdlib
+                    let tag = CString::new("RustAndroidGlueStdouterr").unwrap();
+                    let tag = tag.as_ptr();
+
+                    loop {
+                        let result = read(descriptor, buf.as_mut_ptr() as *mut _,
+                                          buf.capacity() - 1);
+                        let len = if result == 0 { return ptr::null_mut(); }
+                                  else if result < 0 { return ptr::null_mut(); /* TODO: report problem */ }
+                                  else { result as usize };
+
+                        buf.set_len(len);
+                        if buf[len - 1] == b'\n' {
+                            buf.set_len(len - 1);
+                        }
+
+                        ffi::__android_log_write(3, tag, buf.as_ptr());
+                    }
+                }
+            }
+
+            let mut thread = mem::uninitialized();
+            let result = pthread_create(&mut thread, ptr::null(), logging_thread,
+                                        pfd[0] as usize as *mut c_void);
+            assert_eq!(result, 0);
+            let result = pthread_detach(thread);
+            assert_eq!(result, 0);
+        }
+
         let main_function = Box::into_raw(Box::new(main_function));
 
         extern fn main_thread<F>(main_function: *mut c_void) -> *mut c_void
-            where F: FnOnce() + 'static + Send
+            where F: FnOnce(isize, *const *const u8) + 'static + Send
         {
             unsafe {
                 let main_function: Box<F> = Box::from_raw(main_function as *mut _);
-                std::io::set_print(Box::new(ToLogWriter::new()));
-                std::io::set_panic(Box::new(ToLogWriter::new()));
-                (*main_function)();
+                let argv = [b"android\0".as_ptr()];
+                // TODO: catch panic? (only once stable)
+                (*main_function)(1, argv.as_ptr());
                 ptr::null_mut()
             }
         }
@@ -275,48 +318,6 @@ pub fn android_main2<F>(app: *mut ffi::android_app, main_function: F)
     // Terminating the application. This kills the thread the Rust main thread.
     // TODO: consider waiting on thread?
     unsafe { ANDROID_APP = 0 as *mut ffi::android_app };
-}
-
-/// Writer that will redirect what is written to it to the logs.
-struct ToLogWriter {
-    buffer: Vec<u8>,
-}
-
-impl ToLogWriter {
-    fn new() -> ToLogWriter {
-        ToLogWriter {
-            buffer: Vec::new(),
-        }
-    }
-}
-
-impl Write for ToLogWriter {
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        let tag = CString::new("RustAndroidGlueStdouterr").unwrap();
-        let tag = tag.as_ptr();
-        let mut cursor_id = 0;
-        for i in 0 .. buf.len() {
-            let c = buf[i];
-            if c == '\n' as u8 {
-                self.buffer.extend(&buf[cursor_id..i + 1]);
-                let message = CString::new(self.buffer.clone()).unwrap();
-                let message = message.as_ptr();
-                unsafe {
-                    ffi::__android_log_write(3, tag, message)
-                };
-                self.buffer.clear();
-                cursor_id = i + 1;
-            }
-            if i == buf.len() - 1 {
-                self.buffer.extend(&buf[cursor_id..i + 1]);
-            }
-        }
-        Ok(buf.len())
-    }
-
-    fn flush(&mut self) -> std::io::Result<()> {
-        Ok(())
-    }
 }
 
 /// Send a event to anything that has registered a sender. This is where events
