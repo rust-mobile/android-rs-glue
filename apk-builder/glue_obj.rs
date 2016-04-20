@@ -1,3 +1,5 @@
+#![no_std]
+
 extern crate cargo_apk_injected_glue;
 
 extern {
