@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Pierre Krieger <pierre.krieger1708@gmail.com>"]
 license = "MIT"
 description = "Cargo subcommand that allows you to build Android packages"
+repository = "https://github.com/tomaka/android-rs-glue/tree/master/cargo-apk"
 
 [dependencies]
 rustc-serialize = "0.3.19"
