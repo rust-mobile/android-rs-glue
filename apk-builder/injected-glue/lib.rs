@@ -1,6 +1,4 @@
-#![feature(libc, set_stdio)]
-
-extern crate libc;
+#![feature(set_stdio)]
 
 use std::cell::{Cell};
 use std::ffi::{CString};
@@ -348,7 +346,7 @@ fn send_event(event: Event) {
 /// information, and finally send the event, which normally would be recieved by
 /// the main application thread IF it has registered a sender.
 pub extern fn inputs_callback(_: *mut ffi::android_app, event: *const ffi::AInputEvent)
-    -> libc::int32_t
+    -> i32
 {
     let etype = unsafe { ffi::AInputEvent_getType(event) };
     let action = unsafe { ffi::AMotionEvent_getAction(event) };
@@ -376,7 +374,7 @@ pub extern fn inputs_callback(_: *mut ffi::android_app, event: *const ffi::AInpu
             let context = get_context();
             let idx = ((action & ffi::AMOTION_EVENT_ACTION_POINTER_INDEX_MASK)
                        >> ffi::AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT)
-                      as libc::size_t;
+                      as usize;
 
             let pointer_id = unsafe { ffi::AMotionEvent_getPointerId(event, idx) };
             if action_code == ffi::AMOTION_EVENT_ACTION_DOWN {
@@ -420,7 +418,7 @@ pub extern fn inputs_callback(_: *mut ffi::android_app, event: *const ffi::AInpu
 
 /// The callback for commands.
 #[doc(hidden)]
-pub extern fn commands_callback(_: *mut ffi::android_app, command: libc::int32_t) {
+pub extern fn commands_callback(_: *mut ffi::android_app, command: i32) {
     let context = get_context();
 
     match command {
