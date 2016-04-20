@@ -6,12 +6,18 @@ use std::io::BufRead;
 use std::io::BufReader;
 use std::io::Write;
 use std::path::Path;
+use std::path::PathBuf;
 use std::process::exit;
 use std::process::{Command, Stdio};
 
 use config::Config;
 
-pub fn build(manifest_path: &Path, config: &Config) {
+pub struct BuildResult {
+    /// The absolute path where the apk is located.
+    pub apk_path: PathBuf,
+}
+
+pub fn build(manifest_path: &Path, config: &Config) -> BuildResult {
     // Building the `android-artifacts` directory that will contain all the artifacts.
     let android_artifacts_dir = {
         let target_dir = manifest_path.parent().unwrap().join("target");
@@ -212,6 +218,10 @@ pub fn build(manifest_path: &Path, config: &Config) {
         .status().unwrap().code().unwrap() != 0
     {
         exit(1);
+    }
+
+    BuildResult {
+        apk_path: android_artifacts_dir.join("build/bin/rust-android-debug.apk"),
     }
 }
 
