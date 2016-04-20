@@ -207,7 +207,8 @@ pub fn build(manifest_path: &Path, config: &Config) -> BuildResult {
 
         // Write the Java source
         // FIXME: duh, the file will be replaced every time, so this only works with one target
-        build_java_src(&android_artifacts_dir, shared_objects_to_load.iter().map(|s| &**s));
+        build_java_src(&android_artifacts_dir, &config,
+                       shared_objects_to_load.iter().map(|s| &**s));
     }
 
     // Invoking `ant` from within `android-artifacts` in order to compile the project.
@@ -242,7 +243,7 @@ fn build_android_artifacts_dir(path: &Path, config: &Config) {
     }
 
     build_linker(path);
-    build_manifest(path, config, "rust.glutin.MainActivity");
+    build_manifest(path, config);
     build_build_xml(path, config);
     build_local_properties(path, config);
     build_project_properties(path, config);
@@ -274,10 +275,11 @@ fn build_linker(path: &Path) {
     assert!(fs::metadata(&exe_file).is_ok());
 }
 
-fn build_java_src<'a, I>(path: &Path, libs: I)
+fn build_java_src<'a, I>(path: &Path, config: &Config, libs: I)
     where I: Iterator<Item = &'a str>
 {
-    let file = path.join("build/src/rust/glutin/MainActivity.java");
+    let file = path.join("build/src/rust").join(config.project_name.replace("-", "_"))
+                   .join("MainActivity.java");
     fs::create_dir_all(file.parent().unwrap()).unwrap();
     //if fs::metadata(&file).is_ok() { return; }
     let mut file = File::create(&file).unwrap();
@@ -290,16 +292,16 @@ fn build_java_src<'a, I>(path: &Path, libs: I)
         libs_string.push_str(&*line);
     }
 
-    write!(file, r#"package rust.glutin;
+    write!(file, r#"package rust.{package_name};
 
 public class MainActivity extends android.app.NativeActivity {{
     static {{
-        {0}
+        {libs}
     }}
-}}"#, libs_string).unwrap();
+}}"#, libs = libs_string, package_name = config.project_name.replace("-", "_")).unwrap();
 }
 
-fn build_manifest(path: &Path, config: &Config, activity_name: &str) {
+fn build_manifest(path: &Path, config: &Config) {
     let file = path.join("build/AndroidManifest.xml");
     //if fs::metadata(&file).is_ok() { return; }
     let mut file = File::create(&file).unwrap();
@@ -319,7 +321,7 @@ fn build_manifest(path: &Path, config: &Config, activity_name: &str) {
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 
     <application android:label="{0}">
-        <activity android:name="{1}"
+        <activity android:name="rust.{1}.MainActivity"
                 android:label="{0}"
                 android:configChanges="orientation|keyboardHidden">
             <intent-filter>
@@ -331,7 +333,7 @@ fn build_manifest(path: &Path, config: &Config, activity_name: &str) {
 
 </manifest>
 <!-- END_INCLUDE(manifest) -->
-"#, config.package_label, activity_name).unwrap()
+"#, config.package_label, config.project_name.replace("-", "_")).unwrap()
 }
 
 fn build_assets(path: &Path, config: &Config) {
