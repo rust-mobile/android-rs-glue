@@ -5,7 +5,6 @@ use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::io::Write;
-use std::os::unix::fs::symlink;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::exit;
@@ -345,7 +344,8 @@ fn build_assets(path: &Path, config: &Config) {
     let dst_path = path.join("assets");
     fs::create_dir_all(&dst_path).unwrap();
 
-    symlink(&src_path, &dst_path).expect("Can not create symlink to assets");
+    fs::hard_link(&src_path, &dst_path).expect("Can not create symlink to assets");
+    // TODO: copy files if linking fails
 }
 
 fn build_build_xml(path: &Path, config: &Config) {
