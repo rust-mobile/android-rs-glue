@@ -64,11 +64,12 @@ pub fn load(manifest_path: &Path) -> Config {
         sdk_path: Path::new(&sdk_path).to_owned(),
         ndk_path: Path::new(&ndk_path).to_owned(),
         project_name: "rust-android".to_owned(),
-        package_label: manifest_content.and_then(|a| a.label.clone())
+        package_label: manifest_content.as_ref().and_then(|a| a.label.clone())
                                        .unwrap_or_else(|| "My Rust program".to_owned()),
         build_targets: vec!["arm-linux-androideabi".to_owned()],
-        android_version: 23,
-        assets_path: None,
+        android_version: manifest_content.as_ref().and_then(|a| a.android_version).unwrap_or(18),
+        assets_path: manifest_content.as_ref().and_then(|a| a.assets.as_ref())
+                                     .map(|p| manifest_path.parent().unwrap().join(p)),
     }
 }
 
@@ -85,4 +86,6 @@ struct TomlMetadata {
 #[derive(Debug, Clone, RustcDecodable)]
 struct TomlAndroid {
     label: Option<String>,
+    assets: Option<String>,
+    android_version: Option<u32>,
 }
