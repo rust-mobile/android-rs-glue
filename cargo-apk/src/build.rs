@@ -30,7 +30,12 @@ pub fn build(manifest_path: &Path, config: &Config) -> BuildResult {
 
         // Finding the tools in the NDK.
         let gcc_path = {
-            let arch = if build_target.starts_with("arm") { "arm-linux-androideabi" }
+            let host_os = if cfg!(target_os = "windows") { "windows" }
+                       else if cfg!(target_os = "linux") { "linux" }
+                       else if cfg!(target_os = "macos") { "darwin" }
+                       else { panic!("Unknown or incompatible host OS") };
+
+            let target_arch = if build_target.starts_with("arm") { "arm-linux-androideabi" }
                        else if build_target.starts_with("aarch64") { "aarch64-linux-android" }
                        else if build_target.starts_with("i") { "x86" }
                        else if build_target.starts_with("x86_64") { "x86_64" }
@@ -38,8 +43,8 @@ pub fn build(manifest_path: &Path, config: &Config) -> BuildResult {
                        // TODO: mips64
                        else { panic!("Unknown or incompatible build target: {}", build_target) };
 
-            config.ndk_path.join(format!("toolchains/{}-4.9/prebuilt/linux-x86_64", arch))      // FIXME: correct host arch
-                           .join(format!("bin/{}-gcc", arch))
+            config.ndk_path.join(format!("toolchains/{}-4.9/prebuilt/{}-x86_64", target_arch, host_os))
+                           .join(format!("bin/{}-gcc", target_arch))
         };
 
         let gcc_sysroot = {
@@ -139,7 +144,7 @@ pub fn build(manifest_path: &Path, config: &Config) -> BuildResult {
             .arg("--verbose")
             .arg("--target").arg(build_target)
             .arg("--")
-            .arg("-C").arg(format!("linker={}", android_artifacts_dir.join("linker_exe")
+            .arg("-C").arg(format!("linker={}", android_artifacts_dir.join(if cfg!(target_os = "windows") { "linker_exe.exe" } else { "linker_exe" })
                                                                      .to_string_lossy()))
             .arg("--extern").arg(format!("cargo_apk_injected_glue={}", injected_glue_lib.to_string_lossy()))
             .env("CARGO_APK_GCC", gcc_path.as_os_str())
@@ -211,7 +216,7 @@ pub fn build(manifest_path: &Path, config: &Config) -> BuildResult {
     }
 
     // Invoking `ant` from within `android-artifacts` in order to compile the project.
-    if Command::new(Path::new("ant"))
+    if Command::new(if cfg!(target_os = "windows") { "ant.bat" } else { "ant" })
         .arg("debug")
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
@@ -256,7 +261,7 @@ fn build_android_artifacts_dir(path: &Path, config: &Config) {
 }
 
 fn build_linker(path: &Path) {
-    let exe_file = path.join("linker_exe");
+    let exe_file = path.join(if cfg!(target_os = "windows") { "linker_exe.exe" } else { "linker_exe" });
     let src_file = path.join("linker_src");
 
     /*if fs::metadata(&exe_file).is_ok() {
@@ -374,7 +379,11 @@ fn build_local_properties(path: &Path, config: &Config) {
         env::current_dir().unwrap().join(&config.sdk_path)
     };
 
-    write!(file, r"sdk.dir={}", abs_dir.to_str().unwrap()).unwrap();
+    if cfg!(target_os = "windows") {
+        write!(file, r"sdk.dir={}", abs_dir.to_str().unwrap().replace("\\", "\\\\")).unwrap();
+    } else {
+        write!(file, r"sdk.dir={}", abs_dir.to_str().unwrap()).unwrap();
+    }
 }
 
 fn build_project_properties(path: &Path, config: &Config) {
