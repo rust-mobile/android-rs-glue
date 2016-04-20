@@ -2,7 +2,7 @@ language: rust
 sudo: false
 
 script:
-    - cargo build --verbose --manifest-path apk-builder/Cargo.toml
+    - cargo build --verbose --manifest-path cargo-apk/Cargo.toml
 
 after_success: 
     - |
