@@ -31,9 +31,8 @@ pub struct Config {
 }
 
 pub fn load(manifest_path: &Path) -> Config {
-    // For the moment some fields of the config are dummies.
-
-    let manifest_content = {
+    // Determine the name of the package and the Android-specific metadata from the Cargo.toml
+    let (package_name, manifest_content) = {
         let content = {
             let mut file = File::open(manifest_path).unwrap();
             let mut content = String::new();
@@ -43,7 +42,8 @@ pub fn load(manifest_path: &Path) -> Config {
 
         let toml = TomlParser::new(&content).parse().unwrap();
         let decoded: TomlPackage = toml::decode(toml["package"].clone()).unwrap();
-        decoded.metadata.and_then(|m| m.android)
+        let package_name = decoded.name.clone();
+        (package_name, decoded.metadata.and_then(|m| m.android))
     };
 
     let ndk_path = env::var("NDK_HOME").expect("Please set the path to the Android NDK with the \
@@ -60,12 +60,13 @@ pub fn load(manifest_path: &Path) -> Config {
                     the $ANDROID_HOME environment variable.")
     };
 
+    // For the moment some fields of the config are dummies.
     Config {
         sdk_path: Path::new(&sdk_path).to_owned(),
         ndk_path: Path::new(&ndk_path).to_owned(),
-        project_name: "rust-android".to_owned(),
+        project_name: package_name.clone(),
         package_label: manifest_content.as_ref().and_then(|a| a.label.clone())
-                                       .unwrap_or_else(|| "My Rust program".to_owned()),
+                                       .unwrap_or_else(|| package_name.clone()),
         build_targets: vec!["arm-linux-androideabi".to_owned()],
         android_version: manifest_content.as_ref().and_then(|a| a.android_version).unwrap_or(18),
         assets_path: manifest_content.as_ref().and_then(|a| a.assets.as_ref())
@@ -75,6 +76,7 @@ pub fn load(manifest_path: &Path) -> Config {
 
 #[derive(Debug, Clone, RustcDecodable)]
 struct TomlPackage {
+    name: String,
     metadata: Option<TomlMetadata>,
 }
 
