@@ -9,6 +9,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::process::exit;
 use std::process::{Command, Stdio};
+use termcmd::TermCmd;
 
 use config::Config;
 
@@ -69,44 +70,28 @@ pub fn build(manifest_path: &Path, config: &Config) -> BuildResult {
         };
 
         // Compiling android_native_app_glue.c
-        if Command::new(&gcc_path)
+        TermCmd::new("Compiling android_native_app_glue.c", &gcc_path)
             .arg(config.ndk_path.join("sources/android/native_app_glue/android_native_app_glue.c"))
             .arg("-c")
             .arg("-o").arg(build_target_dir.join("android_native_app_glue.o"))
             .arg("--sysroot").arg(&gcc_sysroot)
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit())
-            .status().unwrap().code().unwrap() != 0
-        {
-            exit(1);
-        }
+            .execute();
 
         // Compiling injected-glue
         let injected_glue_lib = {
-            if Command::new("rustc")
-                .arg(android_artifacts_dir.join("injected-glue/lib.rs"))
-                .arg("--crate-type").arg("rlib")
-                .arg("--crate-name").arg("cargo_apk_injected_glue")
-                .arg("--target").arg(build_target)
-                .arg("--out-dir").arg(&build_target_dir)
-                .stdout(Stdio::inherit())
-                .stderr(Stdio::inherit())
-                .status().unwrap().code().unwrap() != 0
-            {
-                exit(1);
-            }
+            let mut cmd = TermCmd::new("Compiling injected-glue", "rustc");
+            cmd.arg(android_artifacts_dir.join("injected-glue/lib.rs"))
+               .arg("--crate-type").arg("rlib")
+               .arg("--crate-name").arg("cargo_apk_injected_glue")
+               .arg("--target").arg(build_target)
+               .arg("--out-dir").arg(&build_target_dir);
 
-            let output = Command::new("rustc")
-                .arg(android_artifacts_dir.join("injected-glue/lib.rs"))
-                .arg("--crate-type").arg("rlib")
-                .arg("--crate-name").arg("cargo_apk_injected_glue")
-                .arg("--target").arg(build_target)
-                .arg("--out-dir").arg(&build_target_dir)
-                .arg("--print").arg("file-names")
-                .stdout(Stdio::piped())
-                .stderr(Stdio::inherit())
-                .output().unwrap();
-            let stdout = String::from_utf8(output.stdout).unwrap();
+            cmd.execute();
+
+            let stdout = cmd.arg("--print").arg("file-names")
+                            .exec_stdout();
+            let stdout = String::from_utf8(stdout).unwrap();
+
             build_target_dir.join(stdout.lines().next().unwrap())
         };
 
@@ -115,19 +100,14 @@ pub fn build(manifest_path: &Path, config: &Config) -> BuildResult {
             let mut file = File::create(build_target_dir.join("glue_obj.rs")).unwrap();
             file.write_all(&include_bytes!("../glue_obj.rs")[..]).unwrap();
         }
-        if Command::new("rustc")
+        TermCmd::new("Compiling glue_obj", "rustc")
             .arg(build_target_dir.join("glue_obj.rs"))
             .arg("--crate-type").arg("staticlib")
             .arg("--target").arg(build_target)
             .arg("--extern").arg(format!("cargo_apk_injected_glue={}", injected_glue_lib.to_string_lossy()))
             .arg("--emit").arg("obj")
             .arg("-o").arg(build_target_dir.join("glue_obj.o"))
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit())
-            .status().unwrap().code().unwrap() != 0
-        {
-            exit(1);
-        }
+            .execute();
 
         // Directory where we will put the native libraries for ant to pick them up.
         let native_libraries_dir = {
@@ -149,7 +129,7 @@ pub fn build(manifest_path: &Path, config: &Config) -> BuildResult {
 
         // Compiling the crate thanks to `cargo rustc`. We set the linker to `linker_exe`, a hacky
         // linker that will tweak the options passed to `gcc`.
-        if Command::new("cargo").arg("rustc")
+        TermCmd::new("Compiling crate", "cargo").arg("rustc")
             .arg("--verbose")
             .arg("--target").arg(build_target)
             .arg("--")
@@ -164,12 +144,7 @@ pub fn build(manifest_path: &Path, config: &Config) -> BuildResult {
             .env("CARGO_APK_LINKER_OUTPUT", native_libraries_dir.join("libmain.so"))
             .env("CARGO_APK_LIB_PATHS_OUTPUT", build_target_dir.join("lib_paths"))
             .env("CARGO_APK_LIBS_OUTPUT", build_target_dir.join("libs"))
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit())
-            .status().unwrap().code().unwrap() != 0
-        {
-            exit(1);
-        }
+            .execute();
 
         // Determine the list of library paths and libraries, and copy them to the right location.
         let shared_objects_to_load = {
@@ -225,15 +200,10 @@ pub fn build(manifest_path: &Path, config: &Config) -> BuildResult {
     }
 
     // Invoking `ant` from within `android-artifacts` in order to compile the project.
-    if Command::new(&config.ant_command)
+    TermCmd::new("Invoking ant", &config.ant_command)
         .arg("debug")
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
         .current_dir(android_artifacts_dir.join("build"))
-        .status().unwrap().code().unwrap() != 0
-    {
-        exit(1);
-    }
+        .execute();
 
     BuildResult {
         apk_path: android_artifacts_dir.join(format!("build/bin/{}-debug.apk", config.project_name)),
