@@ -130,12 +130,12 @@ pub fn build(manifest_path: &Path, config: &Config) -> BuildResult {
         // Compiling the crate thanks to `cargo rustc`. We set the linker to `linker_exe`, a hacky
         // linker that will tweak the options passed to `gcc`.
         TermCmd::new("Compiling crate", "cargo").arg("rustc")
-            .arg("--verbose")
             .arg("--target").arg(build_target)
             .arg("--")
             .arg("-C").arg(format!("linker={}", android_artifacts_dir.join(if cfg!(target_os = "windows") { "linker_exe.exe" } else { "linker_exe" })
                                                                      .to_string_lossy()))
             .arg("--extern").arg(format!("cargo_apk_injected_glue={}", injected_glue_lib.to_string_lossy()))
+            .inherit_stdout()
             .env("CARGO_APK_GCC", gcc_path.as_os_str())
             .env("CARGO_APK_GCC_SYSROOT", gcc_sysroot.as_os_str())
             .env("CARGO_APK_NATIVE_APP_GLUE", build_target_dir.join("android_native_app_glue.o"))

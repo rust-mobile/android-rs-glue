@@ -11,6 +11,7 @@ pub struct TermCmd {
     label: String,
     command: Command,
     command_label: Vec<String>,
+    inherit_stdout: bool,
 }
 
 impl TermCmd {
@@ -22,11 +23,18 @@ impl TermCmd {
             label: label.into(),
             command: {
                 let mut cmd = Command::new(program);
-                cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
+                cmd.stderr(Stdio::piped());
                 cmd
             },
             command_label: vec![command_label],
+            inherit_stdout: false,
         }
+    }
+
+    #[inline]
+    pub fn inherit_stdout(&mut self) -> &mut TermCmd {
+        self.inherit_stdout = true;
+        self
     }
 
     #[inline]
@@ -48,11 +56,18 @@ impl TermCmd {
         self
     }
 
+    #[inline]
     pub fn execute(&mut self) {
         self.exec_stdout();
     }
 
     pub fn exec_stdout(&mut self) -> Vec<u8> {
+        if self.inherit_stdout {
+            self.command.stdout(Stdio::inherit());
+        } else {
+            self.command.stdout(Stdio::piped());
+        }
+
         let mut t = term::stdout().unwrap();
 
         t.fg(term::color::BRIGHT_GREEN).unwrap();
@@ -80,8 +95,10 @@ impl TermCmd {
         t.reset().unwrap();
 
         if let Ok(ref output) = output {
-            writeln!(t, "Stdout\n--------------------").unwrap();
-            t.write_all(&output.stdout).unwrap();
+            if !self.inherit_stdout {
+                writeln!(t, "Stdout\n--------------------").unwrap();
+                t.write_all(&output.stdout).unwrap();
+            }
             writeln!(t, "Stderr\n--------------------").unwrap();
             t.write_all(&output.stderr).unwrap();
         }
