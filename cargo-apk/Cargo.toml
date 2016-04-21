@@ -8,4 +8,5 @@ repository = "https://github.com/tomaka/android-rs-glue/tree/master/cargo-apk"
 
 [dependencies]
 rustc-serialize = "0.3.19"
+term = "0.4.4"
 toml = "0.1.28"

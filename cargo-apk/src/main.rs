@@ -1,4 +1,5 @@
 extern crate rustc_serialize;
+extern crate term;
 extern crate toml;
 
 use std::env;
@@ -10,6 +11,7 @@ use std::process::Command;
 mod build;
 mod config;
 mod install;
+mod termcmd;
 
 fn main() {
     let command = env::args().skip(2).next();
