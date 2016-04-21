@@ -18,6 +18,15 @@ pub struct BuildResult {
 }
 
 pub fn build(manifest_path: &Path, config: &Config) -> BuildResult {
+    // First we detect whether `ant` works.
+    match Command::new(&config.ant_command).arg("-version").stdout(Stdio::null()).status() {
+        Ok(s) if s.success() => (),
+        _ => {
+            println!("Could not execute `ant`. Did you install it?");
+            exit(1);
+        }
+    }
+
     // Building the `android-artifacts` directory that will contain all the artifacts.
     let android_artifacts_dir = {
         let target_dir = manifest_path.parent().unwrap().join("target");
@@ -216,7 +225,7 @@ pub fn build(manifest_path: &Path, config: &Config) -> BuildResult {
     }
 
     // Invoking `ant` from within `android-artifacts` in order to compile the project.
-    if Command::new(if cfg!(target_os = "windows") { "ant.bat" } else { "ant" })
+    if Command::new(&config.ant_command)
         .arg("debug")
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
