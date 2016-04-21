@@ -1,6 +1,6 @@
 [root]
 name = "cargo-apk"
-version = "0.0.1"
+version = "0.1.2"
 dependencies = [
  "rustc-serialize 0.3.19 (registry+https://github.com/rust-lang/crates.io-index)",
  "toml 0.1.28 (registry+https://github.com/rust-lang/crates.io-index)",
