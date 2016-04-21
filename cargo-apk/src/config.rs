@@ -11,6 +11,8 @@ pub struct Config {
     pub sdk_path: PathBuf,
     /// Path to the root of the Android NDK.
     pub ndk_path: PathBuf,
+    /// How to invoke `ant`.
+    pub ant_command: String,
 
     /// Name of the project to feed to the SDK. This will be the name of the APK file.
     /// Should be a "system-ish" name, like `my-project`.
@@ -64,6 +66,7 @@ pub fn load(manifest_path: &Path) -> Config {
     Config {
         sdk_path: Path::new(&sdk_path).to_owned(),
         ndk_path: Path::new(&ndk_path).to_owned(),
+        ant_command: if cfg!(target_os = "windows") { "ant.bat" } else { "ant" }.to_owned(),
         project_name: package_name.clone(),
         package_label: manifest_content.as_ref().and_then(|a| a.label.clone())
                                        .unwrap_or_else(|| package_name.clone()),
