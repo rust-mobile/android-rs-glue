@@ -144,9 +144,9 @@ pub fn build(manifest_path: &Path, config: &Config) -> BuildResult {
             .env("CARGO_APK_LINKER_OUTPUT", native_libraries_dir.join("libmain.so"))
             .env("CARGO_APK_LIB_PATHS_OUTPUT", build_target_dir.join("lib_paths"))
             .env("CARGO_APK_LIBS_OUTPUT", build_target_dir.join("libs"))
-            .env("CC", gcc_path.as_os_str())          // Used by gcc-rs
-            .env("AR", ar_path.as_os_str())          // Used by gcc-rs
-            .env("CFLAGS", &format!("--sysroot {}", gcc_sysroot.to_string_lossy())) // Used by gcc-rs
+            .env("TARGET_CC", gcc_path.as_os_str())          // Used by gcc-rs
+            .env("TARGET_AR", ar_path.as_os_str())          // Used by gcc-rs
+            .env("TARGET_CFLAGS", &format!("--sysroot {}", gcc_sysroot.to_string_lossy())) // Used by gcc-rs
             .execute();
 
         // Determine the list of library paths and libraries, and copy them to the right location.
