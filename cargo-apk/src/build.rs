@@ -295,7 +295,7 @@ fn build_manifest(path: &Path, config: &Config) {
     write!(file, r#"<?xml version="1.0" encoding="utf-8"?>
 <!-- BEGIN_INCLUDE(manifest) -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-        package="com.example.native_activity"
+        package="{2}"
         android:versionCode="1"
         android:versionName="1.0">
 
@@ -319,7 +319,7 @@ fn build_manifest(path: &Path, config: &Config) {
 
 </manifest>
 <!-- END_INCLUDE(manifest) -->
-"#, config.package_label, config.project_name.replace("-", "_")).unwrap()
+"#, config.package_label, config.project_name.replace("-", "_"), config.package_name).unwrap()
 }
 
 fn build_assets(path: &Path, config: &Config) {
