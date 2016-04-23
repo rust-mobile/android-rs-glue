@@ -39,7 +39,7 @@ pub fn build(manifest_path: &Path, config: &Config) -> BuildResult {
         let build_target_dir = android_artifacts_dir.join(build_target);
 
         // Finding the tools in the NDK.
-        let gcc_path = {
+        let (gcc_path, ar_path) = {
             let host_os = if cfg!(target_os = "windows") { "windows" }
                        else if cfg!(target_os = "linux") { "linux" }
                        else if cfg!(target_os = "macos") { "darwin" }
@@ -53,8 +53,8 @@ pub fn build(manifest_path: &Path, config: &Config) -> BuildResult {
                        // TODO: mips64
                        else { panic!("Unknown or incompatible build target: {}", build_target) };
 
-            config.ndk_path.join(format!("toolchains/{}-4.9/prebuilt/{}-x86_64", target_arch, host_os))
-                           .join(format!("bin/{}-gcc", target_arch))
+            let base = config.ndk_path.join(format!("toolchains/{}-4.9/prebuilt/{}-x86_64", target_arch, host_os));
+            (base.join(format!("bin/{}-gcc", target_arch)), base.join(format!("bin/{}-ar", target_arch)))
         };
 
         let gcc_sysroot = {
@@ -144,6 +144,9 @@ pub fn build(manifest_path: &Path, config: &Config) -> BuildResult {
             .env("CARGO_APK_LINKER_OUTPUT", native_libraries_dir.join("libmain.so"))
             .env("CARGO_APK_LIB_PATHS_OUTPUT", build_target_dir.join("lib_paths"))
             .env("CARGO_APK_LIBS_OUTPUT", build_target_dir.join("libs"))
+            .env("CC", gcc_path.as_os_str())          // Used by gcc-rs
+            .env("AR", ar_path.as_os_str())          // Used by gcc-rs
+            .env("CFLAGS", &format!("--sysroot {}", gcc_sysroot.to_string_lossy())) // Used by gcc-rs
             .execute();
 
         // Determine the list of library paths and libraries, and copy them to the right location.
