@@ -64,12 +64,14 @@ impl TermCmd {
             self.command.stdout(Stdio::piped()).stderr(Stdio::piped());
         }
 
-        let mut t = term::stdout().unwrap();
+        let mut t = term::stdout();
 
-        t.fg(term::color::BRIGHT_GREEN).unwrap();
-        t.attr(term::Attr::Bold).unwrap();
-        writeln!(t, "  Cargo-Apk: {}", self.label).unwrap();
-        t.reset().unwrap();
+        if let Some(ref mut t) = t {
+            t.fg(term::color::BRIGHT_GREEN).unwrap();
+            t.attr(term::Attr::Bold).unwrap();
+            writeln!(t, "  Cargo-Apk: {}", self.label).unwrap();
+            t.reset().unwrap();
+        }
 
         let output = self.command.output();
         let success = match output.as_ref().map(|o| o.status) {
@@ -81,21 +83,23 @@ impl TermCmd {
             return output.unwrap().stdout;
         }
 
-        t.fg(term::color::RED).unwrap();
-        writeln!(t, "Error executing {:?}", self.command_label).unwrap();
-        match output.as_ref().map(|o| o.status.code()) {
-            Ok(Some(code)) => writeln!(t, "Status code {}", code).unwrap(),
-            Ok(None) => writeln!(t, "Interrupted").unwrap(),
-            Err(err) => writeln!(t, "{}", err).unwrap(),
-        }
-        t.reset().unwrap();
+        if let Some(ref mut t) = t {
+            t.fg(term::color::RED).unwrap();
+            writeln!(t, "Error executing {:?}", self.command_label).unwrap();
+            match output.as_ref().map(|o| o.status.code()) {
+                Ok(Some(code)) => writeln!(t, "Status code {}", code).unwrap(),
+                Ok(None) => writeln!(t, "Interrupted").unwrap(),
+                Err(err) => writeln!(t, "{}", err).unwrap(),
+            }
+            t.reset().unwrap();
 
-        if let Ok(ref output) = output {
-            if !self.inherit_stdouterr {
-                writeln!(t, "Stdout\n--------------------").unwrap();
-                t.write_all(&output.stdout).unwrap();
-                writeln!(t, "Stderr\n--------------------").unwrap();
-                t.write_all(&output.stderr).unwrap();
+            if let Ok(ref output) = output {
+                if !self.inherit_stdouterr {
+                    writeln!(t, "Stdout\n--------------------").unwrap();
+                    t.write_all(&output.stdout).unwrap();
+                    writeln!(t, "Stderr\n--------------------").unwrap();
+                    t.write_all(&output.stderr).unwrap();
+                }
             }
         }
 
