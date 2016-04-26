@@ -1,5 +1,7 @@
 //! This module provides features to pretty-print command execution in the tty.
 
+use std::io;
+use std::io::Write;
 use std::ffi::OsStr;
 use std::path::Path;
 use std::process::Command;
@@ -71,6 +73,8 @@ impl TermCmd {
             t.attr(term::Attr::Bold).unwrap();
             writeln!(t, "  Cargo-Apk: {}", self.label).unwrap();
             t.reset().unwrap();
+        } else {
+            println!("  Cargo-Apk: {}", self.label);
         }
 
         let output = self.command.output();
@@ -99,6 +103,22 @@ impl TermCmd {
                     t.write_all(&output.stdout).unwrap();
                     writeln!(t, "Stderr\n--------------------").unwrap();
                     t.write_all(&output.stderr).unwrap();
+                }
+            }
+
+        } else {
+            println!("Error executing {:?}", self.command_label);
+            match output.as_ref().map(|o| o.status.code()) {
+                Ok(Some(code)) => println!("Status code {}", code),
+                Ok(None) => println!("Interrupted"),
+                Err(err) => println!("{}", err),
+            }
+            if let Ok(ref output) = output {
+                if !self.inherit_stdouterr {
+                    println!("Stdout\n--------------------");
+                    io::stdout().write_all(&output.stdout).unwrap();
+                    println!("Stderr\n--------------------");
+                    io::stdout().write_all(&output.stderr).unwrap();
                 }
             }
         }
