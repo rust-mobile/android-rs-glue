@@ -57,6 +57,13 @@ pub unsafe extern fn cargo_apk_injected_glue_write_log(ptr: *const (), len: usiz
     write_log(message);
 }
 
+#[no_mangle]
+pub unsafe extern fn cargo_apk_injected_glue_load_asset(ptr: *const (), len: usize) -> *mut c_void {
+    let filename: &str = mem::transmute((ptr, len));
+    let data = load_asset(filename);
+    Box::into_raw(Box::new(data)) as *mut _
+}
+
 /// This static variable  will store the android_app* on creation, and set it back to 0 at
 ///  destruction.
 /// Apart from this, the static is never written, so there is no risk of race condition.

@@ -322,17 +322,26 @@ fn build_manifest(path: &Path, config: &Config) {
 "#, config.package_label, config.project_name.replace("-", "_"), config.package_name).unwrap()
 }
 
+#[cfg(target_os = "windows")]
+fn build_assets(_: &Path, config: &Config) {
+    match config.assets_path {
+        None => return,
+        Some(_) => panic!("Assets are not implemented yet for target_os=windows"),
+    };
+}
+
+#[cfg(not(target_os = "windows"))]
 fn build_assets(path: &Path, config: &Config) {
+    use std::os::unix::fs::symlink;
+
     let src_path = match config.assets_path {
         None => return,
         Some(ref p) => p,
     };
-
-    let dst_path = path.join("assets");
-    fs::create_dir_all(&dst_path).unwrap();
-
-    fs::hard_link(&src_path, &dst_path).expect("Can not create symlink to assets");
-    // TODO: copy files if linking fails
+    let dst_path = path.join("build/assets");
+    if !dst_path.exists() {
+        symlink(&src_path, &dst_path).expect("Can not create symlink to assets");
+    }
 }
 
 fn build_build_xml(path: &Path, config: &Config) {
