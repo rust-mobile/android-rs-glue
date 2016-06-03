@@ -19,7 +19,8 @@ fn main() {
     let current_manifest = current_manifest_path();
 
     // Fetching the configuration for the build.
-    let config = config::load(&current_manifest);
+    let mut config = config::load(&current_manifest);
+    config.release = env::args().any(|s| &s[..] == "--release" );
 
     if command.as_ref().map(|s| &s[..]) == Some("install") {
         install::install(&current_manifest, &config);
