@@ -28,6 +28,58 @@ pub fn build(manifest_path: &Path, config: &Config) -> BuildResult {
         }
     }
 
+    /// TODO: inline these where they're used (below).
+    pub trait AddRustcReleaseFlag {
+        fn add_rustc_release_flag(&mut self, config: &Config) -> &mut Self;
+    }
+    pub trait AddGccReleaseFlag {
+        fn add_gcc_release_flag(&mut self, config: &Config) -> &mut Self;
+    }
+    pub trait AddCargoReleaseFlag {
+        fn add_cargo_release_flag(&mut self, config: &Config) -> &mut Self;
+    }
+    pub trait AddAntReleaseFlag {
+        fn add_ant_release_flag(&mut self, config: &Config) -> &mut Self;
+    }
+
+    impl AddGccReleaseFlag for TermCmd {
+        fn add_gcc_release_flag(&mut self, config: &Config) -> &mut TermCmd {
+            if config.release {
+                self.arg("-O3")
+            } else {
+                self
+            }
+        }
+    }
+    impl AddRustcReleaseFlag for TermCmd {
+        fn add_rustc_release_flag(&mut self, config: &Config) -> &mut TermCmd {
+            if config.release {
+                self.arg("-C")
+                    .arg("opt-level=3")
+            } else {
+                self
+            }
+        }
+    }
+    impl AddCargoReleaseFlag for TermCmd {
+        fn add_cargo_release_flag(&mut self, config: &Config) -> &mut TermCmd {
+            if config.release {
+                self.arg("--release")
+            } else {
+                self
+            }
+        }
+    }
+    impl AddAntReleaseFlag for TermCmd {
+        fn add_ant_release_flag(&mut self, config: &Config) -> &mut TermCmd {
+            if config.release {
+                self.arg("release")
+            } else {
+                self.arg("debug")
+            }
+        }
+    }
+
     // Building the `android-artifacts` directory that will contain all the artifacts.
     let android_artifacts_dir = {
         let target_dir = manifest_path.parent().unwrap().join("target");
@@ -73,6 +125,7 @@ pub fn build(manifest_path: &Path, config: &Config) -> BuildResult {
         TermCmd::new("Compiling android_native_app_glue.c", &gcc_path)
             .arg(config.ndk_path.join("sources/android/native_app_glue/android_native_app_glue.c"))
             .arg("-c")
+            .add_gcc_release_flag(config)
             .arg("-o").arg(build_target_dir.join("android_native_app_glue.o"))
             .arg("--sysroot").arg(&gcc_sysroot)
             .execute();
@@ -81,10 +134,11 @@ pub fn build(manifest_path: &Path, config: &Config) -> BuildResult {
         let injected_glue_lib = {
             let mut cmd = TermCmd::new("Compiling injected-glue", "rustc");
             cmd.arg(android_artifacts_dir.join("injected-glue/lib.rs"))
-               .arg("--crate-type").arg("rlib")
-               .arg("--crate-name").arg("cargo_apk_injected_glue")
-               .arg("--target").arg(build_target)
-               .arg("--out-dir").arg(&build_target_dir);
+                .arg("--crate-type").arg("rlib")
+                .add_rustc_release_flag(config)
+                .arg("--crate-name").arg("cargo_apk_injected_glue")
+                .arg("--target").arg(build_target)
+                .arg("--out-dir").arg(&build_target_dir);
 
             cmd.execute();
 
@@ -103,6 +157,7 @@ pub fn build(manifest_path: &Path, config: &Config) -> BuildResult {
         TermCmd::new("Compiling glue_obj", "rustc")
             .arg(build_target_dir.join("glue_obj.rs"))
             .arg("--crate-type").arg("staticlib")
+            .add_rustc_release_flag(config)
             .arg("--target").arg(build_target)
             .arg("--extern").arg(format!("cargo_apk_injected_glue={}", injected_glue_lib.to_string_lossy()))
             .arg("--emit").arg("obj")
@@ -131,6 +186,7 @@ pub fn build(manifest_path: &Path, config: &Config) -> BuildResult {
         // linker that will tweak the options passed to `gcc`.
         TermCmd::new("Compiling crate", "cargo").arg("rustc")
             .arg("--target").arg(build_target)
+            .add_cargo_release_flag(config)
             .arg("--")
             .arg("-C").arg(format!("linker={}", android_artifacts_dir.join(if cfg!(target_os = "windows") { "linker_exe.exe" } else { "linker_exe" })
                                                                      .to_string_lossy()))
@@ -204,7 +260,7 @@ pub fn build(manifest_path: &Path, config: &Config) -> BuildResult {
 
     // Invoking `ant` from within `android-artifacts` in order to compile the project.
     TermCmd::new("Invoking ant", &config.ant_command)
-        .arg("debug")
+        .add_ant_release_flag(config)
         .current_dir(android_artifacts_dir.join("build"))
         .execute();
 

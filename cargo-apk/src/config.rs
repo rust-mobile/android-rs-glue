@@ -34,6 +34,9 @@ pub struct Config {
     ///
     /// The assets can later be loaded with the runtime library.
     pub assets_path: Option<PathBuf>,
+
+    /// Should we build in release mode?
+    pub release: bool,
 }
 
 pub fn load(manifest_path: &Path) -> Config {
@@ -79,7 +82,9 @@ pub fn load(manifest_path: &Path) -> Config {
         build_targets: vec!["arm-linux-androideabi".to_owned()],
         android_version: manifest_content.as_ref().and_then(|a| a.android_version).unwrap_or(18),
         assets_path: manifest_content.as_ref().and_then(|a| a.assets.as_ref())
-                                     .map(|p| manifest_path.parent().unwrap().join(p)),
+            .map(|p| manifest_path.parent().unwrap().join(p)),
+
+        release: false,
     }
 }
 
