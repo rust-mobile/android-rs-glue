@@ -235,6 +235,7 @@ pub fn android_main2<F>(app: *mut ffi::android_app, main_function: F)
                             if last_newline_pos < buf.len() - 1 {
                                 let last_newline_pos = last_newline_pos + 1;
                                 cursor = buf.len() - last_newline_pos;
+                                debug_assert!(cursor < buf.capacity());
                                 for j in 0..cursor as usize {
                                     buf[j] = buf[last_newline_pos + j];
                                 }
