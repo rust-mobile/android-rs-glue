@@ -213,24 +213,44 @@ pub fn android_main2<F>(app: *mut ffi::android_app, main_function: F)
                 unsafe {
                     let descriptor = descriptor as usize as c_int;
                     let mut buf: Vec<c_char> = Vec::with_capacity(512);
+                    let mut cursor = 0_usize;
 
                     // TODO: shouldn't use Rust stdlib
                     let tag = CString::new("RustAndroidGlueStdouterr").unwrap();
                     let tag = tag.as_ptr();
 
                     loop {
-                        let result = read(descriptor, buf.as_mut_ptr() as *mut _,
-                                          buf.capacity() - 1);
+                        let result = read(descriptor, buf.as_mut_ptr().offset(cursor as isize) as *mut _,
+                                          buf.capacity() - 1 - cursor);
+
                         let len = if result == 0 { return ptr::null_mut(); }
                                   else if result < 0 { return ptr::null_mut(); /* TODO: report problem */ }
-                                  else { result as usize };
+                                  else { result as usize + cursor };
 
                         buf.set_len(len);
-                        if buf[len - 1] == b'\n' {
-                            buf.set_len(len - 1);
-                        }
 
-                        ffi::__android_log_write(3, tag, buf.as_ptr());
+                        if let Some(last_newline_pos) = buf.iter().rposition(|&c| c == b'\n') {
+                            buf[last_newline_pos] = b'\0';
+                            ffi::__android_log_write(3, tag, buf.as_ptr());
+                            if last_newline_pos < buf.len() - 1 {
+                                let last_newline_pos = last_newline_pos + 1;
+                                cursor = buf.len() - last_newline_pos;
+                                for j in 0..cursor as usize {
+                                    buf[j] = buf[last_newline_pos + j];
+                                }
+                                buf[cursor] = b'\0';
+                                buf.set_len(cursor + 1);
+                            } else {
+                                cursor = 0;
+                            }
+                        } else {
+                            cursor = buf.len();
+                        }
+                        if cursor == buf.capacity() - 1 {
+                            ffi::__android_log_write(3, tag, buf.as_ptr());
+                            buf.set_len(0);
+                            cursor = 0;
+                        }
                     }
                 }
             }
