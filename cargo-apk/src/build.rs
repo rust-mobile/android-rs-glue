@@ -252,6 +252,19 @@ pub fn build(manifest_path: &Path, config: &Config) -> BuildResult {
             shared_objects_to_load
         };
 
+        {
+            let jar_dir = env::current_dir().unwrap().join("android").join("jars");
+            let libs = native_libraries_dir.parent().unwrap();
+
+            if !fs::metadata(&jar_dir).is_err(){
+                let paths = fs::read_dir(jar_dir).unwrap();
+                for path in paths {
+                    let path = path.unwrap();
+                    fs::copy(path.path(), libs.join(path.file_name()).as_path());
+                }
+            }
+
+        };
         // Write the Java source
         // FIXME: duh, the file will be replaced every time, so this only works with one target
         build_java_src(&android_artifacts_dir, &config,
@@ -327,6 +340,8 @@ fn build_java_src<'a, I>(path: &Path, config: &Config, libs: I)
     let mut file = File::create(&file).unwrap();
 
     let mut libs_string = String::new();
+    libs_string.push_str("System.loadLibrary(\"main\");\n");
+
     for name in libs {
         // Strip off the 'lib' prefix and ".so" suffix.
         let line = format!("        System.loadLibrary(\"{}\");\n",
@@ -399,6 +414,7 @@ fn build_build_xml(path: &Path, config: &Config) {
     write!(file, r#"<?xml version="1.0" encoding="UTF-8"?>
 <project name="{project_name}" default="help">
     <property file="local.properties" />
+    <property environment="env" />
     <loadproperties srcFile="project.properties" />
     <import file="custom_rules.xml" optional="true" />
     <import file="${{sdk.dir}}/tools/ant/build.xml" />
