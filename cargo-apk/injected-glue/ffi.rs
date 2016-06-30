@@ -324,6 +324,7 @@ pub type AInputEvent = ();
 extern { pub fn AInputEvent_getDeviceId(event: *const AInputEvent) -> i32; }
 extern { pub fn AInputEvent_getSource(event: *const AInputEvent) -> i32; }
 extern { pub fn AInputEvent_getType(event: *const AInputEvent) -> i32; }
+extern { pub fn AInputEvent_getKeyCode(event: *const AInputEvent) -> i32; }
 pub type AInputQueue = ();
 extern { pub fn AInputQueue_attachLooper(queue: *mut AInputQueue, looper: *mut ALooper, ident: c_int, callback: ALooper_callbackFunc, data: *mut c_void); }
 extern { pub fn AInputQueue_detachLooper(queue: *mut AInputQueue); }
