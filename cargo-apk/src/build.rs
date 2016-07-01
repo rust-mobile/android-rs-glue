@@ -252,19 +252,21 @@ pub fn build(manifest_path: &Path, config: &Config) -> BuildResult {
             shared_objects_to_load
         };
 
-        {
-            let jar_dir = env::current_dir().unwrap().join("android").join("jars");
-            let libs = native_libraries_dir.parent().unwrap();
-
-            if !fs::metadata(&jar_dir).is_err(){
-                let paths = fs::read_dir(jar_dir).unwrap();
-                for path in paths {
-                    let path = path.unwrap();
-                    fs::copy(path.path(), libs.join(path.file_name()).as_path());
+        // copy external java jars to android-artifacts/build/libs;
+        if let Some(ref src) = config.jar_libs_path {
+            if !fs::metadata(src).is_err() {
+                if let Ok(paths) = fs::read_dir(src) {
+                    let dst = android_artifacts_dir.join("build/libs");
+                    for f in paths {
+                        if let Ok(f) = f {
+                            let d = dst.join(f.file_name());
+                            fs::copy(f.path(), d).unwrap();
+                        }
+                    }
                 }
             }
+        }
 
-        };
         // Write the Java source
         // FIXME: duh, the file will be replaced every time, so this only works with one target
         build_java_src(&android_artifacts_dir, &config,
