@@ -1,10 +1,9 @@
+use std::os;
 use std::collections::HashSet;
 use std::env;
 use std::fs;
 use std::fs::File;
-use std::io::BufRead;
-use std::io::BufReader;
-use std::io::Write;
+use std::io::{self, BufRead, BufReader, Write};
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::exit;
@@ -322,26 +321,25 @@ fn build_manifest(path: &Path, config: &Config) {
 "#, config.package_label, config.project_name.replace("-", "_"), config.package_name).unwrap()
 }
 
-#[cfg(target_os = "windows")]
-fn build_assets(_: &Path, config: &Config) {
-    match config.assets_path {
-        None => return,
-        Some(_) => panic!("Assets are not implemented yet for target_os=windows"),
-    };
-}
-
-#[cfg(not(target_os = "windows"))]
 fn build_assets(path: &Path, config: &Config) {
-    use std::os::unix::fs::symlink;
-
     let src_path = match config.assets_path {
         None => return,
         Some(ref p) => p,
     };
     let dst_path = path.join("build/assets");
     if !dst_path.exists() {
-        symlink(&src_path, &dst_path).expect("Can not create symlink to assets");
+        create_dir_symlink(&src_path, &dst_path).expect("Can not create symlink to assets");
     }
+}
+
+#[cfg(target_os = "windows")]
+fn create_dir_symlink(src_path: &Path, dst_path: &Path) -> io::Result<()> {
+    os::windows::fs::symlink_dir(&src_path, &dst_path)
+}
+
+#[cfg(not(target_os = "windows"))]
+fn create_dir_symlink(src_path: &Path, dst_path: &Path) -> io::Result<()> {
+    os::unix::fs::symlink(&src_path, &dst_path)
 }
 
 fn build_build_xml(path: &Path, config: &Config) {
