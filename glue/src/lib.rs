@@ -6,6 +6,7 @@ extern {
     fn cargo_apk_injected_glue_add_sender_missing(sender: *mut ());
     fn cargo_apk_injected_glue_set_multitouch(multitouch: bool);
     fn cargo_apk_injected_glue_write_log(ptr: *const (), len: usize);
+    fn cargo_apk_injected_glue_load_asset(ptr: *const (), len: usize) -> *mut c_void;
 }
 
 use std::mem;
@@ -114,6 +115,10 @@ pub fn write_log(message: &str) {
 
 #[inline]
 pub fn load_asset(filename: &str) -> Result<Vec<u8>, AssetError> {
-    unimplemented!()    // FIXME: !
-    //cargo_apk_injected_glue::load_asset(filename)
+    unsafe {
+        let (filename_ptr, filename_len) = mem::transmute(filename);
+        let data = cargo_apk_injected_glue_load_asset(filename_ptr, filename_len);
+        let data: Box<Result<Vec<u8>, AssetError>> = Box::from_raw(data as *mut _);
+        *data
+    }
 }

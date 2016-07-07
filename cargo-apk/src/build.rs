@@ -1,10 +1,9 @@
+use std::os;
 use std::collections::HashSet;
 use std::env;
 use std::fs;
 use std::fs::File;
-use std::io::BufRead;
-use std::io::BufReader;
-use std::io::Write;
+use std::io::{self, BufRead, BufReader, Write};
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::exit;
@@ -383,12 +382,20 @@ fn build_assets(path: &Path, config: &Config) {
         None => return,
         Some(ref p) => p,
     };
+    let dst_path = path.join("build/assets");
+    if !dst_path.exists() {
+        create_dir_symlink(&src_path, &dst_path).expect("Can not create symlink to assets");
+    }
+}
 
-    let dst_path = path.join("assets");
-    fs::create_dir_all(&dst_path).unwrap();
+#[cfg(target_os = "windows")]
+fn create_dir_symlink(src_path: &Path, dst_path: &Path) -> io::Result<()> {
+    os::windows::fs::symlink_dir(&src_path, &dst_path)
+}
 
-    fs::hard_link(&src_path, &dst_path).expect("Can not create symlink to assets");
-    // TODO: copy files if linking fails
+#[cfg(not(target_os = "windows"))]
+fn create_dir_symlink(src_path: &Path, dst_path: &Path) -> io::Result<()> {
+    os::unix::fs::symlink(&src_path, &dst_path)
 }
 
 fn build_build_xml(path: &Path, config: &Config) {
