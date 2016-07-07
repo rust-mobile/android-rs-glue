@@ -19,8 +19,8 @@ use std::sync::mpsc::Sender;
 #[derive(Clone, Copy, Debug)]
 pub enum Event {
     EventMotion(Motion),
-    EventKeyUp,
-    EventKeyDown,
+    EventKeyUp(i32),
+    EventKeyDown(i32),
     InitWindow,
     SaveState,
     TermWindow,

@@ -34,6 +34,8 @@ pub struct Config {
     ///
     /// The assets can later be loaded with the runtime library.
     pub assets_path: Option<PathBuf>,
+    /// The external jar path;
+    pub jar_libs_path: Option<PathBuf>,
 
     /// Should we build in release mode?
     pub release: bool,
@@ -69,6 +71,11 @@ pub fn load(manifest_path: &Path) -> Config {
                     the $ANDROID_HOME environment variable.")
     };
 
+    let jar_libs_path = {
+        manifest_content.as_ref().and_then(|a| a.jar_libs_path.as_ref())
+            .map(|p| manifest_path.parent().unwrap().join(p))
+    };
+
     // For the moment some fields of the config are dummies.
     Config {
         sdk_path: Path::new(&sdk_path).to_owned(),
@@ -83,7 +90,7 @@ pub fn load(manifest_path: &Path) -> Config {
         android_version: manifest_content.as_ref().and_then(|a| a.android_version).unwrap_or(18),
         assets_path: manifest_content.as_ref().and_then(|a| a.assets.as_ref())
             .map(|p| manifest_path.parent().unwrap().join(p)),
-
+        jar_libs_path: jar_libs_path,
         release: false,
     }
 }
@@ -104,5 +111,6 @@ struct TomlAndroid {
     package_name: Option<String>,
     label: Option<String>,
     assets: Option<String>,
+    jar_libs_path: Option<String>,
     android_version: Option<u32>,
 }

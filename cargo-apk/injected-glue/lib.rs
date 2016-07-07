@@ -90,8 +90,8 @@ struct Context {
 #[derive(Clone, Copy, Debug)]
 pub enum Event {
     EventMotion(Motion),
-    EventKeyUp,
-    EventKeyDown,
+    EventKeyUp(i32),
+    EventKeyDown(i32),
     InitWindow,
     SaveState,
     TermWindow,
@@ -382,10 +382,13 @@ pub extern fn inputs_callback(_: *mut ffi::android_app, event: *const ffi::AInpu
     let action_code = action & ffi::AMOTION_EVENT_ACTION_MASK;
 
     match etype {
-        ffi::AINPUT_EVENT_TYPE_KEY => match action_code {
-            ffi::AKEY_EVENT_ACTION_DOWN => { send_event(Event::EventKeyDown); },
-            ffi::AKEY_EVENT_ACTION_UP => send_event(Event::EventKeyUp),
-            _ => write_log(&format!("unknown input-event-type:{} action_code:{}", etype, action_code)),
+        ffi::AINPUT_EVENT_TYPE_KEY => {
+            let key_code = unsafe { ffi::AKeyEvent_getKeyCode(event) };
+            match action_code {
+                ffi::AKEY_EVENT_ACTION_DOWN => send_event(Event::EventKeyDown(key_code)),
+                ffi::AKEY_EVENT_ACTION_UP => send_event(Event::EventKeyUp(key_code)),
+                _ => write_log(&format!("unknown input-event-type:{} action_code:{}", etype, action_code)),
+            }
         },
         ffi::AINPUT_EVENT_TYPE_MOTION => {
             let motion_action = match action_code {
