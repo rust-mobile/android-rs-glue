@@ -1,0 +1,12 @@
+[package]
+name = "android_glue_icon_example"
+version = "0.1.0"
+authors = ["Pierre Krieger <pierre.krieger1708@gmail.com>"]
+
+[package.metadata.android]
+label = "Using icon android-rs-glue example"
+res = "res"
+icon = "@mipmap/ic_launcher"
+
+[dependencies.android_glue]
+path = "../../glue"
