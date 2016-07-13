@@ -1,3 +1,4 @@
+use std::collections::btree_map::BTreeMap;
 use std::env;
 use std::fs::File;
 use std::io::Read;
@@ -24,6 +25,10 @@ pub struct Config {
     /// Label for the package.
     pub package_label: String,
 
+    /// Name of the launcher icon.
+    /// Versions of this icon with different resolutions have to reside in the res folder
+    pub package_icon: Option<String>,
+
     /// List of targets to build the app for. Eg. `arm-linux-androideabi`.
     pub build_targets: Vec<String>,
 
@@ -35,8 +40,23 @@ pub struct Config {
     /// The assets can later be loaded with the runtime library.
     pub assets_path: Option<PathBuf>,
 
+    /// If `Some`, a path that contains the list of resources to ship as part of the package.
+    ///
+    /// The resources can later be loaded with the runtime library.
+    /// This folder contains for example the launcher icon, the styles and resolution dependent images.
+    pub res_path: Option<PathBuf>,
+
     /// Should we build in release mode?
     pub release: bool,
+
+    /// Should this app be in fullscreen mode (hides the title bar)?
+    pub fullscreen: bool,
+
+    // Appends this string to the application attributes in the AndroidManifest.xml
+    pub application_attributes: Option<String>,
+
+    // Appends this string to the activity attributes in the AndroidManifest.xml
+    pub activity_attributes: Option<String>,
 }
 
 pub fn load(manifest_path: &Path) -> Config {
@@ -69,6 +89,7 @@ pub fn load(manifest_path: &Path) -> Config {
                     the $ANDROID_HOME environment variable.")
     };
 
+
     // For the moment some fields of the config are dummies.
     Config {
         sdk_path: Path::new(&sdk_path).to_owned(),
@@ -79,12 +100,30 @@ pub fn load(manifest_path: &Path) -> Config {
         project_name: package_name.clone(),
         package_label: manifest_content.as_ref().and_then(|a| a.label.clone())
                                        .unwrap_or_else(|| package_name.clone()),
+        package_icon: manifest_content.as_ref().and_then(|a| a.icon.clone()),
         build_targets: vec!["arm-linux-androideabi".to_owned()],
         android_version: manifest_content.as_ref().and_then(|a| a.android_version).unwrap_or(18),
         assets_path: manifest_content.as_ref().and_then(|a| a.assets.as_ref())
             .map(|p| manifest_path.parent().unwrap().join(p)),
-
+        res_path: manifest_content.as_ref().and_then(|a| a.res.as_ref())
+            .map(|p| manifest_path.parent().unwrap().join(p)),
         release: false,
+        fullscreen: manifest_content.as_ref().and_then(|a| a.fullscreen.clone()).unwrap_or(false),
+        application_attributes: manifest_content.as_ref().and_then(|a| map_to_string(a.application_attributes.clone())),
+        activity_attributes: manifest_content.as_ref().and_then(|a| map_to_string(a.activity_attributes.clone()))
+    }
+}
+
+fn map_to_string(input_map: Option<BTreeMap<String, String>>) -> Option<String> {
+    // TODO rewrite this in functional style
+    if let Some(map) = input_map {
+        let mut result = String::new();
+        for (key, val) in map {
+            result.push_str(&format!("\n{}=\"{}\"", key, val))
+        }
+        Some(result)
+    } else {
+        None
     }
 }
 
@@ -103,6 +142,11 @@ struct TomlMetadata {
 struct TomlAndroid {
     package_name: Option<String>,
     label: Option<String>,
+    icon: Option<String>,
     assets: Option<String>,
+    res: Option<String>,
     android_version: Option<u32>,
+    fullscreen: Option<bool>,
+    application_attributes: Option<BTreeMap<String, String>>,
+    activity_attributes: Option<BTreeMap<String, String>>,
 }
