@@ -57,6 +57,13 @@ pub unsafe extern fn cargo_apk_injected_glue_write_log(ptr: *const (), len: usiz
     write_log(message);
 }
 
+#[no_mangle]
+pub unsafe extern fn cargo_apk_injected_glue_load_asset(ptr: *const (), len: usize) -> *mut c_void {
+    let filename: &str = mem::transmute((ptr, len));
+    let data = load_asset(filename);
+    Box::into_raw(Box::new(data)) as *mut _
+}
+
 use ffi::{JNIEnv, ANativeActivity, _JavaVM, JavaVM, JNIInvokeInterface};
 use std::mem::transmute;
 
@@ -71,13 +78,7 @@ pub unsafe extern fn cargo_apk_injected_glue_attach_jvm() {
     let f = it.AttachCurrentThread;
     let ret = f(vm as *mut JavaVM, &mut env as *mut *mut JNIEnv, 0 as *mut c_void);
 
-}
-
-#[no_mangle]
-pub unsafe extern fn cargo_apk_injected_glue_load_asset(ptr: *const (), len: usize) -> *mut c_void {
-    let filename: &str = mem::transmute((ptr, len));
-    let data = load_asset(filename);
-    Box::into_raw(Box::new(data)) as *mut _
+    write_log(format!("attach vm result: {}", ret).as_str());
 }
 
 /// This static variable  will store the android_app* on creation, and set it back to 0 at
@@ -102,12 +103,20 @@ struct Context {
     primary_pointer_id: Cell<i32>,
 }
 
+pub mod touch_event;
+pub use touch_event::TouchEvent;
+
+#[derive(Clone, Copy, Debug)]
+pub enum KeyEventAction {
+    Up,
+    Down,
+}
+
 /// An event triggered by the Android environment.
 #[derive(Clone, Copy, Debug)]
 pub enum Event {
-    EventMotion(Motion),
-    EventKeyUp(i32),
-    EventKeyDown(i32),
+    Touch(TouchEvent),
+    KeyEvent(KeyEventAction, i32),
     InitWindow,
     SaveState,
     TermWindow,
@@ -124,24 +133,6 @@ pub enum Event {
     Pause,
     Stop,
     Destroy,
-}
-
-/// Data about a motion event.
-#[derive(Clone, Copy, Debug)]
-pub struct Motion {
-    pub action: MotionAction,
-    pub pointer_id: i32,
-    pub x: f32,
-    pub y: f32,
-}
-
-/// The type of pointer action in a motion event.
-#[derive(Clone, Copy, Debug)]
-pub enum MotionAction {
-    Down,
-    Move,
-    Up,
-    Cancel,
 }
 
 #[cfg(not(target_os = "android"))]
@@ -401,64 +392,16 @@ pub extern fn inputs_callback(_: *mut ffi::android_app, event: *const ffi::AInpu
         ffi::AINPUT_EVENT_TYPE_KEY => {
             let key_code = unsafe { ffi::AKeyEvent_getKeyCode(event) };
             match action_code {
-                ffi::AKEY_EVENT_ACTION_DOWN => send_event(Event::EventKeyDown(key_code)),
-                ffi::AKEY_EVENT_ACTION_UP => send_event(Event::EventKeyUp(key_code)),
+                ffi::AKEY_EVENT_ACTION_DOWN => send_event(Event::KeyEvent(KeyEventAction::Down, key_code)),
+                ffi::AKEY_EVENT_ACTION_UP => send_event(Event::KeyEvent(KeyEventAction::Up, key_code)),
                 _ => write_log(&format!("unknown input-event-type:{} action_code:{}", etype, action_code)),
             }
         },
+
         ffi::AINPUT_EVENT_TYPE_MOTION => {
-            let motion_action = match action_code {
-                ffi::AMOTION_EVENT_ACTION_DOWN |
-                ffi::AMOTION_EVENT_ACTION_POINTER_DOWN => MotionAction::Down,
-                ffi::AMOTION_EVENT_ACTION_UP |
-                ffi::AMOTION_EVENT_ACTION_POINTER_UP => MotionAction::Up,
-                ffi::AMOTION_EVENT_ACTION_MOVE => MotionAction::Move,
-                ffi::AMOTION_EVENT_ACTION_CANCEL => MotionAction::Cancel,
-                _ => {
-                    write_log(&format!("unknown action_code:{}", action_code));
-                    return 0
-                }
-            };
-            let context = get_context();
-            let idx = ((action & ffi::AMOTION_EVENT_ACTION_POINTER_INDEX_MASK)
-                       >> ffi::AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT)
-                      as usize;
-
-            let pointer_id = unsafe { ffi::AMotionEvent_getPointerId(event, idx) };
-            if action_code == ffi::AMOTION_EVENT_ACTION_DOWN {
-                context.primary_pointer_id.set(pointer_id);
-            }
-            let primary_pointer_id = context.primary_pointer_id.get();
-            let multitouch = context.multitouch.get();
-
-            match motion_action {
-                MotionAction::Down | MotionAction::Up | MotionAction::Cancel => {
-                    if multitouch || pointer_id == primary_pointer_id {
-                        send_event(Event::EventMotion(Motion {
-                            action: motion_action,
-                            pointer_id: pointer_id,
-                            x: unsafe { ffi::AMotionEvent_getX(event, idx) },
-                            y: unsafe { ffi::AMotionEvent_getY(event, idx) },
-                        }));
-                    }
-                }
-                MotionAction::Move => {
-                    // A move event may have multiple changed pointers. Send an event for each.
-                    let pointer_count = unsafe { ffi::AMotionEvent_getPointerCount(event) };
-                    for idx in 0..pointer_count {
-                        let pointer_id = unsafe { ffi::AMotionEvent_getPointerId(event, idx) };
-                        if multitouch || pointer_id == primary_pointer_id {
-                            send_event(Event::EventMotion(Motion {
-                                action: motion_action,
-                                pointer_id: pointer_id,
-                                x: unsafe { ffi::AMotionEvent_getX(event, idx) },
-                                y: unsafe { ffi::AMotionEvent_getY(event, idx) },
-                            }));
-                        }
-                    }
-                }
-            }
+            send_event(Event::Touch(TouchEvent::from_input_event(event)))
         },
+
         _ => write_log(&format!("unknown input-event-type:{} action_code:{}", etype, action_code)),
     }
     0

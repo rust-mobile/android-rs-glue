@@ -296,6 +296,9 @@ fn build_android_artifacts_dir(path: &Path, config: &Config) {
 
         let mut ffi = File::create(path.join("injected-glue/ffi.rs")).unwrap();
         ffi.write_all(&include_bytes!("../injected-glue/ffi.rs")[..]).unwrap();
+
+        let mut touch = File::create(path.join("injected-glue/touch_event.rs")).unwrap();
+        touch.write_all(&include_bytes!("../injected-glue/touch_event.rs")[..]).unwrap();
     }
 
     build_linker(path);

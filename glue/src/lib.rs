@@ -15,13 +15,20 @@ use std::os::raw::c_void;
 use std::sync::mpsc::Sender;
 
 //pub use cargo_apk_injected_glue::ffi;
+mod touch_event;
+pub use touch_event::TouchEvent;
+
+#[derive(Clone, Copy, Debug)]
+pub enum KeyEventAction {
+    Up,
+    Down,
+}
 
 /// An event triggered by the Android environment.
-#[derive(Clone, Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum Event {
-    EventMotion(Motion),
-    EventKeyUp(i32),
-    EventKeyDown(i32),
+    Touch(TouchEvent),
+    KeyEvent(KeyEventAction, i32),
     InitWindow,
     SaveState,
     TermWindow,
@@ -38,24 +45,6 @@ pub enum Event {
     Pause,
     Stop,
     Destroy,
-}
-
-/// Data about a motion event.
-#[derive(Clone, Copy, Debug)]
-pub struct Motion {
-    pub action: MotionAction,
-    pub pointer_id: i32,
-    pub x: f32,
-    pub y: f32,
-}
-
-/// The type of pointer action in a motion event.
-#[derive(Clone, Copy, Debug)]
-pub enum MotionAction {
-    Down,
-    Move,
-    Up,
-    Cancel,
 }
 
 pub enum AssetError {
