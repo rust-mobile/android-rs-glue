@@ -57,6 +57,23 @@ pub unsafe extern fn cargo_apk_injected_glue_write_log(ptr: *const (), len: usiz
     write_log(message);
 }
 
+use ffi::{JNIEnv, ANativeActivity, _JavaVM, JavaVM, JNIInvokeInterface};
+use std::mem::transmute;
+
+#[no_mangle]
+pub unsafe extern fn cargo_apk_injected_glue_attach_jvm() {
+    let mut env: *mut JNIEnv = unsafe {std::mem::uninitialized()};
+
+    let a: &ANativeActivity = unsafe {transmute(get_app().activity)};
+    let vm: &mut _JavaVM = unsafe {transmute(a.vm)};
+    let it: &JNIInvokeInterface = unsafe {transmute(vm.functions)};
+
+    let f = it.AttachCurrentThread;
+    let ret = f(vm as *mut JavaVM, &mut env as *mut *mut JNIEnv, 0 as *mut c_void);
+
+    write_log(format!("attach vm result: {}", ret).as_str());
+}
+
 /// This static variable  will store the android_app* on creation, and set it back to 0 at
 ///  destruction.
 /// Apart from this, the static is never written, so there is no risk of race condition.

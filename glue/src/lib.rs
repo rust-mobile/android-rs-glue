@@ -6,6 +6,7 @@ extern {
     fn cargo_apk_injected_glue_add_sender_missing(sender: *mut ());
     fn cargo_apk_injected_glue_set_multitouch(multitouch: bool);
     fn cargo_apk_injected_glue_write_log(ptr: *const (), len: usize);
+    fn cargo_apk_injected_glue_attach_jvm() ;
 }
 
 use std::mem;
@@ -109,6 +110,13 @@ pub fn write_log(message: &str) {
     unsafe {
         let (message_ptr, message_len) = mem::transmute(message);
         cargo_apk_injected_glue_write_log(message_ptr, message_len);
+    }
+}
+
+#[inline]
+pub fn attach_jvm(){
+    unsafe {
+        cargo_apk_injected_glue_attach_jvm()
     }
 }
 
