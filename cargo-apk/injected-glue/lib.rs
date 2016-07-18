@@ -71,7 +71,13 @@ pub unsafe extern fn cargo_apk_injected_glue_attach_jvm() {
     let f = it.AttachCurrentThread;
     let ret = f(vm as *mut JavaVM, &mut env as *mut *mut JNIEnv, 0 as *mut c_void);
 
-    write_log(format!("attach vm result: {}", ret).as_str());
+}
+
+#[no_mangle]
+pub unsafe extern fn cargo_apk_injected_glue_load_asset(ptr: *const (), len: usize) -> *mut c_void {
+    let filename: &str = mem::transmute((ptr, len));
+    let data = load_asset(filename);
+    Box::into_raw(Box::new(data)) as *mut _
 }
 
 /// This static variable  will store the android_app* on creation, and set it back to 0 at

@@ -69,8 +69,8 @@ impl TermCmd {
         let mut t = term::stdout();
 
         if let Some(ref mut t) = t {
-            t.fg(term::color::BRIGHT_GREEN).unwrap();
-            t.attr(term::Attr::Bold).unwrap();
+            let _ = t.fg(term::color::BRIGHT_GREEN);
+            let _ = t.attr(term::Attr::Bold);
             writeln!(t, "  Cargo-Apk: {}", self.label).unwrap();
             t.reset().unwrap();
         } else {
@@ -88,7 +88,7 @@ impl TermCmd {
         }
 
         if let Some(ref mut t) = t {
-            t.fg(term::color::RED).unwrap();
+            let _ = t.fg(term::color::RED);
             writeln!(t, "Error executing {:?}", self.command_label).unwrap();
             match output.as_ref().map(|o| o.status.code()) {
                 Ok(Some(code)) => writeln!(t, "Status code {}", code).unwrap(),

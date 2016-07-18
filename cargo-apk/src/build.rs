@@ -1,10 +1,9 @@
+use std::os;
 use std::collections::HashSet;
 use std::env;
 use std::fs;
 use std::fs::File;
-use std::io::BufRead;
-use std::io::BufReader;
-use std::io::Write;
+use std::io::{self, BufRead, BufReader, Write};
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::exit;
@@ -305,6 +304,7 @@ fn build_android_artifacts_dir(path: &Path, config: &Config) {
     build_local_properties(path, config);
     build_project_properties(path, config);
     build_assets(path, config);
+    build_res(path, config);
 
     for target in config.build_targets.iter() {
         if fs::metadata(path.join(target)).is_err() {
@@ -365,24 +365,46 @@ fn build_manifest(path: &Path, config: &Config) {
     //if fs::metadata(&file).is_ok() { return; }
     let mut file = File::create(&file).unwrap();
 
-    write!(file, r#"<?xml version="1.0" encoding="utf-8"?>
+    // Building application attributes
+    let application_attrs = format!(r#"
+            android:label="{0}"{1}{2}{3}"#,
+        config.package_label,
+        config.package_icon.as_ref().map_or(String::new(), |a| format!(r#"
+            android:icon="{}""#, a)),
+        if config.fullscreen { r#"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen""#
+        } else { "" },
+        config.application_attributes.as_ref().map_or(String::new(), |a| a.replace("\n","\n            "))
+    );
+
+    // Buidling activity attributes
+    let activity_attrs = format!(r#"
+                android:name="rust.{1}.MainActivity"
+                android:label="{0}"
+                android:configChanges="orientation|keyboardHidden|screenSize" {2}"#,
+        config.package_label,
+        config.project_name.replace("-", "_"),
+        config.activity_attributes.as_ref().map_or(String::new(), |a| a.replace("\n","\n                "))
+    );
+
+    // Write final AndroidManifest
+    write!(
+        file, r#"<?xml version="1.0" encoding="utf-8"?>
 <!-- BEGIN_INCLUDE(manifest) -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-        package="{2}"
+        package="{0}"
         android:versionCode="1"
         android:versionName="1.0">
 
     <uses-sdk android:minSdkVersion="9" />
 
-    <uses-feature android:glEsVersion="0x00020000" android:required="true"></uses-feature>
+    <uses-feature android:glEsVersion="{1}" android:required="true"></uses-feature>
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 
-    <application android:label="{0}">
-        <activity android:name="rust.{1}.MainActivity"
-                android:label="{0}"
-                android:configChanges="orientation|keyboardHidden">
+    <application {2} >
+        <activity {3} >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -392,7 +414,12 @@ fn build_manifest(path: &Path, config: &Config) {
 
 </manifest>
 <!-- END_INCLUDE(manifest) -->
-"#, config.package_label, config.project_name.replace("-", "_"), config.package_name).unwrap()
+"#,
+        config.package_name,
+        format!("0x{:04}{:04}", 2, 0), //TODO: get opengl es version from somewhere
+        application_attrs,
+        activity_attrs
+    );
 }
 
 fn build_assets(path: &Path, config: &Config) {
@@ -400,12 +427,31 @@ fn build_assets(path: &Path, config: &Config) {
         None => return,
         Some(ref p) => p,
     };
+    let dst_path = path.join("build/assets");
+    if !dst_path.exists() {
+        create_dir_symlink(&src_path, &dst_path).expect("Can not create symlink to assets");
+    }
+}
 
-    let dst_path = path.join("assets");
-    fs::create_dir_all(&dst_path).unwrap();
+fn build_res(path: &Path, config: &Config) {
+    let src_path = match config.res_path {
+        None => return,
+        Some(ref p) => p,
+    };
+    let dst_path = path.join("build/res");
+    if !dst_path.exists() {
+        create_dir_symlink(&src_path, &dst_path).expect("Can not create symlink to res");
+    }
+}
 
-    fs::hard_link(&src_path, &dst_path).expect("Can not create symlink to assets");
-    // TODO: copy files if linking fails
+#[cfg(target_os = "windows")]
+fn create_dir_symlink(src_path: &Path, dst_path: &Path) -> io::Result<()> {
+    os::windows::fs::symlink_dir(&src_path, &dst_path)
+}
+
+#[cfg(not(target_os = "windows"))]
+fn create_dir_symlink(src_path: &Path, dst_path: &Path) -> io::Result<()> {
+    os::unix::fs::symlink(&src_path, &dst_path)
 }
 
 fn build_build_xml(path: &Path, config: &Config) {
