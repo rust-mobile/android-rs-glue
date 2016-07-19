@@ -16,7 +16,7 @@ use std::sync::mpsc::Sender;
 
 //pub use cargo_apk_injected_glue::ffi;
 mod touch_event;
-pub use touch_event::TouchEvent;
+pub use touch_event::{TouchEvent, TouchEventType, Pointer, PointerState};
 
 #[derive(Clone, Copy, Debug)]
 pub enum KeyEventAction {

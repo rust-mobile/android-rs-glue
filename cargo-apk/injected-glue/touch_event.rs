@@ -27,10 +27,11 @@ impl TouchEventType{
 pub struct TouchEvent {
     pub event_type: TouchEventType,
     pub timestamp: i64,
-    pub p0: TouchPoint,
-    pub p1: Option<TouchPoint>,
-    pub p2: Option<TouchPoint>,
-    pub p3: Option<TouchPoint>,
+    pub num_pointers: u8,
+    pub p0: Pointer,
+    pub p1: Option<Pointer>,
+    pub p2: Option<Pointer>,
+    pub p3: Option<Pointer>,
     pub flag: i32,
 }
 
@@ -38,23 +39,25 @@ impl TouchEvent {
 
     pub fn from_input_event(event: *const ffi::AInputEvent) -> TouchEvent {
 
-        let mut points: Vec<TouchPoint> = vec![];
+        let mut points: Vec<Pointer> = vec![];
         let n = unsafe {ffi::AMotionEvent_getPointerCount(event)};
 
         TouchEvent {
             timestamp: unsafe {ffi::AMotionEvent_getEventTime(event)},
-            p0: TouchPoint::from_input_event(event, 0),
-			p1: if n > 1 {Some(TouchPoint::from_input_event(event, 1))} else {None},
-			p2: if n > 2 {Some(TouchPoint::from_input_event(event, 2))} else {None},
-			p3: if n > 3 {Some(TouchPoint::from_input_event(event, 3))} else {None},
+            p0: Pointer::from_input_event(event, 0),
+            num_pointers: points.len() as u8,
+            p1: if n > 1 {Some(Pointer::from_input_event(event, 1))} else {None},
+            p2: if n > 2 {Some(Pointer::from_input_event(event, 2))} else {None},
+            p3: if n > 3 {Some(Pointer::from_input_event(event, 3))} else {None},
             event_type: TouchEventType::from_input_event(event),
             flag: 0,
         }
     }
 }
 
+
 #[derive(Clone, Copy, Debug)]
-pub enum TouchPointState{
+pub enum PointerState{
     Released,
     Pressed,
     Moved,
@@ -62,44 +65,44 @@ pub enum TouchPointState{
     Cancelled,
 }
 
-impl TouchPointState {
-    fn from_input_event(event: *const ffi::AInputEvent, pointer_idx: usize) -> TouchPointState {
+impl PointerState {
+    fn from_input_event(event: *const ffi::AInputEvent, pointer_idx: usize) -> PointerState {
         let action = unsafe {ffi::AMotionEvent_getAction(event)};
 
         // primary pointer;
         if action == ffi::AMOTION_EVENT_ACTION_DOWN {
-            return TouchPointState::Pressed;
+            return PointerState::Pressed;
         }else if action == ffi::AMOTION_EVENT_ACTION_UP {
-            return TouchPointState::Released;
+            return PointerState::Released;
         }
 
         // actions regardless of pointer index;
         if action == ffi::AMOTION_EVENT_ACTION_MOVE {
-            return TouchPointState::Moved;
+            return PointerState::Moved;
         }else if action == ffi::AMOTION_EVENT_ACTION_CANCEL {
-            return TouchPointState::Cancelled;
+            return PointerState::Cancelled;
         }
 
         // index where the action occured;
         let action_idx = (action & ffi::AMOTION_EVENT_ACTION_POINTER_INDEX_MASK) >> ffi::AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT;
         if (pointer_idx as i32) != action_idx {
-            return TouchPointState::Stationary;
+            return PointerState::Stationary;
         }
 
         let action_masked = action & ffi::AMOTION_EVENT_ACTION_MASK;
         if action_masked == ffi::AMOTION_EVENT_ACTION_POINTER_DOWN {
-            return TouchPointState::Pressed;
+            return PointerState::Pressed;
         }else if action_masked == ffi::AMOTION_EVENT_ACTION_POINTER_UP {
-            return TouchPointState::Released;
+            return PointerState::Released;
         }
 
-        TouchPointState::Stationary
+        PointerState::Stationary
     }
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct TouchPoint {
-    pub state: TouchPointState,
+pub struct Pointer {
+    pub state: PointerState,
     pub x: f32,
     pub y: f32,
     pub id: i32,
@@ -109,17 +112,17 @@ pub struct TouchPoint {
     pub rotation_angle: f32,
 }
 
-impl TouchPoint {
-	fn from_input_event(event: *const ffi::AInputEvent, idx:usize) -> TouchPoint {
-		TouchPoint{
-			state: TouchPointState::from_input_event(event, idx),
-			id: unsafe {ffi::AMotionEvent_getPointerId(event, idx)},
-			x: unsafe {ffi::AMotionEvent_getX(event, idx)},
-			y: unsafe {ffi::AMotionEvent_getY(event, idx)},
-			vertical_radius: unsafe {ffi::AMotionEvent_getTouchMajor(event, idx)} / 2.0,
-			horizontal_radius: unsafe {ffi::AMotionEvent_getTouchMinor(event, idx)} / 2.0,
-			pressure: 0.0,
-			rotation_angle:0.0,
+impl Pointer {
+    fn from_input_event(event: *const ffi::AInputEvent, idx:usize) -> Pointer {
+        Pointer {
+            state: PointerState::from_input_event(event, idx),
+            id: unsafe {ffi::AMotionEvent_getPointerId(event, idx)},
+            x: unsafe {ffi::AMotionEvent_getX(event, idx)},
+            y: unsafe {ffi::AMotionEvent_getY(event, idx)},
+            vertical_radius: unsafe {ffi::AMotionEvent_getTouchMajor(event, idx)} / 2.0,
+            horizontal_radius: unsafe {ffi::AMotionEvent_getTouchMinor(event, idx)} / 2.0,
+            pressure: 0.0,
+			      rotation_angle:0.0,
         }
-	}
+	  }
 }

@@ -1,4 +1,3 @@
-
 #[derive(Clone, Copy, Debug)]
 pub enum TouchEventType{
     Start,
@@ -11,15 +10,16 @@ pub enum TouchEventType{
 pub struct TouchEvent {
     pub event_type: TouchEventType,
     pub timestamp: i64,
-    pub p0: TouchPoint,
-    pub p1: Option<TouchPoint>,
-    pub p2: Option<TouchPoint>,
-    pub p3: Option<TouchPoint>,
+    pub num_pointers: u8,
+    pub p0: Pointer,
+    pub p1: Option<Pointer>,
+    pub p2: Option<Pointer>,
+    pub p3: Option<Pointer>,
     pub flag: i32,
 }
 
 #[derive(Clone, Copy, Debug)]
-pub enum TouchPointState{
+pub enum PointerState{
     Released,
     Pressed,
     Moved,
@@ -28,8 +28,8 @@ pub enum TouchPointState{
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct TouchPoint {
-    pub state: TouchPointState,
+pub struct Pointer {
+    pub state: PointerState,
     pub x: f32,
     pub y: f32,
     pub id: i32,

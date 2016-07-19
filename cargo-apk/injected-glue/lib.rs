@@ -104,7 +104,7 @@ struct Context {
 }
 
 pub mod touch_event;
-pub use touch_event::TouchEvent;
+pub use touch_event::{TouchEvent, TouchEventType, Pointer, PointerState};
 
 #[derive(Clone, Copy, Debug)]
 pub enum KeyEventAction {
