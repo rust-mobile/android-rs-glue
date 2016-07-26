@@ -2,24 +2,47 @@ use ffi;
 
 #[derive(Clone, Copy, Debug)]
 pub enum TouchEventType{
-    Start,
+    Down,
+    PointerDown,
     Move,
-    End,
+    PointerUp,
+    Up,
     Cancel,
 }
 
 impl TouchEventType{
     fn from_input_event(event: *const ffi::AInputEvent) -> TouchEventType{
-        let action = unsafe {ffi::AMotionEvent_getAction(event)} & ffi::AMOTION_EVENT_ACTION_MASK;
-        if action == ffi::AMOTION_EVENT_ACTION_DOWN || action == ffi::AMOTION_EVENT_ACTION_POINTER_DOWN {
-            TouchEventType::Start
-        }else if action == ffi::AMOTION_EVENT_ACTION_UP || action == ffi::AMOTION_EVENT_ACTION_POINTER_UP{
-            TouchEventType::End
-        }else if action == ffi::AMOTION_EVENT_ACTION_MOVE{
-            TouchEventType::Move
-        }else{
-            TouchEventType::Cancel
+
+        // let action = unsafe {ffi::AMotionEvent_getAction(event)} & ffi::AMOTION_EVENT_ACTION_MASK;
+
+        match unsafe {ffi::AMotionEvent_getAction(event)} & ffi::AMOTION_EVENT_ACTION_MASK {
+            // match action {
+            ffi::AMOTION_EVENT_ACTION_DOWN => //| ffi::AMOTION_EVENT_ACTION_POINTER_DOWN =>
+                TouchEventType::Down,
+            ffi::AMOTION_EVENT_ACTION_MOVE =>
+                TouchEventType::Move,
+            ffi::AMOTION_EVENT_ACTION_POINTER_DOWN =>
+                TouchEventType::PointerDown,
+            ffi::AMOTION_EVENT_ACTION_POINTER_UP =>
+                TouchEventType::PointerUp,
+            ffi::AMOTION_EVENT_ACTION_UP => //| ffi::AMOTION_EVENT_ACTION_POINTER_UP =>
+                TouchEventType::Up,
+            _ => TouchEventType::Cancel
         }
+
+        // if action == ffi::AMOTION_EVENT_ACTION_DOWN {
+        //     TouchEventType::Down
+        // } else if action == ffi::AMOTION_EVENT_ACTION_POINTER_DOWN {
+        //     TouchEventType::PointerDown
+        // } else if action == ffi::AMOTION_EVENT_ACTION_UP {
+        //     TouchEventType::Up
+        // } else if action == ffi::AMOTION_EVENT_ACTION_POINTER_UP {
+        //     TouchEventType::PointerUp
+        // } else if action == ffi::AMOTION_EVENT_ACTION_MOVE{
+        //     TouchEventType::Move
+        // } else{
+        //     TouchEventType::Cancel
+        // }
     }
 }
 
@@ -39,13 +62,12 @@ impl TouchEvent {
 
     pub fn from_input_event(event: *const ffi::AInputEvent) -> TouchEvent {
 
-        let mut points: Vec<Pointer> = vec![];
         let n = unsafe {ffi::AMotionEvent_getPointerCount(event)};
 
         TouchEvent {
             timestamp: unsafe {ffi::AMotionEvent_getEventTime(event)},
             p0: Pointer::from_input_event(event, 0),
-            num_pointers: points.len() as u8,
+            num_pointers: n as u8,
             p1: if n > 1 {Some(Pointer::from_input_event(event, 1))} else {None},
             p2: if n > 2 {Some(Pointer::from_input_event(event, 2))} else {None},
             p3: if n > 3 {Some(Pointer::from_input_event(event, 3))} else {None},
@@ -90,6 +112,7 @@ impl PointerState {
         }
 
         let action_masked = action & ffi::AMOTION_EVENT_ACTION_MASK;
+
         if action_masked == ffi::AMOTION_EVENT_ACTION_POINTER_DOWN {
             return PointerState::Pressed;
         }else if action_masked == ffi::AMOTION_EVENT_ACTION_POINTER_UP {

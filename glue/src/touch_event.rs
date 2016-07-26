@@ -1,8 +1,10 @@
 #[derive(Clone, Copy, Debug)]
 pub enum TouchEventType{
-    Start,
+    Down,
+    PointerDown,
     Move,
-    End,
+    PointerUp,
+    Up,
     Cancel,
 }
 
