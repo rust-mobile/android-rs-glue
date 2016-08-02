@@ -1,18 +1,19 @@
 #![cfg(target_os = "android")]
 
-extern {
-    fn cargo_apk_injected_glue_get_native_window() -> *const c_void;
-    fn cargo_apk_injected_glue_add_sender(sender: *mut ());
-    fn cargo_apk_injected_glue_add_sender_missing(sender: *mut ());
-    fn cargo_apk_injected_glue_set_multitouch(multitouch: bool);
-    fn cargo_apk_injected_glue_write_log(ptr: *const (), len: usize);
-    fn cargo_apk_injected_glue_attach_jvm() ;
-    fn cargo_apk_injected_glue_load_asset(ptr: *const (), len: usize) -> *mut c_void;
-}
-
 use std::mem;
 use std::os::raw::c_void;
 use std::sync::mpsc::Sender;
+
+extern {
+    fn cargo_apk_injected_glue_get_native_window() -> *const c_void;
+    fn cargo_apk_injected_glue_add_sender(sender: *mut c_void);
+    fn cargo_apk_injected_glue_add_sender_missing(sender: *mut c_void);
+    fn cargo_apk_injected_glue_set_multitouch(multitouch: bool);
+    fn cargo_apk_injected_glue_write_log(ptr: *const c_void, len: usize);
+    fn cargo_apk_injected_glue_attach_jvm() ;
+    fn cargo_apk_injected_glue_load_asset(ptr: *const c_void, len: usize) -> *mut c_void;
+}
+
 
 //pub use cargo_apk_injected_glue::ffi;
 mod touch_event;
