@@ -107,7 +107,7 @@ pub fn load(manifest_path: &Path) -> Config {
         package_label: manifest_content.as_ref().and_then(|a| a.label.clone())
                                        .unwrap_or_else(|| package_name.clone()),
         package_icon: manifest_content.as_ref().and_then(|a| a.icon.clone()),
-        build_targets: vec!["arm-linux-androideabi".to_owned()],
+        build_targets: vec!["armv7-linux-androideabi".to_owned()],
         android_version: manifest_content.as_ref().and_then(|a| a.android_version).unwrap_or(18),
         assets_path: manifest_content.as_ref().and_then(|a| a.assets.as_ref())
             .map(|p| manifest_path.parent().unwrap().join(p)),
