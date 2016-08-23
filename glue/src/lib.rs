@@ -10,7 +10,7 @@ extern {
     fn cargo_apk_injected_glue_add_sender_missing(sender: *mut c_void);
     fn cargo_apk_injected_glue_set_multitouch(multitouch: bool);
     fn cargo_apk_injected_glue_write_log(ptr: *const c_void, len: usize);
-    fn cargo_apk_injected_glue_attach_jvm() ;
+    // fn cargo_apk_injected_glue_attach_jvm() ;
     fn cargo_apk_injected_glue_load_asset(ptr: *const c_void, len: usize) -> *mut c_void;
 }
 
@@ -104,12 +104,12 @@ pub fn write_log(message: &str) {
     }
 }
 
-#[inline]
-pub fn attach_jvm(){
-    unsafe {
-        cargo_apk_injected_glue_attach_jvm()
-    }
-}
+// #[inline]
+// pub fn attach_jvm(){
+//     unsafe {
+//         cargo_apk_injected_glue_attach_jvm()
+//     }
+// }
 
 #[inline]
 pub fn load_asset(filename: &str) -> Result<Vec<u8>, AssetError> {
@@ -118,5 +118,19 @@ pub fn load_asset(filename: &str) -> Result<Vec<u8>, AssetError> {
         let data = cargo_apk_injected_glue_load_asset(filename_ptr, filename_len);
         let data: Box<Result<Vec<u8>, AssetError>> = Box::from_raw(data as *mut _);
         *data
+    }
+}
+
+extern crate libc;
+mod ffi;
+use ffi::{AConfiguration_getDensity, AConfiguration_new, AConfiguration_delete};
+
+#[inline]
+pub fn get_screen_density() -> i32{
+    unsafe {
+        let config = AConfiguration_new();
+        let ret = AConfiguration_getDensity(config);
+        AConfiguration_delete(config);
+        ret
     }
 }
