@@ -14,10 +14,11 @@ Before you can compile for Android, you need to setup your environment. This nee
  - Update the SDK: `./android-sdk-linux/tools/android update sdk -u`
 
  - Install `cargo-apk` with `cargo install cargo-apk`.
+ - Be sure to set `NDK_HOME` to the path of your NDK and `ANDROID_HOME` to the path of your SDK.
 
 ## Compiling
 
-Run `cargo apk`.
+In the project root for your Android crate, run `cargo apk`.
 
 This will build an Android package in `target/android-artifacts/build/bin`.
 
