@@ -6,3 +6,6 @@ authors = ["Pierre Krieger <pierre.krieger1708@gmail.com>"]
 license = "MIT"
 description = "Glue for the Android JNI"
 repository = "https://github.com/tomaka/android-rs-glue"
+
+[dependencies]
+libc = "*"

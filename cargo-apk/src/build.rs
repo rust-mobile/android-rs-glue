@@ -251,6 +251,21 @@ pub fn build(manifest_path: &Path, config: &Config) -> BuildResult {
             shared_objects_to_load
         };
 
+        // copy external java jars to android-artifacts/build/libs;
+        if let Some(ref src) = config.jar_libs_path {
+            if !fs::metadata(src).is_err() {
+                if let Ok(paths) = fs::read_dir(src) {
+                    let dst = android_artifacts_dir.join("build/libs");
+                    for f in paths {
+                        if let Ok(f) = f {
+                            let d = dst.join(f.file_name());
+                            fs::copy(f.path(), d).unwrap();
+                        }
+                    }
+                }
+            }
+        }
+
         // Write the Java source
         // FIXME: duh, the file will be replaced every time, so this only works with one target
         build_java_src(&android_artifacts_dir, &config,
@@ -281,6 +296,9 @@ fn build_android_artifacts_dir(path: &Path, config: &Config) {
 
         let mut ffi = File::create(path.join("injected-glue/ffi.rs")).unwrap();
         ffi.write_all(&include_bytes!("../injected-glue/ffi.rs")[..]).unwrap();
+
+        let mut touch = File::create(path.join("injected-glue/touch_event.rs")).unwrap();
+        touch.write_all(&include_bytes!("../injected-glue/touch_event.rs")[..]).unwrap();
     }
 
     build_linker(path);
@@ -327,6 +345,8 @@ fn build_java_src<'a, I>(path: &Path, config: &Config, libs: I)
     let mut file = File::create(&file).unwrap();
 
     let mut libs_string = String::new();
+    libs_string.push_str("System.loadLibrary(\"main\");\n");
+
     for name in libs {
         // Strip off the 'lib' prefix and ".so" suffix.
         let line = format!("        System.loadLibrary(\"{}\");\n",
@@ -445,6 +465,7 @@ fn build_build_xml(path: &Path, config: &Config) {
     write!(file, r#"<?xml version="1.0" encoding="UTF-8"?>
 <project name="{project_name}" default="help">
     <property file="local.properties" />
+    <property environment="env" />
     <loadproperties srcFile="project.properties" />
     <import file="custom_rules.xml" optional="true" />
     <import file="${{sdk.dir}}/tools/ant/build.xml" />
