@@ -13,6 +13,8 @@ use std::slice;
 use std::sync::atomic::{AtomicUsize, AtomicBool, Ordering};
 use std::io::Write;
 
+macro_rules! cstr { ($s:expr) => (concat!($s, "\0") as *const _ as *const ::std::os::raw::c_char) }
+
 pub type pthread_t = c_long;
 pub type pthread_mutexattr_t = c_long;
 pub type pthread_attr_t = c_void;       // FIXME: wrong
@@ -64,11 +66,39 @@ pub unsafe extern fn cargo_apk_injected_glue_load_asset(ptr: *const (), len: usi
     Box::into_raw(Box::new(data)) as *mut _
 }
 
+#[no_mangle]
+pub unsafe extern fn cargo_apk_injected_glue_jni_attach_thread() -> *mut c_void {
+    let mut jni_env : *mut ffi::JNIEnv = ptr::null_mut();
+    let android_app = get_app();
+    let jvm = (*android_app.activity).vm;
+    ((*(*jvm).functions).AttachCurrentThread)(jvm, &mut jni_env, ptr::null_mut());
+    jni_env as *mut c_void
+}
+
+#[no_mangle]
+pub unsafe extern fn cargo_apk_injected_glue_jni_detach_thread() {
+    let android_app = get_app();
+    let jvm = (*android_app.activity).vm;
+    ((*(*jvm).functions).DetachCurrentThread)(jvm);
+}
+
+#[no_mangle]
+pub unsafe extern fn cargo_apk_injected_glue_jni_class_loader() -> *mut c_void {
+    CLASS_LOADER as *mut c_void
+}
+
+#[no_mangle]
+pub unsafe extern fn cargo_apk_injected_glue_jni_activity() -> *mut c_void {
+    ACTIVITY as *mut c_void
+}
+
 /// This static variable  will store the android_app* on creation, and set it back to 0 at
 ///  destruction.
 /// Apart from this, the static is never written, so there is no risk of race condition.
 #[no_mangle]
 pub static mut ANDROID_APP: *mut ffi::android_app = 0 as *mut ffi::android_app;
+pub static mut CLASS_LOADER: ffi::jobject = 0 as ffi::jobject;
+pub static mut ACTIVITY: ffi::jobject = 0 as ffi::jobject;
 
 /// This is the structure that serves as user data in the android_app*
 #[doc(hidden)]
@@ -170,7 +200,46 @@ pub fn android_main2<F>(app: *mut ffi::android_app, main_function: F)
 
     unsafe { ANDROID_APP = app; };
     let app: &mut ffi::android_app = unsafe { &mut *app };
-
+    
+    // The thread spawned below needs access to the Android class loader
+    // associated with the main application thread. If not, it would not
+    // have access to the full set of Android classes.
+    // See https://developer.android.com/training/articles/perf-jni.html#faq_FindClass
+    let mut jni_env : *mut ffi::JNIEnv = ptr::null_mut();
+    let mut class_class : ffi::jclass = ptr::null_mut();
+    let mut jni_functions : &ffi::JNINativeInterface;
+    unsafe {
+      let jvm = (*app.activity).vm;
+      ((*(*jvm).functions).GetEnv)(jvm, &mut jni_env, ffi::JNI_VERSION_1_6);
+      ((*(*jvm).functions).AttachCurrentThread)(jvm, &mut jni_env, ptr::null_mut());
+      if jni_env.is_null() { panic!("Failed to acquire JNI environment."); }
+      
+      jni_functions = &*(*jni_env).functions;
+      class_class = (jni_functions.FindClass)(jni_env, cstr!("java/lang/Class"));
+      if class_class.is_null() { panic!("Could not find java.lang.Class"); }
+      let get_classloader_method = (jni_functions.GetMethodID)(jni_env, class_class,
+                                                               cstr!("getClassLoader"),
+                                                               cstr!("()Ljava/lang/ClassLoader;"));
+      if get_classloader_method.is_null() { panic!("Could not find java.lang.Class.GetClassLoader()"); }
+      
+      let local_class_loader = (jni_functions.CallObjectMethod)(jni_env, class_class, get_classloader_method);
+      // jobjects accessed from another thread need to be global, for details see
+      // http://android-developers.blogspot.be/2011/11/jni-local-reference-changes-in-ics.html
+      CLASS_LOADER = (jni_functions.NewGlobalRef)(jni_env, local_class_loader);
+      if CLASS_LOADER.is_null() { panic!("Could not obtain classloader instance."); }
+      // The activity "clazz" field is actually not a class, but the activity instance.
+      // The documentation lies. This is also why we don't use the clazz field as a class
+      // to get the classloader above.
+      ACTIVITY = (jni_functions.NewGlobalRef)(jni_env, (*app.activity).clazz);
+      if ACTIVITY.is_null() { panic!("Could not obtain activity instance."); }
+      
+      (jni_functions.DeleteLocalRef)(jni_env, class_class);
+      (jni_functions.DeleteLocalRef)(jni_env, local_class_loader);
+      write_log(format!("ClassLoader -> {:X}", CLASS_LOADER as u64).as_str());
+      write_log(format!("Activity -> {:X}", ACTIVITY as u64).as_str());
+      if (jni_functions.ExceptionCheck)(jni_env) != 0 { panic!("Exception occurred while looking up ClassLoader and Activity instance."); }
+    }
+    
     // Creating the context that will be passed to the callback
     let context = Context {
         senders: Mutex::new(Vec::new()),
@@ -342,6 +411,14 @@ pub fn android_main2<F>(app: *mut ffi::android_app, main_function: F)
             }
         }
     }
+    
+    // TODO: detach JNI thread? Or is this handled elsewhere by default?
+    unsafe {
+      (jni_functions.DeleteGlobalRef)(jni_env, CLASS_LOADER);
+      (jni_functions.DeleteGlobalRef)(jni_env, ACTIVITY);
+      CLASS_LOADER = 0 as ffi::jobject;
+    }
+
 
     // Terminating the application. This kills the thread the Rust main thread.
     // TODO: consider waiting on thread?
