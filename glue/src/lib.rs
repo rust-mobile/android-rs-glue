@@ -13,8 +13,6 @@ use std::mem;
 use std::os::raw::c_void;
 use std::sync::mpsc::Sender;
 
-//pub use cargo_apk_injected_glue::ffi;
-
 /// An event triggered by the Android environment.
 #[derive(Clone, Copy, Debug)]
 pub enum Event {
@@ -61,12 +59,6 @@ pub enum AssetError {
     AssetMissing,
     EmptyBuffer,
 }
-
-/*/// Return a reference to the application structure.
-#[inline]
-pub fn get_app<'a>() -> &'a mut ffi::android_app {
-    cargo_apk_injected_glue::get_app()
-}*/
 
 /// Adds a sender where events will be sent to.
 #[inline]
