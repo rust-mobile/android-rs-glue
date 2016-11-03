@@ -97,7 +97,14 @@ pub unsafe extern fn cargo_apk_injected_glue_jni_activity() -> *mut c_void {
 /// Apart from this, the static is never written, so there is no risk of race condition.
 #[no_mangle]
 pub static mut ANDROID_APP: *mut ffi::android_app = 0 as *mut ffi::android_app;
+
+/// This static variable will store an instance of java.lang.ClassLoader from the Android
+/// application, and is needed to reliably load java classes from native threads.
+/// It is only set to its proper value during startup, and set back 0 during destruction.
 pub static mut CLASS_LOADER: ffi::jobject = 0 as ffi::jobject;
+
+/// This static variable will store the instance of android.app.Activity for this application.
+/// It is only set duringstartup, and set back 0 during destruction.
 pub static mut ACTIVITY: ffi::jobject = 0 as ffi::jobject;
 
 /// This is the structure that serves as user data in the android_app*
