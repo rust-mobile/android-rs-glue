@@ -104,8 +104,18 @@ pub fn build(manifest_path: &Path, config: &Config) -> BuildResult {
                        // TODO: mips64
                        else { panic!("Unknown or incompatible build target: {}", build_target) };
 
+            // Looks like the tools don't always share the prefix of the target arch
+            // Just a macos issue?
+            let tool_prefix = if build_target.starts_with("arm") { "arm-linux-androideabi" }
+                       else if build_target.starts_with("aarch64") { "aarch64-linux-android" }
+                       else if build_target.starts_with("i") { "i686-linux-android" }
+                       else if build_target.starts_with("x86_64") { "x86_64-linux-android" }
+                       else if build_target.starts_with("mipsel") { "mipsel-linux-android" }
+                       // TODO: mips64
+                       else { panic!("Unknown or incompatible build target: {}", build_target) };
+
             let base = config.ndk_path.join(format!("toolchains/{}-4.9/prebuilt/{}-x86_64", target_arch, host_os));
-            (base.join(format!("bin/{}-gcc", target_arch)), base.join(format!("bin/{}-ar", target_arch)))
+            (base.join(format!("bin/{}-gcc", tool_prefix)), base.join(format!("bin/{}-ar", tool_prefix)))
         };
 
         let gcc_sysroot = {
@@ -402,7 +412,7 @@ fn build_manifest(path: &Path, config: &Config) {
         format!("0x{:04}{:04}", 2, 0), //TODO: get opengl es version from somewhere
         application_attrs,
         activity_attrs
-    );
+    ).unwrap();
 }
 
 fn build_assets(path: &Path, config: &Config) {
