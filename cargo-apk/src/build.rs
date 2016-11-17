@@ -1,5 +1,5 @@
 use std::os;
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
 use std::env;
 use std::fs;
 use std::fs::File;
@@ -86,6 +86,8 @@ pub fn build(manifest_path: &Path, config: &Config) -> BuildResult {
     };
     build_android_artifacts_dir(&android_artifacts_dir, &config);
 
+    let mut abi_libs: HashMap<&str, Vec<String>> = HashMap::new();
+
     for build_target in config.build_targets.iter() {
         let build_target_dir = android_artifacts_dir.join(build_target);
 
@@ -104,8 +106,18 @@ pub fn build(manifest_path: &Path, config: &Config) -> BuildResult {
                        // TODO: mips64
                        else { panic!("Unknown or incompatible build target: {}", build_target) };
 
+            // Looks like the tools don't always share the prefix of the target arch
+            // Just a macos issue?
+            let tool_prefix = if build_target.starts_with("arm") { "arm-linux-androideabi" }
+                       else if build_target.starts_with("aarch64") { "aarch64-linux-android" }
+                       else if build_target.starts_with("i") { "i686-linux-android" }
+                       else if build_target.starts_with("x86_64") { "x86_64-linux-android" }
+                       else if build_target.starts_with("mipsel") { "mipsel-linux-android" }
+                       // TODO: mips64
+                       else { panic!("Unknown or incompatible build target: {}", build_target) };
+
             let base = config.ndk_path.join(format!("toolchains/{}-4.9/prebuilt/{}-x86_64", target_arch, host_os));
-            (base.join(format!("bin/{}-gcc", target_arch)), base.join(format!("bin/{}-ar", target_arch)))
+            (base.join(format!("bin/{}-gcc", tool_prefix)), base.join(format!("bin/{}-ar", tool_prefix)))
         };
 
         let gcc_sysroot = {
@@ -119,6 +131,16 @@ pub fn build(manifest_path: &Path, config: &Config) -> BuildResult {
             config.ndk_path.join(format!("platforms/android-{v}/arch-{a}",
                                          v = config.android_version, a = arch))
         };
+
+        // Create android cpu abi name
+        let abi = if build_target.starts_with("arm") { "armeabi" }
+                  // TODO: armeabi-v7a
+                  else if build_target.starts_with("aarch64") { "arm64-v8a" }
+                  else if build_target.starts_with("i") { "x86" }
+                  else if build_target.starts_with("x86_64") { "x86_64" }
+                  else if build_target.starts_with("mips") { "mips" }
+                  // TODO: mips64
+                  else { panic!("Unknown or incompatible build target: {}", build_target) };
 
         // Compiling android_native_app_glue.c
         TermCmd::new("Compiling android_native_app_glue.c", &gcc_path)
@@ -164,18 +186,7 @@ pub fn build(manifest_path: &Path, config: &Config) -> BuildResult {
             .execute();
 
         // Directory where we will put the native libraries for ant to pick them up.
-        let native_libraries_dir = {
-            let abi = if build_target.starts_with("arm") { "armeabi" }
-                      // TODO: armeabi-v7a
-                      else if build_target.starts_with("aarch64") { "arm64-v8a" }
-                      else if build_target.starts_with("i") { "x86" }
-                      else if build_target.starts_with("x86_64") { "x86_64" }
-                      else if build_target.starts_with("mips") { "mips" }
-                      // TODO: mips64
-                      else { panic!("Unknown or incompatible build target: {}", build_target) };
-
-            android_artifacts_dir.join(format!("build/libs/{}", abi))
-        };
+        let native_libraries_dir = android_artifacts_dir.join(format!("build/libs/{}", abi));
 
         if fs::metadata(&native_libraries_dir).is_err() {
             fs::DirBuilder::new().recursive(true).create(&native_libraries_dir).unwrap();
@@ -251,11 +262,11 @@ pub fn build(manifest_path: &Path, config: &Config) -> BuildResult {
             shared_objects_to_load
         };
 
-        // Write the Java source
-        // FIXME: duh, the file will be replaced every time, so this only works with one target
-        build_java_src(&android_artifacts_dir, &config,
-                       shared_objects_to_load.iter().map(|s| &**s));
+        abi_libs.insert(abi, shared_objects_to_load);
     }
+
+    // Write the Java source
+    build_java_src(&android_artifacts_dir, &config, &abi_libs);
 
     // Invoking `ant` from within `android-artifacts` in order to compile the project.
     TermCmd::new("Invoking ant", &config.ant_command)
@@ -317,8 +328,7 @@ fn build_linker(path: &Path) {
     assert!(fs::metadata(&exe_file).is_ok());
 }
 
-fn build_java_src<'a, I>(path: &Path, config: &Config, libs: I)
-    where I: Iterator<Item = &'a str>
+fn build_java_src(path: &Path, config: &Config, abi_libs: &HashMap<&str, Vec<String>>)
 {
     let file = path.join("build/src/rust").join(config.project_name.replace("-", "_"))
                    .join("MainActivity.java");
@@ -327,18 +337,52 @@ fn build_java_src<'a, I>(path: &Path, config: &Config, libs: I)
     let mut file = File::create(&file).unwrap();
 
     let mut libs_string = String::new();
-    for name in libs {
-        // Strip off the 'lib' prefix and ".so" suffix.
-        let line = format!("        System.loadLibrary(\"{}\");\n",
-            name.trim_left_matches("lib").trim_right_matches(".so"));
-        libs_string.push_str(&*line);
+
+    for (abi, libs) in abi_libs {
+
+        libs_string.push_str(format!("            if (abi.equals(\"{}\")) {{\n",abi).as_str());
+        libs_string.push_str(format!("                matched_an_abi = true;\n").as_str());
+
+        for name in libs {
+            // Strip off the 'lib' prefix and ".so" suffix.
+            let line = format!("                System.loadLibrary(\"{}\");\n",
+                name.trim_left_matches("lib").trim_right_matches(".so"));
+            libs_string.push_str(&*line);
+        }
+
+        libs_string.push_str(format!("                break;\n").as_str());
+        libs_string.push_str(format!("            }}\n").as_str());
     }
 
     write!(file, r#"package rust.{package_name};
 
+import java.lang.UnsupportedOperationException;
+import android.os.Build;
+import android.util.Log;
+
 public class MainActivity extends android.app.NativeActivity {{
+
     static {{
-        {libs}
+
+        String[] supported_abis;
+
+        try {{
+            supported_abis = (String[]) Build.class.getField("SUPPORTED_ABIS").get(null);
+        }} catch (Exception e) {{
+            // Assume that this is an older phone; use backwards-compatible targets.
+            supported_abis = new String[]{{Build.CPU_ABI, Build.CPU_ABI2}};
+        }}
+
+        boolean matched_an_abi = false;
+
+        for (String abi : supported_abis) {{
+{libs}
+        }}
+
+        if (!matched_an_abi) {{
+            throw new UnsupportedOperationException("Could not find a native abi target to load");
+        }}
+
     }}
 }}"#, libs = libs_string, package_name = config.project_name.replace("-", "_")).unwrap();
 }
@@ -402,7 +446,7 @@ fn build_manifest(path: &Path, config: &Config) {
         format!("0x{:04}{:04}", 2, 0), //TODO: get opengl es version from somewhere
         application_attrs,
         activity_attrs
-    );
+    ).unwrap();
 }
 
 fn build_assets(path: &Path, config: &Config) {
@@ -448,6 +492,7 @@ fn build_build_xml(path: &Path, config: &Config) {
     <loadproperties srcFile="project.properties" />
     <import file="custom_rules.xml" optional="true" />
     <import file="${{sdk.dir}}/tools/ant/build.xml" />
+
 </project>
 "#, project_name = config.project_name).unwrap()
 }
