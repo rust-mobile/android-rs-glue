@@ -52,11 +52,14 @@ pub struct Config {
     /// Should this app be in fullscreen mode (hides the title bar)?
     pub fullscreen: bool,
 
-    // Appends this string to the application attributes in the AndroidManifest.xml
+    /// Appends this string to the application attributes in the AndroidManifest.xml
     pub application_attributes: Option<String>,
 
-    // Appends this string to the activity attributes in the AndroidManifest.xml
+    /// Appends this string to the activity attributes in the AndroidManifest.xml
     pub activity_attributes: Option<String>,
+
+    /// The name of the executable to compile.
+    pub target: Option<String>,
 }
 
 pub fn load(manifest_path: &Path) -> Config {
@@ -111,7 +114,8 @@ pub fn load(manifest_path: &Path) -> Config {
         release: false,
         fullscreen: manifest_content.as_ref().and_then(|a| a.fullscreen.clone()).unwrap_or(false),
         application_attributes: manifest_content.as_ref().and_then(|a| map_to_string(a.application_attributes.clone())),
-        activity_attributes: manifest_content.as_ref().and_then(|a| map_to_string(a.activity_attributes.clone()))
+        activity_attributes: manifest_content.as_ref().and_then(|a| map_to_string(a.activity_attributes.clone())),
+        target: None,
     }
 }
 
