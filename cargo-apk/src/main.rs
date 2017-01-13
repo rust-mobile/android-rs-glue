@@ -20,7 +20,10 @@ fn main() {
 
     // Fetching the configuration for the build.
     let mut config = config::load(&current_manifest);
-    config.release = env::args().any(|s| &s[..] == "--release" );
+    config.release = env::args().any(|s| &s[..] == "--release");
+    if let Some(target_arg_index) = env::args().position(|s| &s[..] == "--bin") {
+        config.target = env::args().skip(target_arg_index + 1).next();
+    }
 
     if command.as_ref().map(|s| &s[..]) == Some("install") {
         install::install(&current_manifest, &config);

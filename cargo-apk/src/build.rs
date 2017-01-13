@@ -40,6 +40,9 @@ pub fn build(manifest_path: &Path, config: &Config) -> BuildResult {
     pub trait AddAntReleaseFlag {
         fn add_ant_release_flag(&mut self, config: &Config) -> &mut Self;
     }
+    pub trait AddCargoTargetFlag {
+        fn add_cargo_target_flag(&mut self, config: &Config) -> &mut Self;
+    }
 
     impl AddGccReleaseFlag for TermCmd {
         fn add_gcc_release_flag(&mut self, config: &Config) -> &mut TermCmd {
@@ -75,6 +78,15 @@ pub fn build(manifest_path: &Path, config: &Config) -> BuildResult {
                 self.arg("release")
             } else {
                 self.arg("debug")
+            }
+        }
+    }
+    impl AddCargoTargetFlag for TermCmd {
+        fn add_cargo_target_flag(&mut self, config: &Config) -> &mut TermCmd {
+            if let Some(ref target) = config.target {
+                self.arg("--bin").arg(target)
+            } else {
+                self
             }
         }
     }
@@ -196,6 +208,7 @@ pub fn build(manifest_path: &Path, config: &Config) -> BuildResult {
         // linker that will tweak the options passed to `gcc`.
         TermCmd::new("Compiling crate", "cargo").arg("rustc")
             .arg("--target").arg(build_target)
+            .add_cargo_target_flag(config)
             .add_cargo_release_flag(config)
             .arg("--")
             .arg("-C").arg(format!("linker={}", android_artifacts_dir.join(if cfg!(target_os = "windows") { "linker_exe.exe" } else { "linker_exe" })
