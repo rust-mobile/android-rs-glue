@@ -1,9 +1,16 @@
 language: rust
-sudo: false
+sudo: required
+
+services:
+    - docker
 
 script:
     - cargo build --verbose --manifest-path glue/Cargo.toml
     - cargo build --verbose --manifest-path cargo-apk/Cargo.toml
+    - docker build -t cargo-apk .
+    - docker run --rm -v `pwd`:/root/src -w /root/src/examples/basic cargo-apk cargo apk
+    - docker run --rm -v `pwd`:/root/src -w /root/src/examples/use_assets cargo-apk cargo apk
+    - docker run --rm -v `pwd`:/root/src -w /root/src/examples/use_icon cargo-apk cargo apk
 
 after_success: 
     - |

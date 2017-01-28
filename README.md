@@ -1,6 +1,33 @@
 # Usage
 
-## Setting up your environment
+## With docker
+
+The easiest way to compile for Android is to use [docker](https://www.docker.com/) and the
+[tomaka/android-rs-glue](https://hub.docker.com/r/tomaka/android-rs-glue/) image.
+
+In order to build an APK, simply do this:
+
+```
+docker run --rm -v <path-to-local-directory-with-Cargo.toml>:/root/src tomaka/android-rs-glue cargo apk
+```
+
+For example if you're on Linux and you want to compile the project in the current working
+directory.
+
+```
+docker run --rm -v `pwd`:/root/src -w /root/src tomaka/android-rs-glue cargo apk
+```
+
+`cargo apk` only compiles the Cargo.toml of the current working directory, so we have to set it
+before running the command. In the future `cargo apk` should be able to accept the
+`--manifest-path` option. Do not mount a volume on `/root` or you will erase the local
+installation of Cargo.
+
+After the build is finished, you should an Android package in `target/android-artifacts/build/bin`.
+
+## Manual usage
+
+### Setting up your environment
 
 Before you can compile for Android, you need to setup your environment. This needs to be done only once per system.
 
@@ -16,13 +43,13 @@ Before you can compile for Android, you need to setup your environment. This nee
  - Install `cargo-apk` with `cargo install cargo-apk`.
  - Be sure to set `NDK_HOME` to the path of your NDK and `ANDROID_HOME` to the path of your SDK.
 
-## Compiling
+### Compiling
 
 In the project root for your Android crate, run `cargo apk`.
 
 This will build an Android package in `target/android-artifacts/build/bin`.
 
-## Testing on an Android emulator
+### Testing on an Android emulator
 
 Start the emulator, then run:
 
@@ -32,7 +59,7 @@ adb install -r target/your_crate
 
 This will install your application on the emulator.
 
-## Interfacing with Android
+# Interfacing with Android
 
 An application is not very useful if it doesn't have access to the screen, the user inputs, etc.
 
