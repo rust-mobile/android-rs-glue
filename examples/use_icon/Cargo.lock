@@ -1,5 +1,5 @@
 [root]
-name = "android_glue_example"
+name = "android_glue_icon_example"
 version = "0.1.0"
 dependencies = [
  "android_glue 0.2.1",
