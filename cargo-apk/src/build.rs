@@ -455,7 +455,7 @@ fn build_manifest(path: &Path, config: &Config) {
 </manifest>
 <!-- END_INCLUDE(manifest) -->
 "#,
-        config.package_name,
+        config.package_name.replace("-", "_"),
         format!("0x{:04}{:04}", 2, 0), //TODO: get opengl es version from somewhere
         application_attrs,
         activity_attrs
