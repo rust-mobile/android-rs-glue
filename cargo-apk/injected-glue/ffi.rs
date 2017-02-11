@@ -1100,7 +1100,7 @@ pub struct JNIInvokeInterface {
      pub DestroyJavaVM:             extern fn(*mut JavaVM) -> jint,
      pub AttachCurrentThread:               extern fn(*mut JavaVM, *mut *mut JNIEnv, *mut c_void) -> jint,
      pub DetachCurrentThread:               extern fn(*mut JavaVM) -> jint,
-     pub GetEnv:                extern fn(*mut JavaVM, *mut *mut c_void, jint) -> jint,
+     pub GetEnv:                extern fn(*mut JavaVM, *mut *mut JNIEnv, jint) -> jint,
      pub AttachCurrentThreadAsDaemon:               extern fn(*mut JavaVM, *mut *mut JNIEnv, *mut c_void) -> jint,
 }
 pub const JNILocalRefType: i32 = 1;
@@ -1434,3 +1434,8 @@ pub type jstring = *mut class__jstring;
 pub type jthrowable = *mut class__jthrowable;
 pub type jvalue = [u8; 8];
 pub type jweak = *mut class__jobject;
+
+pub const JNI_VERSION_1_1 : jint = 0x00010001;
+pub const JNI_VERSION_1_2 : jint = 0x00010002;
+pub const JNI_VERSION_1_4 : jint = 0x00010004;
+pub const JNI_VERSION_1_6 : jint = 0x00010006;

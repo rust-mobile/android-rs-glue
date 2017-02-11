@@ -9,6 +9,8 @@ extern {
     fn cargo_apk_injected_glue_load_asset(ptr: *const (), len: usize) -> *mut c_void;
 }
 
+pub mod jni;
+
 use std::mem;
 use std::os::raw::c_void;
 use std::sync::mpsc::Sender;
