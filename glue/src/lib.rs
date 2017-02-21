@@ -7,6 +7,7 @@ extern {
     fn cargo_apk_injected_glue_set_multitouch(multitouch: bool);
     fn cargo_apk_injected_glue_write_log(ptr: *const (), len: usize);
     fn cargo_apk_injected_glue_load_asset(ptr: *const (), len: usize) -> *mut c_void;
+    fn cargo_apk_injected_glue_wake_event_loop();
 }
 
 use std::mem;
@@ -35,6 +36,7 @@ pub enum Event {
     Pause,
     Stop,
     Destroy,
+    Wake
 }
 
 /// Data about a motion event.
@@ -112,5 +114,14 @@ pub fn load_asset(filename: &str) -> Result<Vec<u8>, AssetError> {
         let data = cargo_apk_injected_glue_load_asset(filename_ptr, filename_len);
         let data: Box<Result<Vec<u8>, AssetError>> = Box::from_raw(data as *mut _);
         *data
+    }
+}
+
+// Wakes the event poll asynchronously and sends a Event::Wake event to the senders. 
+// This method can be called on any thread. This method returns immediately.
+#[inline]
+pub fn wake_event_loop() {
+    unsafe {
+        cargo_apk_injected_glue_wake_event_loop();
     }
 }

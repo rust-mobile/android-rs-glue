@@ -64,6 +64,11 @@ pub unsafe extern fn cargo_apk_injected_glue_load_asset(ptr: *const (), len: usi
     Box::into_raw(Box::new(data)) as *mut _
 }
 
+#[no_mangle]
+pub unsafe extern fn cargo_apk_injected_glue_wake_event_loop() {
+    ffi::ALooper_wake(get_app().looper);
+}
+
 /// This static variable  will store the android_app* on creation, and set it back to 0 at
 ///  destruction.
 /// Apart from this, the static is never written, so there is no risk of race condition.
@@ -108,6 +113,7 @@ pub enum Event {
     Pause,
     Stop,
     Destroy,
+    Wake
 }
 
 /// Data about a motion event.
@@ -319,8 +325,11 @@ pub fn android_main2<F>(app: *mut ffi::android_app, main_function: F)
             // A `-1` means to block forever, but any other positive value
             // specifies the number of milliseconds to block for, before
             // returning.
-            ffi::ALooper_pollAll(-1, ptr::null_mut(), &mut events,
-                                 &mut source as *mut _ as *mut _);
+            let code = ffi::ALooper_pollAll(-1, ptr::null_mut(), &mut events,
+                                            &mut source as *mut _ as *mut _);
+            if code == ffi::ALOOPER_POLL_WAKE {
+                send_event(Event::Wake)
+            }
 
             // If the application thread has exited then we need to exit also.
             if is_app_thread_terminated().0 {
