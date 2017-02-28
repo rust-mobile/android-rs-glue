@@ -1,7 +1,7 @@
 [package]
 
 name = "android_glue"
-version = "0.2.1"
+version = "0.2.2"
 authors = ["Pierre Krieger <pierre.krieger1708@gmail.com>"]
 license = "MIT"
 description = "Glue for the Android JNI"
