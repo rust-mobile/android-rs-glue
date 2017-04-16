@@ -242,8 +242,8 @@ pub fn android_main2<F>(app: *mut ffi::android_app, main_function: F)
 
                         buf.set_len(len);
 
-                        if let Some(last_newline_pos) = buf.iter().rposition(|&c| c == b'\n') {
-                            buf[last_newline_pos] = b'\0';
+                        if let Some(last_newline_pos) = buf.iter().rposition(|&c| c == b'\n' as c_char) {
+                            buf[last_newline_pos] = b'\0' as c_char;
                             ffi::__android_log_write(3, tag, buf.as_ptr());
                             if last_newline_pos < buf.len() - 1 {
                                 let last_newline_pos = last_newline_pos + 1;
@@ -252,7 +252,7 @@ pub fn android_main2<F>(app: *mut ffi::android_app, main_function: F)
                                 for j in 0..cursor as usize {
                                     buf[j] = buf[last_newline_pos + j];
                                 }
-                                buf[cursor] = b'\0';
+                                buf[cursor] = b'\0' as c_char;
                                 buf.set_len(cursor + 1);
                             } else {
                                 cursor = 0;
