@@ -1,0 +1,10 @@
+[package]
+name = "cargo-android"
+version = "0.1.0"
+authors = ["Pierre Krieger <pierre.krieger1708@gmail.com>"]
+
+[dependencies]
+cargo = { git = "https://github.com/rust-lang/cargo" }
+docopt = "0.6.67"
+rustc-serialize = "0.3.15"
+tempdir = "0.3.4"
