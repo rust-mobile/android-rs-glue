@@ -60,6 +60,12 @@ pub struct Config {
 
     /// The name of the executable to compile.
     pub target: Option<String>,
+
+    /// The OpenGL ES major version in the AndroidManifest.xml
+    pub opengles_version_major: u8,
+
+    /// The OpenGL ES minor version in the AndroidManifest.xml
+    pub opengles_version_minor: u8,
 }
 
 pub fn load(manifest_path: &Path) -> Config {
@@ -116,6 +122,8 @@ pub fn load(manifest_path: &Path) -> Config {
         application_attributes: manifest_content.as_ref().and_then(|a| map_to_string(a.application_attributes.clone())),
         activity_attributes: manifest_content.as_ref().and_then(|a| map_to_string(a.activity_attributes.clone())),
         target: None,
+        opengles_version_major: manifest_content.as_ref().and_then(|a| a.opengles_version_major).unwrap_or(2),
+        opengles_version_minor: manifest_content.as_ref().and_then(|a| a.opengles_version_minor).unwrap_or(0),
     }
 }
 
@@ -155,4 +163,6 @@ struct TomlAndroid {
     application_attributes: Option<BTreeMap<String, String>>,
     activity_attributes: Option<BTreeMap<String, String>>,
     build_targets: Option<Vec<String>>,
+    opengles_version_major: Option<u8>,
+    opengles_version_minor: Option<u8>,
 }

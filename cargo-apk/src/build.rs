@@ -432,19 +432,19 @@ fn build_manifest(path: &Path, config: &Config) {
         file, r#"<?xml version="1.0" encoding="utf-8"?>
 <!-- BEGIN_INCLUDE(manifest) -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-        package="{0}"
+        package="{package}"
         android:versionCode="1"
         android:versionName="1.0">
 
-    <uses-sdk android:minSdkVersion="9" />
+    <uses-sdk android:minSdkVersion="{minSdkVersion}" />
 
-    <uses-feature android:glEsVersion="{1}" android:required="true"></uses-feature>
+    <uses-feature android:glEsVersion="{glEsVersion}" android:required="true"></uses-feature>
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 
-    <application {2} >
-        <activity {3} >
+    <application {application_attrs} >
+        <activity {activity_attrs} >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -455,10 +455,11 @@ fn build_manifest(path: &Path, config: &Config) {
 </manifest>
 <!-- END_INCLUDE(manifest) -->
 "#,
-        config.package_name.replace("-", "_"),
-        format!("0x{:04}{:04}", 2, 0), //TODO: get opengl es version from somewhere
-        application_attrs,
-        activity_attrs
+        package = config.package_name.replace("-", "_"),
+        minSdkVersion = config.android_version,
+        glEsVersion = format!("0x{:04}{:04}", config.opengles_version_major, config.opengles_version_minor),
+        application_attrs = application_attrs,
+        activity_attrs = activity_attrs
     ).unwrap();
 }
 
