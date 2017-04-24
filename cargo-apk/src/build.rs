@@ -8,6 +8,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::process::exit;
 use std::process::{Command, Stdio};
+use cargo::core::Workspace;
 use termcmd::TermCmd;
 
 use config::Config;
@@ -17,7 +18,7 @@ pub struct BuildResult {
     pub apk_path: PathBuf,
 }
 
-pub fn build(manifest_path: &Path, config: &Config) -> BuildResult {
+pub fn build(workspace: &Workspace, config: &Config) -> BuildResult {
     // First we detect whether `ant` works.
     match Command::new(&config.ant_command).arg("-version").stdout(Stdio::null()).status() {
         Ok(s) if s.success() => (),
@@ -92,10 +93,8 @@ pub fn build(manifest_path: &Path, config: &Config) -> BuildResult {
     }
 
     // Building the `android-artifacts` directory that will contain all the artifacts.
-    let android_artifacts_dir = {
-        let target_dir = manifest_path.parent().unwrap().join("target");
-        target_dir.join("android-artifacts")
-    };
+    // FIXME: don't use into_path_unlocked() but pass a Cargo::Filesystem everywhere
+    let android_artifacts_dir = workspace.target_dir().join("android-artifacts").into_path_unlocked();
     build_android_artifacts_dir(&android_artifacts_dir, &config);
 
     let mut abi_libs: HashMap<&str, Vec<String>> = HashMap::new();

@@ -5,7 +5,7 @@ use config::Config;
 use termcmd::TermCmd;
 
 pub fn install(manifest_path: &Path, config: &Config) {
-    let build_result = build::build(manifest_path, config);
+    /*let build_result = build::build(manifest_path, config);
 
     let adb = config.sdk_path.join("platform-tools/adb");
 
@@ -13,5 +13,6 @@ pub fn install(manifest_path: &Path, config: &Config) {
         .arg("install")
         .arg("-r")      // TODO: let user choose
         .arg(&build_result.apk_path)
-        .execute();
+        .execute();*/
+    unimplemented!()
 }

@@ -36,9 +36,8 @@ pub fn execute(options: Options, cargo_config: &CargoConfig) -> cargo::CliResult
     let root_manifest = find_root_manifest_for_wd(options.flag_manifest_path, cargo_config.cwd())?;
 
     let workspace = Workspace::new(&root_manifest, &cargo_config)?;
-    let current_package = workspace.current()?;
 
-    let mut config = config::load(current_package.manifest_path());
+    let mut config = config::load(workspace.current()?.manifest_path());
     config.release = options.flag_release;
     if !options.flag_bin.is_empty() {
         config.target = Some(options.flag_bin[0].clone());
@@ -47,7 +46,7 @@ pub fn execute(options: Options, cargo_config: &CargoConfig) -> cargo::CliResult
     /*if command.as_ref().map(|s| &s[..]) == Some("install") {
         install::install(current_package.manifest_path(), &config);
     } else {*/
-        build::build(current_package.manifest_path(), &config);
+        build::build(&workspace, &config);
     //}
 
     Ok(())
