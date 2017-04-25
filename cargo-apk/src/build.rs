@@ -28,70 +28,6 @@ pub fn build(workspace: &Workspace, config: &Config) -> BuildResult {
         }
     }
 
-    /// TODO: inline these where they're used (below).
-    pub trait AddRustcReleaseFlag {
-        fn add_rustc_release_flag(&mut self, config: &Config) -> &mut Self;
-    }
-    pub trait AddGccReleaseFlag {
-        fn add_gcc_release_flag(&mut self, config: &Config) -> &mut Self;
-    }
-    pub trait AddCargoReleaseFlag {
-        fn add_cargo_release_flag(&mut self, config: &Config) -> &mut Self;
-    }
-    pub trait AddAntReleaseFlag {
-        fn add_ant_release_flag(&mut self, config: &Config) -> &mut Self;
-    }
-    pub trait AddCargoTargetFlag {
-        fn add_cargo_target_flag(&mut self, config: &Config) -> &mut Self;
-    }
-
-    impl AddGccReleaseFlag for TermCmd {
-        fn add_gcc_release_flag(&mut self, config: &Config) -> &mut TermCmd {
-            if config.release {
-                self.arg("-O3")
-            } else {
-                self
-            }
-        }
-    }
-    impl AddRustcReleaseFlag for TermCmd {
-        fn add_rustc_release_flag(&mut self, config: &Config) -> &mut TermCmd {
-            if config.release {
-                self.arg("-C")
-                    .arg("opt-level=3")
-            } else {
-                self
-            }
-        }
-    }
-    impl AddCargoReleaseFlag for TermCmd {
-        fn add_cargo_release_flag(&mut self, config: &Config) -> &mut TermCmd {
-            if config.release {
-                self.arg("--release")
-            } else {
-                self
-            }
-        }
-    }
-    impl AddAntReleaseFlag for TermCmd {
-        fn add_ant_release_flag(&mut self, config: &Config) -> &mut TermCmd {
-            if config.release {
-                self.arg("release")
-            } else {
-                self.arg("debug")
-            }
-        }
-    }
-    impl AddCargoTargetFlag for TermCmd {
-        fn add_cargo_target_flag(&mut self, config: &Config) -> &mut TermCmd {
-            if let Some(ref target) = config.target {
-                self.arg("--bin").arg(target)
-            } else {
-                self
-            }
-        }
-    }
-
     // Building the `android-artifacts` directory that will contain all the artifacts.
     // FIXME: don't use into_path_unlocked() but pass a Cargo::Filesystem everywhere
     let android_artifacts_dir = workspace.target_dir().join("android-artifacts").into_path_unlocked();
@@ -154,23 +90,30 @@ pub fn build(workspace: &Workspace, config: &Config) -> BuildResult {
                   else { panic!("Unknown or incompatible build target: {}", build_target) };
 
         // Compiling android_native_app_glue.c
-        TermCmd::new("Compiling android_native_app_glue.c", &gcc_path)
-            .arg(config.ndk_path.join("sources/android/native_app_glue/android_native_app_glue.c"))
-            .arg("-c")
-            .add_gcc_release_flag(config)
-            .arg("-o").arg(build_target_dir.join("android_native_app_glue.o"))
-            .arg("--sysroot").arg(&gcc_sysroot)
-            .execute();
+        {
+            let mut cmd = TermCmd::new("Compiling android_native_app_glue.c", &gcc_path);
+            cmd.arg(config.ndk_path.join("sources/android/native_app_glue/android_native_app_glue.c"))
+               .arg("-c");
+            if config.release {
+                cmd.arg("-O3");
+            }
+            cmd.arg("-o").arg(build_target_dir.join("android_native_app_glue.o"))
+               .arg("--sysroot").arg(&gcc_sysroot)
+               .execute();
+        }
 
         // Compiling injected-glue
         let injected_glue_lib = {
             let mut cmd = TermCmd::new("Compiling injected-glue", "rustc");
             cmd.arg(android_artifacts_dir.join("injected-glue/lib.rs"))
-                .arg("--crate-type").arg("rlib")
-                .add_rustc_release_flag(config)
-                .arg("--crate-name").arg("cargo_apk_injected_glue")
-                .arg("--target").arg(build_target)
-                .arg("--out-dir").arg(&build_target_dir);
+               .arg("--crate-type").arg("rlib");
+            if config.release {
+                cmd.arg("-C")
+                   .arg("opt-level=3");
+            }
+            cmd.arg("--crate-name").arg("cargo_apk_injected_glue")
+               .arg("--target").arg(build_target)
+               .arg("--out-dir").arg(&build_target_dir);
 
             cmd.execute();
 
@@ -186,15 +129,21 @@ pub fn build(workspace: &Workspace, config: &Config) -> BuildResult {
             let mut file = File::create(build_target_dir.join("glue_obj.rs")).unwrap();
             file.write_all(&include_bytes!("../glue_obj.rs")[..]).unwrap();
         }
-        TermCmd::new("Compiling glue_obj", "rustc")
-            .arg(build_target_dir.join("glue_obj.rs"))
-            .arg("--crate-type").arg("staticlib")
-            .add_rustc_release_flag(config)
-            .arg("--target").arg(build_target)
-            .arg("--extern").arg(format!("cargo_apk_injected_glue={}", injected_glue_lib.to_string_lossy()))
-            .arg("--emit").arg("obj")
-            .arg("-o").arg(build_target_dir.join("glue_obj.o"))
-            .execute();
+        
+        {
+            let mut cmd = TermCmd::new("Compiling glue_obj", "rustc");
+            cmd.arg(build_target_dir.join("glue_obj.rs"))
+               .arg("--crate-type").arg("staticlib");
+            if config.release {
+                cmd.arg("-C")
+                   .arg("opt-level=3");
+            }
+            cmd.arg("--target").arg(build_target)
+               .arg("--extern").arg(format!("cargo_apk_injected_glue={}", injected_glue_lib.to_string_lossy()))
+               .arg("--emit").arg("obj")
+               .arg("-o").arg(build_target_dir.join("glue_obj.o"))
+               .execute();
+        }
 
         // Directory where we will put the native libraries for ant to pick them up.
         let native_libraries_dir = android_artifacts_dir.join(format!("build/libs/{}", abi));
@@ -205,27 +154,34 @@ pub fn build(workspace: &Workspace, config: &Config) -> BuildResult {
 
         // Compiling the crate thanks to `cargo rustc`. We set the linker to `linker_exe`, a hacky
         // linker that will tweak the options passed to `gcc`.
-        TermCmd::new("Compiling crate", "cargo").arg("rustc")
-            .arg("--target").arg(build_target)
-            .add_cargo_target_flag(config)
-            .add_cargo_release_flag(config)
-            .arg("--")
-            .arg("-C").arg(format!("linker={}", android_artifacts_dir.join(if cfg!(target_os = "windows") { "linker_exe.exe" } else { "linker_exe" })
-                                                                     .to_string_lossy()))
-            .arg("--extern").arg(format!("cargo_apk_injected_glue={}", injected_glue_lib.to_string_lossy()))
-            .inherit_stdouterr()
-            .env("CARGO_APK_GCC", gcc_path.as_os_str())
-            .env("CARGO_APK_GCC_SYSROOT", gcc_sysroot.as_os_str())
-            .env("CARGO_APK_NATIVE_APP_GLUE", build_target_dir.join("android_native_app_glue.o"))
-            .env("CARGO_APK_GLUE_OBJ", build_target_dir.join("glue_obj.o"))
-            .env("CARGO_APK_GLUE_LIB", injected_glue_lib)
-            .env("CARGO_APK_LINKER_OUTPUT", native_libraries_dir.join("libmain.so"))
-            .env("CARGO_APK_LIB_PATHS_OUTPUT", build_target_dir.join("lib_paths"))
-            .env("CARGO_APK_LIBS_OUTPUT", build_target_dir.join("libs"))
-            .env("TARGET_CC", gcc_path.as_os_str())          // Used by gcc-rs
-            .env("TARGET_AR", ar_path.as_os_str())          // Used by gcc-rs
-            .env("TARGET_CFLAGS", &format!("--sysroot {}", gcc_sysroot.to_string_lossy())) // Used by gcc-rs
-            .execute();
+        {
+            let mut cmd = TermCmd::new("Compiling crate", "cargo");
+            cmd.arg("rustc")
+               .arg("--target").arg(build_target);
+            if config.release {
+                cmd.arg("--release");
+            }
+            if let Some(ref target) = config.target {
+                cmd.arg("--bin").arg(target);
+            }
+            cmd.arg("--")
+                .arg("-C").arg(format!("linker={}", android_artifacts_dir.join(if cfg!(target_os = "windows") { "linker_exe.exe" } else { "linker_exe" })
+                                                                        .to_string_lossy()))
+                .arg("--extern").arg(format!("cargo_apk_injected_glue={}", injected_glue_lib.to_string_lossy()))
+                .inherit_stdouterr()
+                .env("CARGO_APK_GCC", gcc_path.as_os_str())
+                .env("CARGO_APK_GCC_SYSROOT", gcc_sysroot.as_os_str())
+                .env("CARGO_APK_NATIVE_APP_GLUE", build_target_dir.join("android_native_app_glue.o"))
+                .env("CARGO_APK_GLUE_OBJ", build_target_dir.join("glue_obj.o"))
+                .env("CARGO_APK_GLUE_LIB", injected_glue_lib)
+                .env("CARGO_APK_LINKER_OUTPUT", native_libraries_dir.join("libmain.so"))
+                .env("CARGO_APK_LIB_PATHS_OUTPUT", build_target_dir.join("lib_paths"))
+                .env("CARGO_APK_LIBS_OUTPUT", build_target_dir.join("libs"))
+                .env("TARGET_CC", gcc_path.as_os_str())          // Used by gcc-rs
+                .env("TARGET_AR", ar_path.as_os_str())          // Used by gcc-rs
+                .env("TARGET_CFLAGS", &format!("--sysroot {}", gcc_sysroot.to_string_lossy())) // Used by gcc-rs
+                .execute();
+        }
 
         // Determine the list of library paths and libraries, and copy them to the right location.
         let shared_objects_to_load = {
@@ -281,10 +237,14 @@ pub fn build(workspace: &Workspace, config: &Config) -> BuildResult {
     build_java_src(&android_artifacts_dir, &config, &abi_libs);
 
     // Invoking `ant` from within `android-artifacts` in order to compile the project.
-    TermCmd::new("Invoking ant", &config.ant_command)
-        .add_ant_release_flag(config)
-        .current_dir(android_artifacts_dir.join("build"))
-        .execute();
+    let mut cmd = TermCmd::new("Invoking ant", &config.ant_command);
+    if config.release {
+        cmd.arg("release");
+    } else {
+        cmd.arg("debug");
+    }
+    cmd.current_dir(android_artifacts_dir.join("build"))
+       .execute();
 
     BuildResult {
         apk_path: android_artifacts_dir.join(format!("build/bin/{}-debug.apk", config.project_name)),
