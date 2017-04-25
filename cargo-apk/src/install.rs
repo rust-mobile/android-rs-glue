@@ -2,7 +2,6 @@ use std::path::Path;
 
 use build;
 use config::Config;
-use termcmd::TermCmd;
 
 pub fn install(manifest_path: &Path, config: &Config) {
     /*let build_result = build::build(manifest_path, config);

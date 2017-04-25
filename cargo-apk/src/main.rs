@@ -12,7 +12,6 @@ use cargo::util::important_paths::find_root_manifest_for_wd;
 mod build;
 mod config;
 mod install;
-mod termcmd;
 
 fn main() {
     let cargo_config = CargoConfig::default().unwrap();
