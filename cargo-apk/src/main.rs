@@ -46,7 +46,7 @@ pub fn execute(options: Options, cargo_config: &CargoConfig) -> cargo::CliResult
     /*if command.as_ref().map(|s| &s[..]) == Some("install") {
         install::install(current_package.manifest_path(), &config);
     } else {*/
-        build::build(&workspace, &config);
+        build::build(&workspace, &config)?;
     //}
 
     Ok(())

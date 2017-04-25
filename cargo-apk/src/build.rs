@@ -6,9 +6,10 @@ use std::fs::File;
 use std::io::{self, BufRead, BufReader, Write};
 use std::path::Path;
 use std::path::PathBuf;
-use std::process::exit;
 use std::process::{Command, Stdio};
 use cargo::core::Workspace;
+use cargo::util::errors::CliError;
+use cargo::util::errors::human;
 use termcmd::TermCmd;
 
 use config::Config;
@@ -18,13 +19,12 @@ pub struct BuildResult {
     pub apk_path: PathBuf,
 }
 
-pub fn build(workspace: &Workspace, config: &Config) -> BuildResult {
+pub fn build(workspace: &Workspace, config: &Config) -> Result<BuildResult, CliError> {
     // First we detect whether `ant` works.
     match Command::new(&config.ant_command).arg("-version").stdout(Stdio::null()).status() {
         Ok(s) if s.success() => (),
         _ => {
-            println!("Could not execute `ant`. Did you install it?");
-            exit(1);
+            return Err(human("Could not execute `ant`. Did you install it?").into());
         }
     }
 
@@ -246,9 +246,9 @@ pub fn build(workspace: &Workspace, config: &Config) -> BuildResult {
     cmd.current_dir(android_artifacts_dir.join("build"))
        .execute();
 
-    BuildResult {
+    Ok(BuildResult {
         apk_path: android_artifacts_dir.join(format!("build/bin/{}-debug.apk", config.project_name)),
-    }
+    })
 }
 
 fn build_android_artifacts_dir(path: &Path, config: &Config) {
