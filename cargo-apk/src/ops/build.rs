@@ -106,7 +106,7 @@ pub fn build(workspace: &Workspace, config: &Config) -> Result<BuildResult, Box<
         // Compiling injected-glue
         let injected_glue_lib = {
             workspace.config().shell().say("Compiling injected-glue", 10);
-            let mut cmd = process("rustc");
+            let mut cmd = workspace.config().rustc()?.process();
             cmd.arg(android_artifacts_dir.join("injected-glue/lib.rs"))
                .arg("--crate-type").arg("rlib");
             if config.release {
@@ -134,7 +134,7 @@ pub fn build(workspace: &Workspace, config: &Config) -> Result<BuildResult, Box<
         
         {
             workspace.config().shell().say("Compiling glue_obj", 10);
-            let mut cmd = process("rustc");
+            let mut cmd = workspace.config().rustc()?.process();
             cmd.arg(build_target_dir.join("glue_obj.rs"))
                .arg("--crate-type").arg("staticlib");
             if config.release {
