@@ -9,9 +9,8 @@ use cargo::core::Workspace;
 use cargo::util::Config as CargoConfig;
 use cargo::util::important_paths::find_root_manifest_for_wd;
 
-mod build;
 mod config;
-mod install;
+mod ops;
 
 fn main() {
     let cargo_config = CargoConfig::default().unwrap();
@@ -45,7 +44,7 @@ pub fn execute(options: Options, cargo_config: &CargoConfig) -> cargo::CliResult
     /*if command.as_ref().map(|s| &s[..]) == Some("install") {
         install::install(current_package.manifest_path(), &config);
     } else {*/
-        build::build(&workspace, &config)?;
+        ops::build(&workspace, &config)?;
     //}
 
     Ok(())

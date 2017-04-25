@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use build;
+use ops::build;
 use config::Config;
 
 pub fn install(manifest_path: &Path, config: &Config) {

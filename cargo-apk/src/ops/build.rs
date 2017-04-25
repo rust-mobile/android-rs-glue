@@ -129,7 +129,7 @@ pub fn build(workspace: &Workspace, config: &Config) -> Result<BuildResult, Box<
         // Compiling glue_obj.rs
         {
             let mut file = File::create(build_target_dir.join("glue_obj.rs")).unwrap();
-            file.write_all(&include_bytes!("../glue_obj.rs")[..]).unwrap();
+            file.write_all(&include_bytes!("../../glue_obj.rs")[..]).unwrap();
         }
         
         {
@@ -264,10 +264,10 @@ fn build_android_artifacts_dir(path: &Path, config: &Config) {
         fs::create_dir_all(path.join("injected-glue")).unwrap();
 
         let mut lib = File::create(path.join("injected-glue/lib.rs")).unwrap();
-        lib.write_all(&include_bytes!("../injected-glue/lib.rs")[..]).unwrap();
+        lib.write_all(&include_bytes!("../../injected-glue/lib.rs")[..]).unwrap();
 
         let mut ffi = File::create(path.join("injected-glue/ffi.rs")).unwrap();
-        ffi.write_all(&include_bytes!("../injected-glue/ffi.rs")[..]).unwrap();
+        ffi.write_all(&include_bytes!("../../injected-glue/ffi.rs")[..]).unwrap();
     }
 
     build_linker(path);
@@ -295,7 +295,7 @@ fn build_linker(path: &Path) {
 
     {
         let mut src_write = fs::File::create(&src_file).unwrap();
-        src_write.write_all(&include_bytes!("../linker.rs")[..]).unwrap();
+        src_write.write_all(&include_bytes!("../../linker.rs")[..]).unwrap();
     }
 
     let status = Command::new("rustc").arg(src_file).arg("-o").arg(&exe_file).status().unwrap();
