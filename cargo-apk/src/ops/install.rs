@@ -1,9 +1,9 @@
 use std::path::Path;
 
 use ops::build;
-use config::Config;
+use config::AndroidConfig;
 
-pub fn install(manifest_path: &Path, config: &Config) {
+pub fn install(manifest_path: &Path, config: &AndroidConfig) {
     /*let build_result = build::build(manifest_path, config);
 
     let adb = config.sdk_path.join("platform-tools/adb");

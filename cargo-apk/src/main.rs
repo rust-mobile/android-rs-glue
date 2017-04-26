@@ -35,16 +35,16 @@ pub fn execute(options: Options, cargo_config: &CargoConfig) -> cargo::CliResult
 
     let workspace = Workspace::new(&root_manifest, &cargo_config)?;
 
-    let mut config = config::load(workspace.current()?.manifest_path());
-    config.release = options.flag_release;
+    let mut android_config = config::load(workspace.current()?.manifest_path());
+    android_config.release = options.flag_release;
     if !options.flag_bin.is_empty() {
-        config.target = Some(options.flag_bin[0].clone());
+        android_config.target = Some(options.flag_bin[0].clone());
     }
 
     /*if command.as_ref().map(|s| &s[..]) == Some("install") {
-        install::install(current_package.manifest_path(), &config);
+        install::install(current_package.manifest_path(), &android_config);
     } else {*/
-        ops::build(&workspace, &config)?;
+        ops::build(&workspace, &android_config)?;
     //}
 
     Ok(())

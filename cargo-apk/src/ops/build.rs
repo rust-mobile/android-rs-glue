@@ -12,14 +12,14 @@ use cargo::util::errors::CargoError;
 use cargo::util::errors::human;
 use cargo::util::process_builder::process;
 
-use config::Config;
+use config::AndroidConfig;
 
 pub struct BuildResult {
     /// The absolute path where the apk is located.
     pub apk_path: PathBuf,
 }
 
-pub fn build(workspace: &Workspace, config: &Config) -> Result<BuildResult, Box<CargoError>> {
+pub fn build(workspace: &Workspace, config: &AndroidConfig) -> Result<BuildResult, Box<CargoError>> {
     // First we detect whether `ant` works.
     match Command::new(&config.ant_command).arg("-version").stdout(Stdio::null()).status() {
         Ok(s) if s.success() => (),
@@ -255,7 +255,7 @@ pub fn build(workspace: &Workspace, config: &Config) -> Result<BuildResult, Box<
     })
 }
 
-fn build_android_artifacts_dir(workspace: &Workspace, path: &Path, config: &Config) -> Result<(), Box<CargoError>> {
+fn build_android_artifacts_dir(workspace: &Workspace, path: &Path, config: &AndroidConfig) -> Result<(), Box<CargoError>> {
     if fs::metadata(path.join("build")).is_err() {
         fs::DirBuilder::new().recursive(true).create(path.join("build")).unwrap();
     }
@@ -308,7 +308,7 @@ fn build_linker(workspace: &Workspace, path: &Path) -> Result<(), Box<CargoError
     Ok(())
 }
 
-fn build_java_src(_: &Workspace, path: &Path, config: &Config, abi_libs: &HashMap<&str, Vec<String>>) -> Result<(), Box<CargoError>>
+fn build_java_src(_: &Workspace, path: &Path, config: &AndroidConfig, abi_libs: &HashMap<&str, Vec<String>>) -> Result<(), Box<CargoError>>
 {
     let file = path.join("build/src/rust").join(config.project_name.replace("-", "_"))
                    .join("MainActivity.java");
@@ -368,7 +368,7 @@ public class MainActivity extends android.app.NativeActivity {{
     Ok(())
 }
 
-fn build_manifest(_: &Workspace, path: &Path, config: &Config) -> Result<(), Box<CargoError>> {
+fn build_manifest(_: &Workspace, path: &Path, config: &AndroidConfig) -> Result<(), Box<CargoError>> {
     let file = path.join("build/AndroidManifest.xml");
     //if fs::metadata(&file).is_ok() { return; }
     let mut file = File::create(&file)?;
@@ -432,7 +432,7 @@ fn build_manifest(_: &Workspace, path: &Path, config: &Config) -> Result<(), Box
     Ok(())
 }
 
-fn build_assets(_: &Workspace, path: &Path, config: &Config) -> Result<(), Box<CargoError>> {
+fn build_assets(_: &Workspace, path: &Path, config: &AndroidConfig) -> Result<(), Box<CargoError>> {
     let src_path = match config.assets_path {
         None => return Ok(()),
         Some(ref p) => p,
@@ -444,7 +444,7 @@ fn build_assets(_: &Workspace, path: &Path, config: &Config) -> Result<(), Box<C
     Ok(())
 }
 
-fn build_res(_: &Workspace, path: &Path, config: &Config) -> Result<(), Box<CargoError>> {
+fn build_res(_: &Workspace, path: &Path, config: &AndroidConfig) -> Result<(), Box<CargoError>> {
     let src_path = match config.res_path {
         None => return Ok(()),
         Some(ref p) => p,
@@ -466,7 +466,7 @@ fn create_dir_symlink(src_path: &Path, dst_path: &Path) -> io::Result<()> {
     os::unix::fs::symlink(&src_path, &dst_path)
 }
 
-fn build_build_xml(_: &Workspace, path: &Path, config: &Config) -> Result<(), Box<CargoError>> {
+fn build_build_xml(_: &Workspace, path: &Path, config: &AndroidConfig) -> Result<(), Box<CargoError>> {
     let file = path.join("build/build.xml");
     //if fs::metadata(&file).is_ok() { return; }
     let mut file = File::create(&file).unwrap();
@@ -483,7 +483,7 @@ fn build_build_xml(_: &Workspace, path: &Path, config: &Config) -> Result<(), Bo
     Ok(())
 }
 
-fn build_local_properties(_: &Workspace, path: &Path, config: &Config) -> Result<(), Box<CargoError>> {
+fn build_local_properties(_: &Workspace, path: &Path, config: &AndroidConfig) -> Result<(), Box<CargoError>> {
     let file = path.join("build/local.properties");
     //if fs::metadata(&file).is_ok() { return; }
     let mut file = File::create(&file)?;
@@ -503,7 +503,7 @@ fn build_local_properties(_: &Workspace, path: &Path, config: &Config) -> Result
     Ok(())
 }
 
-fn build_project_properties(_: &Workspace, path: &Path, config: &Config) -> Result<(), Box<CargoError>> {
+fn build_project_properties(_: &Workspace, path: &Path, config: &AndroidConfig) -> Result<(), Box<CargoError>> {
     let file = path.join("build/project.properties");
     //if fs::metadata(&file).is_ok() { return; }
     let mut file = File::create(&file)?;

@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use toml;
 use toml::Parser as TomlParser;
 
-pub struct Config {
+pub struct AndroidConfig {
     /// Path to the root of the Android SDK.
     pub sdk_path: PathBuf,
     /// Path to the root of the Android NDK.
@@ -68,7 +68,7 @@ pub struct Config {
     pub opengles_version_minor: u8,
 }
 
-pub fn load(manifest_path: &Path) -> Config {
+pub fn load(manifest_path: &Path) -> AndroidConfig {
     // Determine the name of the package and the Android-specific metadata from the Cargo.toml
     let (package_name, manifest_content) = {
         let content = {
@@ -100,7 +100,7 @@ pub fn load(manifest_path: &Path) -> Config {
 
 
     // For the moment some fields of the config are dummies.
-    Config {
+    AndroidConfig {
         sdk_path: Path::new(&sdk_path).to_owned(),
         ndk_path: Path::new(&ndk_path).to_owned(),
         ant_command: if cfg!(target_os = "windows") { "ant.bat" } else { "ant" }.to_owned(),
