@@ -31,7 +31,7 @@ pub fn build(workspace: &Workspace, config: &Config) -> Result<BuildResult, Box<
     // Building the `android-artifacts` directory that will contain all the artifacts.
     // FIXME: don't use into_path_unlocked() but pass a Cargo::Filesystem everywhere
     let android_artifacts_dir = workspace.target_dir().join("android-artifacts").into_path_unlocked();
-    build_android_artifacts_dir(&android_artifacts_dir, &config);
+    build_android_artifacts_dir(workspace, &android_artifacts_dir, &config);
 
     let mut abi_libs: HashMap<&str, Vec<String>> = HashMap::new();
 
@@ -237,7 +237,7 @@ pub fn build(workspace: &Workspace, config: &Config) -> Result<BuildResult, Box<
     }
 
     // Write the Java source
-    build_java_src(&android_artifacts_dir, &config, &abi_libs);
+    build_java_src(workspace, &android_artifacts_dir, &config, &abi_libs);
 
     // Invoking `ant` from within `android-artifacts` in order to compile the project.
     workspace.config().shell().say("Invoking ant", 10);
@@ -255,7 +255,7 @@ pub fn build(workspace: &Workspace, config: &Config) -> Result<BuildResult, Box<
     })
 }
 
-fn build_android_artifacts_dir(path: &Path, config: &Config) {
+fn build_android_artifacts_dir(workspace: &Workspace, path: &Path, config: &Config) -> Result<(), Box<CargoError>> {
     if fs::metadata(path.join("build")).is_err() {
         fs::DirBuilder::new().recursive(true).create(path.join("build")).unwrap();
     }
@@ -270,45 +270,51 @@ fn build_android_artifacts_dir(path: &Path, config: &Config) {
         ffi.write_all(&include_bytes!("../../injected-glue/ffi.rs")[..]).unwrap();
     }
 
-    build_linker(path);
-    build_manifest(path, config);
-    build_build_xml(path, config);
-    build_local_properties(path, config);
-    build_project_properties(path, config);
-    build_assets(path, config);
-    build_res(path, config);
+    build_linker(workspace, path)?;
+    build_manifest(workspace, path, config)?;
+    build_build_xml(workspace, path, config)?;
+    build_local_properties(workspace, path, config)?;
+    build_project_properties(workspace, path, config)?;
+    build_assets(workspace, path, config)?;
+    build_res(workspace, path, config)?;
 
     for target in config.build_targets.iter() {
         if fs::metadata(path.join(target)).is_err() {
             fs::DirBuilder::new().recursive(true).create(path.join(target)).unwrap();
         }
     }
+
+    Ok(())
 }
 
-fn build_linker(path: &Path) {
+fn build_linker(workspace: &Workspace, path: &Path) -> Result<(), Box<CargoError>> {
     let exe_file = path.join(if cfg!(target_os = "windows") { "linker_exe.exe" } else { "linker_exe" });
 
     /*if fs::metadata(&exe_file).is_ok() {
         return;
     }*/
 
-    let mut child = Command::new("rustc").arg("-").arg("-o").arg(&exe_file).stdin(Stdio::piped())
-        .spawn().unwrap();
-    child.stdin.take().unwrap().write_all(&include_bytes!("../../linker.rs")[..]).unwrap();
+    let mut command = workspace.config().rustc()?.process().arg("-").arg("-o").arg(&exe_file).build_command();
 
-    let status = child.wait().unwrap();
+    let mut child = command.stdin(Stdio::piped())
+        .spawn()?;
+    child.stdin.take().unwrap().write_all(&include_bytes!("../../linker.rs")[..])?;
+
+    let status = child.wait()?;
     assert!(status.success());
 
     assert!(fs::metadata(&exe_file).is_ok());
+
+    Ok(())
 }
 
-fn build_java_src(path: &Path, config: &Config, abi_libs: &HashMap<&str, Vec<String>>)
+fn build_java_src(_: &Workspace, path: &Path, config: &Config, abi_libs: &HashMap<&str, Vec<String>>) -> Result<(), Box<CargoError>>
 {
     let file = path.join("build/src/rust").join(config.project_name.replace("-", "_"))
                    .join("MainActivity.java");
-    fs::create_dir_all(file.parent().unwrap()).unwrap();
+    fs::create_dir_all(file.parent().unwrap())?;
     //if fs::metadata(&file).is_ok() { return; }
-    let mut file = File::create(&file).unwrap();
+    let mut file = File::create(&file)?;
 
     let mut libs_string = String::new();
 
@@ -358,13 +364,14 @@ public class MainActivity extends android.app.NativeActivity {{
         }}
 
     }}
-}}"#, libs = libs_string, package_name = config.project_name.replace("-", "_")).unwrap();
+}}"#, libs = libs_string, package_name = config.project_name.replace("-", "_"))?;
+    Ok(())
 }
 
-fn build_manifest(path: &Path, config: &Config) {
+fn build_manifest(_: &Workspace, path: &Path, config: &Config) -> Result<(), Box<CargoError>> {
     let file = path.join("build/AndroidManifest.xml");
     //if fs::metadata(&file).is_ok() { return; }
-    let mut file = File::create(&file).unwrap();
+    let mut file = File::create(&file)?;
 
     // Building application attributes
     let application_attrs = format!(r#"
@@ -421,29 +428,32 @@ fn build_manifest(path: &Path, config: &Config) {
         glEsVersion = format!("0x{:04}{:04}", config.opengles_version_major, config.opengles_version_minor),
         application_attrs = application_attrs,
         activity_attrs = activity_attrs
-    ).unwrap();
+    )?;
+    Ok(())
 }
 
-fn build_assets(path: &Path, config: &Config) {
+fn build_assets(_: &Workspace, path: &Path, config: &Config) -> Result<(), Box<CargoError>> {
     let src_path = match config.assets_path {
-        None => return,
+        None => return Ok(()),
         Some(ref p) => p,
     };
     let dst_path = path.join("build/assets");
     if !dst_path.exists() {
-        create_dir_symlink(&src_path, &dst_path).expect("Can not create symlink to assets");
+        create_dir_symlink(&src_path, &dst_path)?;
     }
+    Ok(())
 }
 
-fn build_res(path: &Path, config: &Config) {
+fn build_res(_: &Workspace, path: &Path, config: &Config) -> Result<(), Box<CargoError>> {
     let src_path = match config.res_path {
-        None => return,
+        None => return Ok(()),
         Some(ref p) => p,
     };
     let dst_path = path.join("build/res");
     if !dst_path.exists() {
-        create_dir_symlink(&src_path, &dst_path).expect("Can not create symlink to res");
+        create_dir_symlink(&src_path, &dst_path)?;
     }
+    Ok(())
 }
 
 #[cfg(target_os = "windows")]
@@ -456,7 +466,7 @@ fn create_dir_symlink(src_path: &Path, dst_path: &Path) -> io::Result<()> {
     os::unix::fs::symlink(&src_path, &dst_path)
 }
 
-fn build_build_xml(path: &Path, config: &Config) {
+fn build_build_xml(_: &Workspace, path: &Path, config: &Config) -> Result<(), Box<CargoError>> {
     let file = path.join("build/build.xml");
     //if fs::metadata(&file).is_ok() { return; }
     let mut file = File::create(&file).unwrap();
@@ -469,30 +479,34 @@ fn build_build_xml(path: &Path, config: &Config) {
     <import file="${{sdk.dir}}/tools/ant/build.xml" />
 
 </project>
-"#, project_name = config.project_name).unwrap()
+"#, project_name = config.project_name)?;
+    Ok(())
 }
 
-fn build_local_properties(path: &Path, config: &Config) {
+fn build_local_properties(_: &Workspace, path: &Path, config: &Config) -> Result<(), Box<CargoError>> {
     let file = path.join("build/local.properties");
     //if fs::metadata(&file).is_ok() { return; }
-    let mut file = File::create(&file).unwrap();
+    let mut file = File::create(&file)?;
 
     let abs_dir = if config.sdk_path.is_absolute() {
         config.sdk_path.clone()
     } else {
-        env::current_dir().unwrap().join(&config.sdk_path)
+        env::current_dir()?.join(&config.sdk_path)
     };
 
     if cfg!(target_os = "windows") {
-        write!(file, r"sdk.dir={}", abs_dir.to_str().unwrap().replace("\\", "\\\\")).unwrap();
+        write!(file, r"sdk.dir={}", abs_dir.to_str().unwrap().replace("\\", "\\\\"))?;
     } else {
-        write!(file, r"sdk.dir={}", abs_dir.to_str().unwrap()).unwrap();
+        write!(file, r"sdk.dir={}", abs_dir.to_str().unwrap())?;
     }
+
+    Ok(())
 }
 
-fn build_project_properties(path: &Path, config: &Config) {
+fn build_project_properties(_: &Workspace, path: &Path, config: &Config) -> Result<(), Box<CargoError>> {
     let file = path.join("build/project.properties");
     //if fs::metadata(&file).is_ok() { return; }
-    let mut file = File::create(&file).unwrap();
-    write!(file, r"target=android-{}", config.android_version).unwrap();
+    let mut file = File::create(&file)?;
+    write!(file, r"target=android-{}", config.android_version)?;
+    Ok(())
 }
