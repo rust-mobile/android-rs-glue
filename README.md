@@ -59,6 +59,8 @@ adb install -r target/your_crate
 
 This will install your application on the emulator.
 
+To show log run: `adb logcat | grep RustAndroidGlueStdouterr`
+
 # Interfacing with Android
 
 An application is not very useful if it doesn't have access to the screen, the user inputs, etc.
