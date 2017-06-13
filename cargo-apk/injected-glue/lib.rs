@@ -41,6 +41,19 @@ pub unsafe extern fn cargo_apk_injected_glue_add_sender(sender: *mut ()) {
 }
 
 #[no_mangle]
+pub unsafe extern fn cargo_apk_injected_glue_add_sync_event_handler(handler: *mut ()) {
+    let handler: Box<Box<SyncEventHandler>> = Box::from_raw(handler as *mut _);
+    add_sync_event_handler(*handler);
+}
+
+#[no_mangle]
+pub unsafe extern fn cargo_apk_injected_glue_remove_sync_event_handler(handler: *mut ()) {
+    let handler: Box<*const SyncEventHandler> = Box::from_raw(handler as *mut _);
+    remove_sync_event_handler(*handler);
+}
+
+
+#[no_mangle]
 pub unsafe extern fn cargo_apk_injected_glue_add_sender_missing(sender: *mut ()) {
     let sender: Box<Sender<Event>> = Box::from_raw(sender as *mut _);
     add_sender_missing(*sender);
@@ -78,7 +91,10 @@ pub static mut ANDROID_APP: *mut ffi::android_app = 0 as *mut ffi::android_app;
 /// This is the structure that serves as user data in the android_app*
 #[doc(hidden)]
 struct Context {
+    // Event listeners that receive async events using channels.
     senders:    Mutex<Vec<Sender<Event>>>,
+    // Event listeners that receive sync events from the polling loop.
+    sync_event_handlers:  Mutex<Vec<Box<SyncEventHandler>>>,
     // Any missed events are stored here.
     missed:     Mutex<Vec<Event>>,
     // Better performance to track number of missed items.
@@ -134,6 +150,11 @@ pub enum MotionAction {
     Cancel,
 }
 
+// Trait used to dispatch sync events from the polling loop thread.
+pub trait SyncEventHandler {
+    fn handle(&mut self, event: &Event);
+}
+
 #[cfg(not(target_os = "android"))]
 use this_platform_is_not_supported;
 
@@ -180,6 +201,7 @@ pub fn android_main2<F>(app: *mut ffi::android_app, main_function: F)
     // Creating the context that will be passed to the callback
     let context = Context {
         senders: Mutex::new(Vec::new()),
+        sync_event_handlers: Mutex::new(Vec::new()),
         missed: Mutex::new(Vec::new()),
         missedcnt: AtomicUsize::new(0),
         missedmax: 1024,
@@ -362,6 +384,16 @@ pub fn android_main2<F>(app: *mut ffi::android_app, main_function: F)
 /// is likely only one sender in our list, but we support more than one.
 fn send_event(event: Event) {
     let ctx = get_context();
+
+    // Notify sync event handlers
+    {
+        let mut sync_handlers = ctx.sync_event_handlers.lock().ok().unwrap();
+        for handler in sync_handlers.iter_mut() {
+            handler.handle(&event);
+        }
+    }
+
+    // Notify registered channel based event receivers
     let mut senders = ctx.senders.lock().ok().unwrap();
 
     // Store missed events up to a maximum.
@@ -492,6 +524,18 @@ fn get_context() -> &'static Context {
 /// Adds a sender where events will be sent to.
 pub fn add_sender(sender: Sender<Event>) {
     get_context().senders.lock().unwrap().push(sender);
+}
+
+/// Adds a SyncEventHandler which will process sync events from the polling loop.
+pub fn add_sync_event_handler(handler: Box<SyncEventHandler>) {
+    let mut handlers = get_context().sync_event_handlers.lock().unwrap();
+    handlers.push(handler);
+}
+
+/// Removes a SyncEventHandler.
+pub fn remove_sync_event_handler(handler: *const SyncEventHandler) {
+    let mut handlers = get_context().sync_event_handlers.lock().unwrap();
+    handlers.retain(|ref b| b.as_ref() as *const _ != handler);
 }
 
 pub fn set_multitouch(multitouch: bool) {
