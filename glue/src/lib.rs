@@ -4,6 +4,8 @@ extern {
     fn cargo_apk_injected_glue_get_native_window() -> *const c_void;
     fn cargo_apk_injected_glue_add_sender(sender: *mut ());
     fn cargo_apk_injected_glue_add_sender_missing(sender: *mut ());
+    fn cargo_apk_injected_glue_add_sync_event_handler(sender: *mut ());
+    fn cargo_apk_injected_glue_remove_sync_event_handler(sender: *mut ());
     fn cargo_apk_injected_glue_set_multitouch(multitouch: bool);
     fn cargo_apk_injected_glue_write_log(ptr: *const (), len: usize);
     fn cargo_apk_injected_glue_load_asset(ptr: *const (), len: usize) -> *mut c_void;
@@ -62,12 +64,35 @@ pub enum AssetError {
     EmptyBuffer,
 }
 
+// Trait used to dispatch sync events from the polling loop thread.
+pub trait SyncEventHandler {
+    fn handle(&mut self, event: &Event);
+}
+
 /// Adds a sender where events will be sent to.
 #[inline]
 pub fn add_sender(sender: Sender<Event>) {
     unsafe {
         let sender = Box::into_raw(Box::new(sender)) as *mut _;
         cargo_apk_injected_glue_add_sender(sender);
+    }
+}
+
+/// Adds a SyncEventHandler which will receive sync events from the polling loop.
+#[inline]
+pub fn add_sync_event_handler(handler: Box<SyncEventHandler>) {
+    unsafe {
+        let handler = Box::into_raw(Box::new(handler)) as *mut _;
+        cargo_apk_injected_glue_add_sync_event_handler(handler);
+    }
+}
+
+/// Removes a SyncEventHandler.
+#[inline]
+pub fn remove_sync_event_handler(handler: *const SyncEventHandler) {
+    unsafe {
+        let handler = Box::into_raw(Box::new(handler)) as *mut _;
+        cargo_apk_injected_glue_remove_sync_event_handler(handler);
     }
 }
 
