@@ -11,7 +11,7 @@ jobs:
           name: Install dependencies
           command: |
             apt-get update
-            apt-get install -yq docker
+            apt-get install -yq curl
       - run:
           name: Install Docker client
           command: |
