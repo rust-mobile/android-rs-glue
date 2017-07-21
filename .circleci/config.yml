@@ -2,10 +2,30 @@ version: 2
 
 jobs:
 
-  test:
+  build-base-image:
     working_directory: ~/android-rs-glue
     docker:
       - image: ubuntu:xenial
+    steps:
+      - run:
+          name: Install dependencies
+          command: |
+            apt-get update
+            apt-get install -yq sudo curl file build-essential wget git g++ cmake pkg-config bison flex unzip ant openjdk-8-jdk lib32stdc++6 lib32z1 docker
+      - setup_remote_docker
+      - run:
+          name: Build base image
+          command: |
+            docker build -t tomaka/rust-android -f base.docker ./circleci
+      - run:
+          name: Publish base image
+          command: |
+            docker push tomaka/rust-android
+
+  test:
+    working_directory: ~/android-rs-glue
+    docker:
+      - image: tomaka/rust-android
     steps:
       - run:
           name: Install dependencies
@@ -27,6 +47,7 @@ jobs:
 
 workflows:
   version: 2
-  build-test-and-deploy:
+  all:
     jobs:
-      - test
+      - build-base-image
+      #- test
