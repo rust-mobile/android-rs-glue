@@ -37,27 +37,18 @@ jobs:
     docker:
       - image: tomaka/rust-android
     steps:
-      - run:
-          name: Install dependencies
-          command: |
-            apt-get update
-            apt-get install -yq sudo curl file build-essential wget git g++ cmake pkg-config bison flex unzip ant openjdk-8-jdk lib32stdc++6 lib32z1 docker
-            curl https://sh.rustup.rs -s > /home/install.sh
-            chmod +x /home/install.sh
-            sh /home/install.sh -y --verbose --default-toolchain nightly
-            export PATH="/root/.cargo/bin:$PATH"
       - checkout
       - run: cargo build --verbose --manifest-path glue/Cargo.toml
-      - run: cargo build --verbose --manifest-path cargo-apk/Cargo.toml
-      - setup_remote_docker
-      - run: docker build -t cargo-apk .
-      - run: docker run --rm -v `pwd`:/root/src -w /root/src/examples/basic cargo-apk cargo apk
-      - run: docker run --rm -v `pwd`:/root/src -w /root/src/examples/use_assets cargo-apk cargo apk
-      - run: docker run --rm -v `pwd`:/root/src -w /root/src/examples/use_icon cargo-apk cargo apk
+      - run: cargo install --path cargo-apk
+      - run: cd examples/basic && cargo apk && cd ..
+      - run: cd examples/use_assets && cargo apk && cd ..
+      - run: cd examples/use_icon && cargo apk && cd ..
 
 workflows:
   version: 2
   all:
     jobs:
       - build-base-image
-      #- test
+      - test:
+          requires:
+            - build-base-image
