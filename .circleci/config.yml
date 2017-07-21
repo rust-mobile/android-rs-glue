@@ -15,7 +15,7 @@ jobs:
             curl https://sh.rustup.rs -s > /home/install.sh
             chmod +x /home/install.sh
             sh /home/install.sh -y --verbose --default-toolchain nightly
-            export PATH="/root/.cargo/bin:$PATH""
+            export PATH="/root/.cargo/bin:$PATH"
       - checkout
       - run: cargo build --verbose --manifest-path glue/Cargo.toml
       - run: cargo build --verbose --manifest-path cargo-apk/Cargo.toml
