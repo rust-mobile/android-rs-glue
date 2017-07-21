@@ -78,10 +78,16 @@ workflows:
   version: 2
   all:
     jobs:
-      - build-base-image
+      - build-base-image:
+          filters:
+            branches:
+              only: master
       - test:
           requires:
             - build-base-image
       - build-final-image:
           requires:
             - test
+          filters:
+            branches:
+              only: master
