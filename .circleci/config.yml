@@ -11,7 +11,7 @@ jobs:
           name: Install dependencies
           command: |
             apt-get update
-            apt-get install -yq sudo curl file build-essential wget git g++ cmake pkg-config bison flex unzip ant openjdk-8-jdk lib32stdc++6 lib32z1 docker
+            apt-get install -yq docker
       - setup_remote_docker
       - run:
           name: Build base image
