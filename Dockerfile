@@ -4,4 +4,5 @@ COPY . /root/cargo-apk
 RUN cargo install --path /root/cargo-apk/cargo-apk
 RUN rm -rf /root/cargo-apk
 
-WORKDIR /root
+RUN mkdir /root/src
+WORKDIR /root/src
