@@ -3,19 +3,19 @@
 ## With docker
 
 The easiest way to compile for Android is to use [docker](https://www.docker.com/) and the
-[tomaka/android-rs-glue](https://hub.docker.com/r/tomaka/android-rs-glue/) image.
+[tomaka/cargo-apk](https://hub.docker.com/r/tomaka/cargo-apk/) image.
 
 In order to build an APK, simply do this:
 
 ```
-docker run --rm -v <path-to-local-directory-with-Cargo.toml>:/root/src tomaka/android-rs-glue cargo apk
+docker run --rm -v <path-to-local-directory-with-Cargo.toml>:/root/src tomaka/cargo-apk cargo apk
 ```
 
 For example if you're on Linux and you want to compile the project in the current working
 directory.
 
 ```
-docker run --rm -v `pwd`:/root/src -w /root/src tomaka/android-rs-glue cargo apk
+docker run --rm -v `pwd`:/root/src -w /root/src tomaka/cargo-apk cargo apk
 ```
 
 `cargo apk` only compiles the Cargo.toml of the current working directory, so we have to set it
