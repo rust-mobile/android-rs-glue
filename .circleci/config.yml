@@ -24,7 +24,7 @@ jobs:
       - run:
           name: Build base image
           command: |
-            docker build -t tomaka/rust-android -f base.docker ./circleci
+            docker build -t tomaka/rust-android -f .circleci/base.docker .
       - run:
           name: Publish base image
           command: |
