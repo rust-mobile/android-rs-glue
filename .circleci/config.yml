@@ -5,7 +5,7 @@ jobs:
   test:
     working_directory: ~/android-rs-glue
     docker:
-      - image: ubuntu
+      - image: ubuntu:xenial
     steps:
       - run:
           name: Install dependencies
