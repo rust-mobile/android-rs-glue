@@ -29,8 +29,8 @@ jobs:
       - run:
           name: Publish base image
           command: |
-            docker login -u $DOCKERHUB_LOGIN -p $DOCKERHUB_PASSWORD
-            docker push tomaka/rust-android
+            docker login -u $DOCKERHUB_LOGIN -p $DOCKERHUB_PASSWORD || true
+            docker push tomaka/rust-android || true
 
   test:
     working_directory: ~/android-rs-glue
@@ -78,10 +78,7 @@ workflows:
   version: 2
   all:
     jobs:
-      - build-base-image:
-          filters:
-            branches:
-              only: master
+      - build-base-image
       - test:
           requires:
             - build-base-image
