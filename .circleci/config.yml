@@ -44,6 +44,36 @@ jobs:
       - run: cd examples/use_assets && cargo apk && cd ..
       - run: cd examples/use_icon && cargo apk && cd ..
 
+  build-final-image:
+    working_directory: ~/android-rs-glue
+    docker:
+      - image: ubuntu:xenial
+    steps:
+      - run:
+          name: Install dependencies
+          command: |
+            apt-get update
+            apt-get install -yq curl
+      - run:
+          name: Install Docker client
+          command: |
+            set -x
+            VER="17.03.0-ce"
+            curl -L -o /tmp/docker-$VER.tgz https://get.docker.com/builds/Linux/x86_64/docker-$VER.tgz
+            tar -xz -C /tmp -f /tmp/docker-$VER.tgz
+            mv /tmp/docker/* /usr/bin
+      - setup_remote_docker
+      - checkout
+      - run:
+          name: Build final image
+          command: |
+            docker build -t tomaka/cargo-apk .
+      - run:
+          name: Publish final image
+          command: |
+            docker login -u $DOCKERHUB_LOGIN -p $DOCKERHUB_PASSWORD
+            docker push tomaka/cargo-apk
+
 workflows:
   version: 2
   all:
@@ -52,3 +82,6 @@ workflows:
       - test:
           requires:
             - build-base-image
+      - build-final-image:
+          requires:
+            - test
