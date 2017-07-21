@@ -7,12 +7,13 @@ jobs:
     docker:
       - image: ubuntu:xenial
     steps:
+      - checkout
+      - setup_remote_docker
       - run:
           name: Install dependencies
           command: |
             apt-get update
             apt-get install -yq docker
-      - setup_remote_docker
       - run:
           name: Build base image
           command: |
@@ -20,6 +21,7 @@ jobs:
       - run:
           name: Publish base image
           command: |
+            docker login -u $DOCKERHUB_LOGIN -p $DOCKERHUB_PASSWORD
             docker push tomaka/rust-android
 
   test:
