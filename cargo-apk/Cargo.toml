@@ -1,6 +1,6 @@
 [package]
 name = "cargo-apk"
-version = "0.1.8"
+version = "0.2.0"
 authors = ["Pierre Krieger <pierre.krieger1708@gmail.com>"]
 license = "MIT"
 description = "Cargo subcommand that allows you to build Android packages"
