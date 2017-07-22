@@ -44,12 +44,13 @@ pub fn execute_build(options: Options, cargo_config: &CargoConfig) -> cargo::Cli
                            options.flag_frozen,
                            options.flag_locked)?;
 
+
     let root_manifest = find_root_manifest_for_wd(options.flag_manifest_path.clone(),
                                                   cargo_config.cwd())?;
 
     let workspace = Workspace::new(&root_manifest, &cargo_config)?;
 
-    let mut android_config = config::load(workspace.current()?.manifest_path());
+    let mut android_config = config::load(&workspace, &options.flag_package)?;
     android_config.release = options.flag_release;
 
     ops::build(&workspace, &android_config, &options)?;
@@ -68,7 +69,7 @@ pub fn execute_install(options: Options, cargo_config: &CargoConfig) -> cargo::C
 
     let workspace = Workspace::new(&root_manifest, &cargo_config)?;
 
-    let mut android_config = config::load(workspace.current()?.manifest_path());
+    let mut android_config = config::load(&workspace, &options.flag_package)?;
     android_config.release = options.flag_release;
 
     ops::install(&workspace, &android_config, &options)?;
@@ -87,7 +88,7 @@ pub fn execute_logcat(options: LogcatOptions, cargo_config: &CargoConfig) -> car
 
     let workspace = Workspace::new(&root_manifest, &cargo_config)?;
 
-    let android_config = config::load(workspace.current()?.manifest_path());
+    let android_config = config::load(&workspace, &options.flag_package)?;
     
     workspace.config().shell().say("Starting logcat", 10)?;
     let adb = android_config.sdk_path.join("platform-tools/adb");
@@ -119,6 +120,7 @@ pub struct Options {
 
 #[derive(RustcDecodable)]
 pub struct LogcatOptions {
+    flag_package: Option<String>,
     flag_manifest_path: Option<String>,
     flag_verbose: u32,
     flag_quiet: Option<bool>,
@@ -183,6 +185,7 @@ Usage:
 
 Options:
     -h, --help                   Print this message
+    -p SPEC, --package SPEC      Package with the target to run
     --manifest-path PATH         Path to the manifest to execute
     -v, --verbose ...            Use verbose output (-vv very verbose/build.rs output)
     -q, --quiet                  No output printed to stdout

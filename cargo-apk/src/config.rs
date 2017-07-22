@@ -2,8 +2,12 @@ use std::collections::btree_map::BTreeMap;
 use std::env;
 use std::fs::File;
 use std::io::Read;
+use std::iter::FromIterator;
 use std::path::Path;
 use std::path::PathBuf;
+use cargo::core::Workspace;
+use cargo::ops;
+use cargo::util::errors::CargoError;
 use toml;
 use toml::Parser as TomlParser;
 
@@ -65,11 +69,32 @@ pub struct AndroidConfig {
     pub opengles_version_minor: u8,
 }
 
-pub fn load(manifest_path: &Path) -> AndroidConfig {
+pub fn load(workspace: &Workspace, flag_package: &Option<String>) -> Result<AndroidConfig, CargoError> {
+    // Find out the package requested by the user.
+    let package = {
+        let packages = Vec::from_iter(flag_package.iter().cloned());
+        let spec = ops::Packages::Packages(&packages);
+
+        match spec {
+            ops::Packages::All => unreachable!("cargo apk supports single package only"),
+            ops::Packages::OptOut(_) => unreachable!("cargo apk supports single package only"),
+            ops::Packages::Packages(xs) => match xs.len() {
+                0 => workspace.current()?,
+                1 => workspace.members()
+                    .find(|pkg| pkg.name() == xs[0])
+                    .ok_or_else(|| 
+                        CargoError::from(
+                            format!("package `{}` is not a member of the workspace", xs[0]))
+                    )?,
+                _ => unreachable!("cargo apk supports single package only"),
+            }
+        }
+    };
+
     // Determine the name of the package and the Android-specific metadata from the Cargo.toml
     let (package_name, manifest_content) = {
         let content = {
-            let mut file = File::open(manifest_path).unwrap();
+            let mut file = File::open(package.manifest_path()).unwrap();
             let mut content = String::new();
             file.read_to_string(&mut content).unwrap();
             content
@@ -97,7 +122,7 @@ pub fn load(manifest_path: &Path) -> AndroidConfig {
 
 
     // For the moment some fields of the config are dummies.
-    AndroidConfig {
+    Ok(AndroidConfig {
         sdk_path: Path::new(&sdk_path).to_owned(),
         ndk_path: Path::new(&ndk_path).to_owned(),
         ant_command: if cfg!(target_os = "windows") { "ant.bat" } else { "ant" }.to_owned(),
@@ -111,16 +136,16 @@ pub fn load(manifest_path: &Path) -> AndroidConfig {
                                        .unwrap_or(vec!["arm-linux-androideabi".to_owned()]),
         android_version: manifest_content.as_ref().and_then(|a| a.android_version).unwrap_or(18),
         assets_path: manifest_content.as_ref().and_then(|a| a.assets.as_ref())
-            .map(|p| manifest_path.parent().unwrap().join(p)),
+            .map(|p| package.manifest_path().parent().unwrap().join(p)),
         res_path: manifest_content.as_ref().and_then(|a| a.res.as_ref())
-            .map(|p| manifest_path.parent().unwrap().join(p)),
+            .map(|p| package.manifest_path().parent().unwrap().join(p)),
         release: false,
         fullscreen: manifest_content.as_ref().and_then(|a| a.fullscreen.clone()).unwrap_or(false),
         application_attributes: manifest_content.as_ref().and_then(|a| map_to_string(a.application_attributes.clone())),
         activity_attributes: manifest_content.as_ref().and_then(|a| map_to_string(a.activity_attributes.clone())),
         opengles_version_major: manifest_content.as_ref().and_then(|a| a.opengles_version_major).unwrap_or(2),
         opengles_version_minor: manifest_content.as_ref().and_then(|a| a.opengles_version_minor).unwrap_or(0),
-    }
+    })
 }
 
 fn map_to_string(input_map: Option<BTreeMap<String, String>>) -> Option<String> {
