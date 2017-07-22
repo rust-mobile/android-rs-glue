@@ -16,8 +16,8 @@ pub struct AndroidConfig {
     pub sdk_path: PathBuf,
     /// Path to the root of the Android NDK.
     pub ndk_path: PathBuf,
-    /// How to invoke `ant`.
-    pub ant_command: String,
+    /// How to invoke `gradle`.
+    pub gradle_command: String,
 
     /// Name that the package will have on the Android machine.
     /// This is the key that Android uses to identify your package, so it should be unique for
@@ -125,7 +125,7 @@ pub fn load(workspace: &Workspace, flag_package: &Option<String>) -> Result<Andr
     Ok(AndroidConfig {
         sdk_path: Path::new(&sdk_path).to_owned(),
         ndk_path: Path::new(&ndk_path).to_owned(),
-        ant_command: if cfg!(target_os = "windows") { "ant.bat" } else { "ant" }.to_owned(),
+        gradle_command: "gradle".to_owned(),
         package_name: manifest_content.as_ref().and_then(|a| a.package_name.clone())
                                        .unwrap_or_else(|| format!("rust.{}", package_name)),
         project_name: package_name.clone(),
