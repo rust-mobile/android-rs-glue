@@ -13,38 +13,28 @@ use std::process::{Command, Stdio};
 fn main() {
     let (args, passthrough) = parse_arguments();
 
-    // Pick parameters from env vars.
-    let gcc = env::var("CARGO_APK_GCC").unwrap();
-    let gcc_sysroot = env::var("CARGO_APK_GCC_SYSROOT").unwrap();
-    let native_app_glue = env::var("CARGO_APK_NATIVE_APP_GLUE").unwrap();
-    let glue_obj = env::var("CARGO_APK_GLUE_OBJ").unwrap();
-    let glue_lib = env::var("CARGO_APK_GLUE_LIB").unwrap();
-    let linker_output = env::var("CARGO_APK_LINKER_OUTPUT").unwrap();
-    let lib_paths_output = env::var("CARGO_APK_LIB_PATHS_OUTPUT").unwrap();
-    let libs_output = env::var("CARGO_APK_LIBS_OUTPUT").unwrap();
-
     // Write the arguments for the subcommand to pick up.
     {
-        let mut lib_paths = File::create(Path::new(&lib_paths_output)).unwrap();
+        let mut lib_paths = File::create(Path::new(&args.cargo_apk_libs_path_output)).unwrap();
         for lib_path in args.library_path.iter() {
             writeln!(lib_paths, "{}", lib_path.to_string_lossy()).unwrap();
         }
 
-        let mut libs = File::create(Path::new(&libs_output)).unwrap();
+        let mut libs = File::create(Path::new(&args.cargo_apk_libs_output)).unwrap();
         for lib in args.shared_libraries.iter() {
             writeln!(libs, "{}", lib).unwrap();
         }
     }
 
     // Execute the real linker.
-    if Command::new(Path::new(&gcc))
+    if Command::new(Path::new(&args.cargo_apk_gcc))
         .args(&*passthrough)
-        .arg(native_app_glue)
-        .arg(glue_obj)
-        .arg(glue_lib)
+        .arg(args.cargo_apk_native_app_glue)
+        .arg(args.cargo_apk_glue_obj)
+        .arg(args.cargo_apk_glue_lib)
         .arg("-llog").arg("-landroid")      // these two libraries are used by the injected-glue
-        .arg("--sysroot").arg(gcc_sysroot)
-        .arg("-o").arg(linker_output)
+        .arg("--sysroot").arg(args.cargo_apk_gcc_sysroot)
+        .arg("-o").arg(args.cargo_apk_linker_output)
         .arg("-shared")
         .arg("-Wl,-E")
         .stdout(Stdio::inherit())
@@ -62,6 +52,15 @@ struct Args {
 
     // List of libraries to link to as passed with the `-l` option.
     shared_libraries: HashSet<String>,
+
+    cargo_apk_gcc: String,
+    cargo_apk_gcc_sysroot: String,
+    cargo_apk_native_app_glue: String,
+    cargo_apk_glue_obj: String,
+    cargo_apk_glue_lib: String,
+    cargo_apk_linker_output: String,
+    cargo_apk_libs_path_output: String,
+    cargo_apk_libs_output: String,
 }
 
 /// Parses the arguments passed by the CLI and returns two things: the interpretation of some
@@ -70,6 +69,15 @@ fn parse_arguments() -> (Args, Vec<String>) {
     let mut result_library_path = Vec::new();
     let mut result_shared_libraries = HashSet::new();
     let mut result_passthrough = Vec::new();
+
+    let mut cargo_apk_gcc: Option<String> = None;
+    let mut cargo_apk_gcc_sysroot: Option<String> = None;
+    let mut cargo_apk_native_app_glue: Option<String> = None;
+    let mut cargo_apk_glue_obj: Option<String> = None;
+    let mut cargo_apk_glue_lib: Option<String> = None;
+    let mut cargo_apk_linker_output: Option<String> = None;
+    let mut cargo_apk_libs_path_output: Option<String> = None;
+    let mut cargo_apk_libs_output: Option<String> = None;
 
     let args = env::args();
     let mut args = args.skip(1);
@@ -81,6 +89,22 @@ fn parse_arguments() -> (Args, Vec<String>) {
                 let args = Args {
                     library_path: result_library_path,
                     shared_libraries: result_shared_libraries,
+                    cargo_apk_gcc: cargo_apk_gcc
+                        .expect("Missing cargo_apk_gcc option in linker"),
+                    cargo_apk_gcc_sysroot: cargo_apk_gcc_sysroot
+                        .expect("Missing cargo_apk_gcc_sysroot option in linker"),
+                    cargo_apk_native_app_glue: cargo_apk_native_app_glue
+                        .expect("Missing cargo_apk_native_app_glue option in linker"),
+                    cargo_apk_glue_obj: cargo_apk_glue_obj
+                        .expect("Missing cargo_apk_glue_obj option in linker"),
+                    cargo_apk_glue_lib: cargo_apk_glue_lib
+                        .expect("Missing cargo_apk_glue_lib option in linker"),
+                    cargo_apk_linker_output: cargo_apk_linker_output
+                        .expect("Missing cargo_apk_linker_output option in linker"),
+                    cargo_apk_libs_path_output: cargo_apk_libs_path_output
+                        .expect("Missing cargo_apk_libs_path_output option in linker"),
+                    cargo_apk_libs_output: cargo_apk_libs_output
+                        .expect("Missing cargo_apk_libs_output option in linker"),
                 };
 
                 return (args, result_passthrough);
@@ -88,7 +112,35 @@ fn parse_arguments() -> (Args, Vec<String>) {
         };
 
         match &*arg {
-            "-o" => { args.next(); },
+            "--cargo-apk-gcc" => {
+                cargo_apk_gcc = Some(args.next().unwrap());
+            },
+            "--cargo-apk-gcc-sysroot" => {
+                cargo_apk_gcc_sysroot = Some(args.next().unwrap());
+            },
+            "--cargo-apk-native-app-glue" => {
+                cargo_apk_native_app_glue = Some(args.next().unwrap());
+            },
+            "--cargo-apk-glue-obj" => {
+                cargo_apk_glue_obj = Some(args.next().unwrap());
+            },
+            "--cargo-apk-glue-lib" => {
+                cargo_apk_glue_lib = Some(args.next().unwrap());
+            },
+            "--cargo-apk-linker-output" => {
+                cargo_apk_linker_output = Some(args.next().unwrap());
+            },
+            "--cargo-apk-libs-path-output" => {
+                cargo_apk_libs_path_output = Some(args.next().unwrap());
+            },
+            "--cargo-apk-libs-output" => {
+                cargo_apk_libs_output = Some(args.next().unwrap());
+            },
+
+            "-o" => {
+                // Ignore `-o` and the following argument
+                args.next();
+            },
             "-L" => {
                 let path = args.next().expect("-L must be followed by a path");
                 result_library_path.push(PathBuf::from(path.clone()));

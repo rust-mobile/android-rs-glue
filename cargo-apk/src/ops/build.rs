@@ -1,6 +1,8 @@
 use std::os;
 use std::collections::{HashSet, HashMap};
 use std::env;
+use std::ffi::OsString;
+use std::ffi::OsStr;
 use std::fs;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader, Write};
@@ -168,21 +170,39 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig) -> Result<BuildResul
             if let Some(ref target) = config.target {
                 cmd.arg("--bin").arg(target);
             }
+            fn arg<S: AsRef<OsStr>>(a: S) -> OsString {
+                let mut base: OsString = "link-arg=".into();
+                base.push(a);
+                base
+            }
             cmd.arg("--")
                 .arg("-C").arg(format!("linker={}", android_artifacts_dir.join(if cfg!(target_os = "windows") { "linker_exe.exe" } else { "linker_exe" })
                                                                         .to_string_lossy()))
                 .arg("--extern").arg(format!("cargo_apk_injected_glue={}", injected_glue_lib.to_string_lossy()))
-                .env("CARGO_APK_GCC", gcc_path.as_os_str())
-                .env("CARGO_APK_GCC_SYSROOT", gcc_sysroot.as_os_str())
-                .env("CARGO_APK_NATIVE_APP_GLUE", build_target_dir.join("android_native_app_glue.o"))
-                .env("CARGO_APK_GLUE_OBJ", build_target_dir.join("glue_obj.o"))
-                .env("CARGO_APK_GLUE_LIB", injected_glue_lib)
-                .env("CARGO_APK_LINKER_OUTPUT", native_libraries_dir.join("libmain.so"))
-                .env("CARGO_APK_LIB_PATHS_OUTPUT", build_target_dir.join("lib_paths"))
-                .env("CARGO_APK_LIBS_OUTPUT", build_target_dir.join("libs"))
-                .env("TARGET_CC", gcc_path.as_os_str())          // Used by gcc-rs
-                .env("TARGET_AR", ar_path.as_os_str())          // Used by gcc-rs
-                .env("TARGET_CFLAGS", &format!("--sysroot {}", gcc_sysroot.to_string_lossy())) // Used by gcc-rs
+                // Pass various --cargo-apk-* parameters through linker arguments
+                .arg("-C").arg("link-arg=--cargo-apk-gcc")
+                .arg("-C").arg(&arg(gcc_path.as_os_str()))
+                .arg("-C").arg("link-arg=--cargo-apk-gcc-sysroot")
+                .arg("-C").arg(&arg(gcc_sysroot.as_os_str()))
+                .arg("-C").arg("link-arg=--cargo-apk-native-app-glue")
+                .arg("-C").arg(&arg(build_target_dir.join("android_native_app_glue.o")))
+                .arg("-C").arg("link-arg=--cargo-apk-glue-obj")
+                .arg("-C").arg(&arg(build_target_dir.join("glue_obj.o")))
+                .arg("-C").arg("link-arg=--cargo-apk-glue-lib")
+                .arg("-C").arg(&arg(injected_glue_lib))
+                .arg("-C").arg("link-arg=--cargo-apk-linker-output")
+                .arg("-C").arg(&arg(native_libraries_dir.join("libmain.so")))
+                .arg("-C").arg("link-arg=--cargo-apk-libs-path-output")
+                .arg("-C").arg(&arg(build_target_dir.join("lib_paths")))
+                .arg("-C").arg("link-arg=--cargo-apk-libs-output")
+                .arg("-C").arg(&arg(build_target_dir.join("libs")))
+                // TODO: gcc-rs args
+                /*.arg("-C").arg("link-arg=TARGET_CC")
+                .arg("-C").arg(&arg(gcc_path.as_os_str()))          // Used by gcc-rs
+                .arg("-C").arg("link-arg=TARGET_AR")
+                .arg("-C").arg(&arg(ar_path.as_os_str()))          // Used by gcc-rs
+                .arg("-C").arg("link-arg=TARGET_CFLAGS")
+                .arg("-C").arg(&arg(&format!("--sysroot {}", gcc_sysroot.to_string_lossy()))) // Used by gcc-rs*/
                 .exec()?;
         }
 
