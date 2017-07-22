@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use toml;
 use toml::Parser as TomlParser;
 
-pub struct Config {
+pub struct AndroidConfig {
     /// Path to the root of the Android SDK.
     pub sdk_path: PathBuf,
     /// Path to the root of the Android NDK.
@@ -58,9 +58,6 @@ pub struct Config {
     /// Appends this string to the activity attributes in the AndroidManifest.xml
     pub activity_attributes: Option<String>,
 
-    /// The name of the executable to compile.
-    pub target: Option<String>,
-
     /// The OpenGL ES major version in the AndroidManifest.xml
     pub opengles_version_major: u8,
 
@@ -68,7 +65,7 @@ pub struct Config {
     pub opengles_version_minor: u8,
 }
 
-pub fn load(manifest_path: &Path) -> Config {
+pub fn load(manifest_path: &Path) -> AndroidConfig {
     // Determine the name of the package and the Android-specific metadata from the Cargo.toml
     let (package_name, manifest_content) = {
         let content = {
@@ -100,7 +97,7 @@ pub fn load(manifest_path: &Path) -> Config {
 
 
     // For the moment some fields of the config are dummies.
-    Config {
+    AndroidConfig {
         sdk_path: Path::new(&sdk_path).to_owned(),
         ndk_path: Path::new(&ndk_path).to_owned(),
         ant_command: if cfg!(target_os = "windows") { "ant.bat" } else { "ant" }.to_owned(),
@@ -121,7 +118,6 @@ pub fn load(manifest_path: &Path) -> Config {
         fullscreen: manifest_content.as_ref().and_then(|a| a.fullscreen.clone()).unwrap_or(false),
         application_attributes: manifest_content.as_ref().and_then(|a| map_to_string(a.application_attributes.clone())),
         activity_attributes: manifest_content.as_ref().and_then(|a| map_to_string(a.activity_attributes.clone())),
-        target: None,
         opengles_version_major: manifest_content.as_ref().and_then(|a| a.opengles_version_major).unwrap_or(2),
         opengles_version_minor: manifest_content.as_ref().and_then(|a| a.opengles_version_minor).unwrap_or(0),
     }

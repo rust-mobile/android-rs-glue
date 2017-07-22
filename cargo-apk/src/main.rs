@@ -1,52 +1,194 @@
+extern crate cargo;
 extern crate rustc_serialize;
 extern crate term;
 extern crate toml;
 
 use std::env;
-use std::path::Path;
-use std::path::PathBuf;
-use std::process::exit;
-use std::process::Command;
 
-mod build;
+use cargo::core::Workspace;
+use cargo::ops::MessageFormat;
+use cargo::util::Config as CargoConfig;
+use cargo::util::important_paths::find_root_manifest_for_wd;
+use cargo::util::process_builder::process;
+
 mod config;
-mod install;
-mod termcmd;
+mod ops;
 
 fn main() {
-    let command = env::args().skip(2).next();
+    let cargo_config = CargoConfig::default().unwrap();
 
-    let current_manifest = current_manifest_path();
+    let args = env::args().collect::<Vec<_>>();
 
-    // Fetching the configuration for the build.
-    let mut config = config::load(&current_manifest);
-    config.release = env::args().any(|s| &s[..] == "--release");
-    if let Some(target_arg_index) = env::args().position(|s| &s[..] == "--bin") {
-        config.target = env::args().skip(target_arg_index + 1).next();
-    }
-
-    if command.as_ref().map(|s| &s[..]) == Some("install") {
-        install::install(&current_manifest, &config);
-    } else {
-        build::build(&current_manifest, &config);
-    }
-}
-
-/// Returns the path of the `Cargo.toml` that we want to build.
-fn current_manifest_path() -> PathBuf {
-    let output = Command::new("cargo").arg("locate-project").output().unwrap();
-
-    if !output.status.success() {
-        if let Some(code) = output.status.code() {
-            exit(code);
-        } else {
-            exit(-1);
+    let err = match args.get(2).map(|a| &a[..]) {
+        Some("logcat") => {
+            cargo::call_main_without_stdin(execute_logcat, &cargo_config, LOGCAT_USAGE, &args, false)
+        },
+        Some("install") => {
+            cargo::call_main_without_stdin(execute_install, &cargo_config, INSTALL_USAGE, &args, false)
+        },
+        _ => {
+            cargo::call_main_without_stdin(execute_build, &cargo_config, BUILD_USAGE, &args, false)
         }
-    }
+    };
 
-    #[derive(RustcDecodable)]
-    struct Data { root: String }
-    let stdout = String::from_utf8(output.stdout).unwrap();
-    let decoded: Data = rustc_serialize::json::decode(&stdout).unwrap();
-    Path::new(&decoded.root).to_owned()
+    match err {
+        Ok(_) => (),
+        Err(err) => cargo::exit_with_error(err, &mut *cargo_config.shell())
+    }
 }
+
+pub fn execute_build(options: Options, cargo_config: &CargoConfig) -> cargo::CliResult {
+    cargo_config.configure(options.flag_verbose,
+                           options.flag_quiet,
+                           &options.flag_color,
+                           options.flag_frozen,
+                           options.flag_locked)?;
+
+    let root_manifest = find_root_manifest_for_wd(options.flag_manifest_path.clone(),
+                                                  cargo_config.cwd())?;
+
+    let workspace = Workspace::new(&root_manifest, &cargo_config)?;
+
+    let mut android_config = config::load(workspace.current()?.manifest_path());
+    android_config.release = options.flag_release;
+
+    ops::build(&workspace, &android_config, &options)?;
+    Ok(())
+}
+
+pub fn execute_install(options: Options, cargo_config: &CargoConfig) -> cargo::CliResult {
+    cargo_config.configure(options.flag_verbose,
+                           options.flag_quiet,
+                           &options.flag_color,
+                           options.flag_frozen,
+                           options.flag_locked)?;
+
+    let root_manifest = find_root_manifest_for_wd(options.flag_manifest_path.clone(),
+                                                  cargo_config.cwd())?;
+
+    let workspace = Workspace::new(&root_manifest, &cargo_config)?;
+
+    let mut android_config = config::load(workspace.current()?.manifest_path());
+    android_config.release = options.flag_release;
+
+    ops::install(&workspace, &android_config, &options)?;
+    Ok(())
+}
+
+pub fn execute_logcat(options: LogcatOptions, cargo_config: &CargoConfig) -> cargo::CliResult {
+    cargo_config.configure(options.flag_verbose,
+                           options.flag_quiet,
+                           &options.flag_color,
+                           options.flag_frozen,
+                           options.flag_locked)?;
+
+    let root_manifest = find_root_manifest_for_wd(options.flag_manifest_path.clone(),
+                                                  cargo_config.cwd())?;
+
+    let workspace = Workspace::new(&root_manifest, &cargo_config)?;
+
+    let android_config = config::load(workspace.current()?.manifest_path());
+    
+    workspace.config().shell().say("Starting logcat", 10)?;
+    let adb = android_config.sdk_path.join("platform-tools/adb");
+    process(&adb)
+        .arg("logcat")
+        .exec()?;
+
+    Ok(())
+}
+
+#[derive(RustcDecodable)]
+pub struct Options {
+    flag_bin: Option<String>,
+    flag_example: Option<String>,
+    flag_package: Option<String>,
+    flag_jobs: Option<u32>,
+    flag_features: Vec<String>,
+    flag_all_features: bool,
+    flag_no_default_features: bool,
+    flag_manifest_path: Option<String>,
+    flag_verbose: u32,
+    flag_quiet: Option<bool>,
+    flag_color: Option<String>,
+    flag_message_format: MessageFormat,
+    flag_release: bool,
+    flag_frozen: bool,
+    flag_locked: bool,
+}
+
+#[derive(RustcDecodable)]
+pub struct LogcatOptions {
+    flag_manifest_path: Option<String>,
+    flag_verbose: u32,
+    flag_quiet: Option<bool>,
+    flag_color: Option<String>,
+    flag_frozen: bool,
+    flag_locked: bool,
+}
+
+const BUILD_USAGE: &'static str = r#"
+Usage:
+    cargo apk [options]
+
+Options:
+    -h, --help                   Print this message
+    --bin NAME                   Name of the bin target to run
+    --example NAME               Name of the example target to run
+    -p SPEC, --package SPEC      Package with the target to run
+    -j N, --jobs N               Number of parallel jobs, defaults to # of CPUs
+    --release                    Build artifacts in release mode, with optimizations
+    --features FEATURES          Space-separated list of features to also build
+    --all-features               Build all available features
+    --no-default-features        Do not build the `default` feature
+    --manifest-path PATH         Path to the manifest to execute
+    -v, --verbose ...            Use verbose output (-vv very verbose/build.rs output)
+    -q, --quiet                  No output printed to stdout
+    --color WHEN                 Coloring: auto, always, never
+    --message-format FMT         Error format: human, json [default: human]
+    --frozen                     Require Cargo.lock and cache are up to date
+    --locked                     Require Cargo.lock is up to date
+
+Does the same as `cargo build`.
+"#;
+
+const INSTALL_USAGE: &'static str = r#"
+Usage:
+    cargo apk install [options]
+
+Options:
+    -h, --help                   Print this message
+    --bin NAME                   Name of the bin target to run
+    --example NAME               Name of the example target to run
+    -p SPEC, --package SPEC      Package with the target to run
+    -j N, --jobs N               Number of parallel jobs, defaults to # of CPUs
+    --release                    Build artifacts in release mode, with optimizations
+    --features FEATURES          Space-separated list of features to also build
+    --all-features               Build all available features
+    --no-default-features        Do not build the `default` feature
+    --manifest-path PATH         Path to the manifest to execute
+    -v, --verbose ...            Use verbose output (-vv very verbose/build.rs output)
+    -q, --quiet                  No output printed to stdout
+    --color WHEN                 Coloring: auto, always, never
+    --message-format FMT         Error format: human, json [default: human]
+    --frozen                     Require Cargo.lock and cache are up to date
+    --locked                     Require Cargo.lock is up to date
+
+Does the same as `cargo build`.
+"#;
+
+const LOGCAT_USAGE: &'static str = r#"
+Usage:
+    cargo apk logcat [options]
+
+Options:
+    -h, --help                   Print this message
+    --manifest-path PATH         Path to the manifest to execute
+    -v, --verbose ...            Use verbose output (-vv very verbose/build.rs output)
+    -q, --quiet                  No output printed to stdout
+    --color WHEN                 Coloring: auto, always, never
+    --frozen                     Require Cargo.lock and cache are up to date
+    --locked                     Require Cargo.lock is up to date
+
+Starts `adb logcat`.
+"#;
