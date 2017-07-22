@@ -205,10 +205,10 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
             if !bins.is_empty() && !examples.is_empty() {
                 return Err(CargoError::from("You can only specify either a --bin or an --example but not both"));
             }
-    
+
             let pkg = match spec {
-                ops::Packages::All => unreachable!("cargo run supports single package only"),
-                ops::Packages::OptOut(_) => unreachable!("cargo run supports single package only"),
+                ops::Packages::All => unreachable!("cargo apk supports single package only"),
+                ops::Packages::OptOut(_) => unreachable!("cargo apk supports single package only"),
                 ops::Packages::Packages(xs) => match xs.len() {
                     0 => workspace.current()?,
                     1 => workspace.members()
@@ -217,7 +217,7 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
                             CargoError::from(
                                 format!("package `{}` is not a member of the workspace", xs[0]))
                         )?,
-                    _ => unreachable!("cargo run supports single package only"),
+                    _ => unreachable!("cargo apk supports single package only"),
                 }
             };
 
@@ -226,7 +226,7 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
                     !a.is_lib() && !a.is_custom_build() && a.is_bin()
                 }).map(|a| a.name().to_owned()).collect();
                 if bins.len() >= 2 {
-                    return Err(CargoError::from("`cargo run` can run at most one executable, but \
+                    return Err(CargoError::from("`cargo apk` can run at most one executable, but \
                         multiple exist"));
                 } else if bins.is_empty() {
                     return Err(CargoError::from("a bin target must be available for `cargo apk`"));
