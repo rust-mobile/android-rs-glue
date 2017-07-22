@@ -1,8 +1,6 @@
 use std::os;
 use std::collections::{HashSet, HashMap};
 use std::env;
-use std::ffi::OsString;
-use std::ffi::OsStr;
 use std::fs;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader, Write};
@@ -12,7 +10,6 @@ use std::process::{Command, Stdio};
 use cargo::ops;
 use cargo::core::Workspace;
 use cargo::util::errors::CargoError;
-use cargo::util::errors::CliError;
 use cargo::util::errors::internal;
 use cargo::util::process_builder::process;
 
@@ -38,7 +35,7 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
     // Building the `android-artifacts` directory that will contain all the artifacts.
     // FIXME: don't use into_path_unlocked() but pass a Cargo::Filesystem everywhere
     let android_artifacts_dir = workspace.target_dir().join("android-artifacts").into_path_unlocked();
-    build_android_artifacts_dir(workspace, &android_artifacts_dir, &config);
+    build_android_artifacts_dir(workspace, &android_artifacts_dir, &config)?;
 
     let mut abi_libs: HashMap<&str, Vec<String>> = HashMap::new();
 
@@ -98,7 +95,7 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
 
         // Compiling android_native_app_glue.c
         {
-            workspace.config().shell().say("Compiling android_native_app_glue.c", 10);
+            workspace.config().shell().say("Compiling android_native_app_glue.c", 10)?;
             let mut cmd = process(&gcc_path);
             cmd.arg(config.ndk_path.join("sources/android/native_app_glue/android_native_app_glue.c"))
                .arg("-c");
@@ -112,7 +109,7 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
 
         // Compiling injected-glue
         let injected_glue_lib = {
-            workspace.config().shell().say("Compiling injected-glue", 10);
+            workspace.config().shell().say("Compiling injected-glue", 10)?;
             let mut cmd = workspace.config().rustc()?.process();
             cmd.arg(android_artifacts_dir.join("injected-glue/lib.rs"))
                .arg("--crate-type").arg("rlib");
@@ -140,7 +137,7 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
         }
         
         {
-            workspace.config().shell().say("Compiling glue_obj", 10);
+            workspace.config().shell().say("Compiling glue_obj", 10)?;
             let mut cmd = workspace.config().rustc()?.process();
             cmd.arg(build_target_dir.join("glue_obj.rs"))
                .arg("--crate-type").arg("staticlib");
@@ -165,7 +162,7 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
         // Compiling the crate thanks to `cargo rustc`. We set the linker to `linker_exe`, a hacky
         // linker that will tweak the options passed to `gcc`.
         {
-            workspace.config().shell().say("Compiling crate", 10);
+            workspace.config().shell().say("Compiling crate", 10)?;
 
             let extra_args = vec![
                 "-C".to_owned(), format!("linker={}", android_artifacts_dir.join(if cfg!(target_os = "windows") { "linker_exe.exe" } else { "linker_exe" }).to_string_lossy()),
@@ -266,10 +263,10 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
     }
 
     // Write the Java source
-    build_java_src(workspace, &android_artifacts_dir, &config, &abi_libs);
+    build_java_src(workspace, &android_artifacts_dir, &config, &abi_libs)?;
 
     // Invoking `ant` from within `android-artifacts` in order to compile the project.
-    workspace.config().shell().say("Invoking ant", 10);
+    workspace.config().shell().say("Invoking ant", 10)?;
     let mut cmd = process(&config.ant_command);
     if config.release {
         cmd.arg("release");
