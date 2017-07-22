@@ -572,10 +572,11 @@ allprojects {{
     }}
 }}
 ext {{
-    compileSdkVersion = 26
-    buildToolsVersion = "26.0.0"
+    compileSdkVersion = {android_version}
+    buildToolsVersion = "{build_tools_version}"
 }}
-"#)?;
+"#, android_version = config.android_version,
+    build_tools_version = config.build_tools_version)?;
     Ok(())
 }
 
