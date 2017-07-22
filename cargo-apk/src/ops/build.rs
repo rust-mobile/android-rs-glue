@@ -280,7 +280,15 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
        .exec()?;
 
     Ok(BuildResult {
-        apk_path: android_artifacts_dir.join(format!("build/bin/{}-debug.apk", config.project_name)),
+        apk_path: {
+            let apk_name = if options.flag_release {
+                format!("build/bin/{}-release-unsigned.apk", config.project_name)
+            } else {
+                format!("build/bin/{}-debug.apk", config.project_name)
+            };
+
+            android_artifacts_dir.join(apk_name)
+        },
     })
 }
 
