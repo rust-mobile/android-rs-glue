@@ -9,24 +9,29 @@ use std::io::{self, BufRead, BufReader, Write};
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
+use cargo::ops;
 use cargo::core::Workspace;
 use cargo::util::errors::CargoError;
-use cargo::util::errors::human;
+use cargo::util::errors::CliError;
+use cargo::util::errors::internal;
 use cargo::util::process_builder::process;
 
 use config::AndroidConfig;
+use Options;
 
 pub struct BuildResult {
     /// The absolute path where the apk is located.
     pub apk_path: PathBuf,
 }
 
-pub fn build(workspace: &Workspace, config: &AndroidConfig) -> Result<BuildResult, Box<CargoError>> {
+pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
+            -> Result<BuildResult, CargoError>
+{
     // First we detect whether `ant` works.
     match Command::new(&config.ant_command).arg("-version").stdout(Stdio::null()).status() {
         Ok(s) if s.success() => (),
         _ => {
-            return Err(human("Could not execute `ant`. Did you install it?").into());
+            return Err(internal("Could not execute `ant`. Did you install it?").into());
         }
     }
 
@@ -161,49 +166,53 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig) -> Result<BuildResul
         // linker that will tweak the options passed to `gcc`.
         {
             workspace.config().shell().say("Compiling crate", 10);
-            let mut cmd = process("cargo");
-            cmd.arg("rustc")
-               .arg("--target").arg(build_target);
-            if config.release {
-                cmd.arg("--release");
-            }
-            if let Some(ref target) = config.target {
-                cmd.arg("--bin").arg(target);
-            }
-            fn arg<S: AsRef<OsStr>>(a: S) -> OsString {
-                let mut base: OsString = "link-arg=".into();
-                base.push(a);
-                base
-            }
-            cmd.arg("--")
-                .arg("-C").arg(format!("linker={}", android_artifacts_dir.join(if cfg!(target_os = "windows") { "linker_exe.exe" } else { "linker_exe" })
-                                                                        .to_string_lossy()))
-                .arg("--extern").arg(format!("cargo_apk_injected_glue={}", injected_glue_lib.to_string_lossy()))
-                // Pass various --cargo-apk-* parameters through linker arguments
-                .arg("-C").arg("link-arg=--cargo-apk-gcc")
-                .arg("-C").arg(&arg(gcc_path.as_os_str()))
-                .arg("-C").arg("link-arg=--cargo-apk-gcc-sysroot")
-                .arg("-C").arg(&arg(gcc_sysroot.as_os_str()))
-                .arg("-C").arg("link-arg=--cargo-apk-native-app-glue")
-                .arg("-C").arg(&arg(build_target_dir.join("android_native_app_glue.o")))
-                .arg("-C").arg("link-arg=--cargo-apk-glue-obj")
-                .arg("-C").arg(&arg(build_target_dir.join("glue_obj.o")))
-                .arg("-C").arg("link-arg=--cargo-apk-glue-lib")
-                .arg("-C").arg(&arg(injected_glue_lib))
-                .arg("-C").arg("link-arg=--cargo-apk-linker-output")
-                .arg("-C").arg(&arg(native_libraries_dir.join("libmain.so")))
-                .arg("-C").arg("link-arg=--cargo-apk-libs-path-output")
-                .arg("-C").arg(&arg(build_target_dir.join("lib_paths")))
-                .arg("-C").arg("link-arg=--cargo-apk-libs-output")
-                .arg("-C").arg(&arg(build_target_dir.join("libs")))
-                // TODO: gcc-rs args
-                /*.arg("-C").arg("link-arg=TARGET_CC")
-                .arg("-C").arg(&arg(gcc_path.as_os_str()))          // Used by gcc-rs
-                .arg("-C").arg("link-arg=TARGET_AR")
-                .arg("-C").arg(&arg(ar_path.as_os_str()))          // Used by gcc-rs
-                .arg("-C").arg("link-arg=TARGET_CFLAGS")
-                .arg("-C").arg(&arg(&format!("--sysroot {}", gcc_sysroot.to_string_lossy()))) // Used by gcc-rs*/
-                .exec()?;
+
+            let extra_args = vec![
+                "-C".to_owned(), format!("linker={}", android_artifacts_dir.join(if cfg!(target_os = "windows") { "linker_exe.exe" } else { "linker_exe" }).to_string_lossy()),
+                "--extern".to_owned(), format!("cargo_apk_injected_glue={}", injected_glue_lib.to_string_lossy()),
+                "-C".to_owned(),"link-arg=--cargo-apk-gcc".to_owned(),
+                "-C".to_owned(), format!("link-arg={}", gcc_path.as_os_str().to_str().unwrap().to_owned()),
+                "-C".to_owned(),"link-arg=--cargo-apk-gcc-sysroot".to_owned(),
+                "-C".to_owned(), format!("link-arg={}", gcc_sysroot.as_os_str().to_str().unwrap().to_owned()),
+                "-C".to_owned(), "link-arg=--cargo-apk-native-app-glue".to_owned(),
+                "-C".to_owned(), format!("link-arg={}", build_target_dir.join("android_native_app_glue.o").into_os_string().into_string().unwrap()),
+                "-C".to_owned(), "link-arg=--cargo-apk-glue-obj".to_owned(),
+                "-C".to_owned(), format!("link-arg={}", build_target_dir.join("glue_obj.o").into_os_string().into_string().unwrap()),
+                "-C".to_owned(), "link-arg=--cargo-apk-glue-lib".to_owned(),
+                "-C".to_owned(), format!("link-arg={}", injected_glue_lib.into_os_string().into_string().unwrap()),
+                "-C".to_owned(), "link-arg=--cargo-apk-linker-output".to_owned(),
+                "-C".to_owned(), format!("link-arg={}", native_libraries_dir.join("libmain.so").into_os_string().into_string().unwrap()),
+                "-C".to_owned(), "link-arg=--cargo-apk-libs-path-output".to_owned(),
+                "-C".to_owned(), format!("link-arg={}", build_target_dir.join("lib_paths").into_os_string().into_string().unwrap()),
+                "-C".to_owned(), "link-arg=--cargo-apk-libs-output".to_owned(),
+                "-C".to_owned(), format!("link-arg={}", build_target_dir.join("libs").into_os_string().into_string().unwrap()),
+            ];
+
+            let spec = ops::Packages::from_flags(options.flag_all,
+                                                 &options.flag_exclude,
+                                                 &options.flag_package)?;
+
+            let opts = ops::CompileOptions {
+                config: workspace.config(),
+                jobs: options.flag_jobs,
+                target: Some(build_target),
+                features: &options.flag_features,
+                all_features: options.flag_all_features,
+                no_default_features: options.flag_no_default_features,
+                spec: spec,
+                mode: ops::CompileMode::Build,
+                release: options.flag_release,
+                filter: ops::CompileFilter::new(options.flag_lib,
+                                                &options.flag_bin, options.flag_bins,
+                                                &options.flag_test, options.flag_tests,
+                                                &options.flag_example, options.flag_examples,
+                                                &options.flag_bench, options.flag_benches,),
+                message_format: options.flag_message_format,
+                target_rustdoc_args: None,
+                target_rustc_args: Some(&extra_args),
+            };
+            
+            ops::compile(workspace, &opts)?;
         }
 
         // Determine the list of library paths and libraries, and copy them to the right location.
@@ -275,7 +284,7 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig) -> Result<BuildResul
     })
 }
 
-fn build_android_artifacts_dir(workspace: &Workspace, path: &Path, config: &AndroidConfig) -> Result<(), Box<CargoError>> {
+fn build_android_artifacts_dir(workspace: &Workspace, path: &Path, config: &AndroidConfig) -> Result<(), CargoError> {
     if fs::metadata(path.join("build")).is_err() {
         fs::DirBuilder::new().recursive(true).create(path.join("build")).unwrap();
     }
@@ -307,7 +316,7 @@ fn build_android_artifacts_dir(workspace: &Workspace, path: &Path, config: &Andr
     Ok(())
 }
 
-fn build_linker(workspace: &Workspace, path: &Path) -> Result<(), Box<CargoError>> {
+fn build_linker(workspace: &Workspace, path: &Path) -> Result<(), CargoError> {
     let exe_file = path.join(if cfg!(target_os = "windows") { "linker_exe.exe" } else { "linker_exe" });
 
     /*if fs::metadata(&exe_file).is_ok() {
@@ -328,7 +337,7 @@ fn build_linker(workspace: &Workspace, path: &Path) -> Result<(), Box<CargoError
     Ok(())
 }
 
-fn build_java_src(_: &Workspace, path: &Path, config: &AndroidConfig, abi_libs: &HashMap<&str, Vec<String>>) -> Result<(), Box<CargoError>>
+fn build_java_src(_: &Workspace, path: &Path, config: &AndroidConfig, abi_libs: &HashMap<&str, Vec<String>>) -> Result<(), CargoError>
 {
     let file = path.join("build/src/rust").join(config.project_name.replace("-", "_"))
                    .join("MainActivity.java");
@@ -388,7 +397,7 @@ public class MainActivity extends android.app.NativeActivity {{
     Ok(())
 }
 
-fn build_manifest(_: &Workspace, path: &Path, config: &AndroidConfig) -> Result<(), Box<CargoError>> {
+fn build_manifest(_: &Workspace, path: &Path, config: &AndroidConfig) -> Result<(), CargoError> {
     let file = path.join("build/AndroidManifest.xml");
     //if fs::metadata(&file).is_ok() { return; }
     let mut file = File::create(&file)?;
@@ -452,7 +461,7 @@ fn build_manifest(_: &Workspace, path: &Path, config: &AndroidConfig) -> Result<
     Ok(())
 }
 
-fn build_assets(_: &Workspace, path: &Path, config: &AndroidConfig) -> Result<(), Box<CargoError>> {
+fn build_assets(_: &Workspace, path: &Path, config: &AndroidConfig) -> Result<(), CargoError> {
     let src_path = match config.assets_path {
         None => return Ok(()),
         Some(ref p) => p,
@@ -464,7 +473,7 @@ fn build_assets(_: &Workspace, path: &Path, config: &AndroidConfig) -> Result<()
     Ok(())
 }
 
-fn build_res(_: &Workspace, path: &Path, config: &AndroidConfig) -> Result<(), Box<CargoError>> {
+fn build_res(_: &Workspace, path: &Path, config: &AndroidConfig) -> Result<(), CargoError> {
     let src_path = match config.res_path {
         None => return Ok(()),
         Some(ref p) => p,
@@ -486,7 +495,7 @@ fn create_dir_symlink(src_path: &Path, dst_path: &Path) -> io::Result<()> {
     os::unix::fs::symlink(&src_path, &dst_path)
 }
 
-fn build_build_xml(_: &Workspace, path: &Path, config: &AndroidConfig) -> Result<(), Box<CargoError>> {
+fn build_build_xml(_: &Workspace, path: &Path, config: &AndroidConfig) -> Result<(), CargoError> {
     let file = path.join("build/build.xml");
     //if fs::metadata(&file).is_ok() { return; }
     let mut file = File::create(&file).unwrap();
@@ -503,7 +512,7 @@ fn build_build_xml(_: &Workspace, path: &Path, config: &AndroidConfig) -> Result
     Ok(())
 }
 
-fn build_local_properties(_: &Workspace, path: &Path, config: &AndroidConfig) -> Result<(), Box<CargoError>> {
+fn build_local_properties(_: &Workspace, path: &Path, config: &AndroidConfig) -> Result<(), CargoError> {
     let file = path.join("build/local.properties");
     //if fs::metadata(&file).is_ok() { return; }
     let mut file = File::create(&file)?;
@@ -523,7 +532,7 @@ fn build_local_properties(_: &Workspace, path: &Path, config: &AndroidConfig) ->
     Ok(())
 }
 
-fn build_project_properties(_: &Workspace, path: &Path, config: &AndroidConfig) -> Result<(), Box<CargoError>> {
+fn build_project_properties(_: &Workspace, path: &Path, config: &AndroidConfig) -> Result<(), CargoError> {
     let file = path.join("build/project.properties");
     //if fs::metadata(&file).is_ok() { return; }
     let mut file = File::create(&file)?;
