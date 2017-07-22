@@ -2,7 +2,7 @@ FROM ubuntu:xenial
 
 RUN apt-get update
 RUN apt-get install -yq sudo curl file build-essential wget git g++ cmake pkg-config bison flex \
-                        unzip ant openjdk-8-jdk lib32stdc++6 lib32z1 docker libssl-dev
+                        unzip openjdk-8-jdk lib32stdc++6 lib32z1 docker libssl-dev
 
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
 ENV PATH /root/.cargo/bin:$PATH
@@ -24,3 +24,10 @@ RUN cd /usr/local && \
     unzip -q android-ndk-r12b-linux-x86_64.zip && \
     rm android-ndk-r12b-linux-x86_64.zip
 ENV NDK_HOME /usr/local/android-ndk-r12b
+
+ENV GRADLE_VERSION 4.0.1
+RUN cd /usr/lib && \
+    curl -fl https://downloads.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip -o gradle-bin.zip && \
+    unzip gradle-bin.zip && \
+    ln -s /usr/lib/gradle-${GRADLE_VERSION}/bin/gradle /usr/bin/gradle && \
+    rm gradle-bin.zip
