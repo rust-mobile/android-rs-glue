@@ -44,7 +44,7 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
         let build_target_dir = android_artifacts_dir.join(build_target);
 
         // Finding the tools in the NDK.
-        let (gcc_path, ar_path) = {
+        let (gcc_path, gxx_path, ar_path) = {
             let host_os = if cfg!(target_os = "windows") { "windows" }
                        else if cfg!(target_os = "linux") { "linux" }
                        else if cfg!(target_os = "macos") { "darwin" }
@@ -69,7 +69,9 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
                        else { panic!("Unknown or incompatible build target: {}", build_target) };
 
             let base = config.ndk_path.join(format!("toolchains/{}-4.9/prebuilt/{}-x86_64", target_arch, host_os));
-            (base.join(format!("bin/{}-gcc", tool_prefix)), base.join(format!("bin/{}-ar", tool_prefix)))
+            (base.join(format!("bin/{}-gcc", tool_prefix)),
+             base.join(format!("bin/{}-g++", tool_prefix)),
+             base.join(format!("bin/{}-ar", tool_prefix)))
         };
 
         let gcc_sysroot = {
@@ -167,9 +169,11 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
 
             // Set the current environment variables so that they are picked up by gcc-rs when
             // compiling.
-            env::set_var("TARGET_CC", gcc_path.as_os_str());
-            env::set_var("TARGET_AR", ar_path.as_os_str());
-            env::set_var("TARGET_CFLAGS", &format!("--sysroot {}", gcc_sysroot.to_string_lossy()));
+            env::set_var(&format!("CC_{}", build_target), gcc_path.as_os_str());
+            env::set_var(&format!("CXX_{}", build_target), gxx_path.as_os_str());
+            env::set_var(&format!("AR_{}", build_target), ar_path.as_os_str());
+            env::set_var(&format!("CFLAGS_{}", build_target), &format!("--sysroot {}", gcc_sysroot.to_string_lossy()));
+            env::set_var(&format!("CXXFLAGS_{}", build_target), &format!("--sysroot {}", gcc_sysroot.to_string_lossy()));
 
             let extra_args = vec![
                 "-C".to_owned(), format!("linker={}", android_artifacts_dir.join(if cfg!(target_os = "windows") { "linker_exe.exe" } else { "linker_exe" }).to_string_lossy()),
