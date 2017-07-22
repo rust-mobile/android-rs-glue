@@ -47,9 +47,6 @@ pub fn execute_build(options: Options, cargo_config: &CargoConfig) -> cargo::Cli
 
     let mut android_config = config::load(workspace.current()?.manifest_path());
     android_config.release = options.flag_release;
-    if !options.flag_bin.is_empty() {
-        android_config.target = Some(options.flag_bin[0].clone());
-    }
 
     ops::build(&workspace, &android_config, &options)?;
     Ok(())
@@ -69,9 +66,6 @@ pub fn execute_install(options: Options, cargo_config: &CargoConfig) -> cargo::C
 
     let mut android_config = config::load(workspace.current()?.manifest_path());
     android_config.release = options.flag_release;
-    if !options.flag_bin.is_empty() {
-        android_config.target = Some(options.flag_bin[0].clone());
-    }
 
     ops::install(&workspace, &android_config, &options)?;
     Ok(())
@@ -79,7 +73,9 @@ pub fn execute_install(options: Options, cargo_config: &CargoConfig) -> cargo::C
 
 #[derive(RustcDecodable)]
 pub struct Options {
-    flag_package: Vec<String>,
+    flag_bin: Option<String>,
+    flag_example: Option<String>,
+    flag_package: Option<String>,
     flag_jobs: Option<u32>,
     flag_features: Vec<String>,
     flag_all_features: bool,
@@ -90,19 +86,8 @@ pub struct Options {
     flag_color: Option<String>,
     flag_message_format: MessageFormat,
     flag_release: bool,
-    flag_lib: bool,
-    flag_bin: Vec<String>,
-    flag_bins: bool,
-    flag_example: Vec<String>,
-    flag_examples: bool,
-    flag_test: Vec<String>,
-    flag_tests: bool,
-    flag_bench: Vec<String>,
-    flag_benches: bool,
-    flag_locked: bool,
     flag_frozen: bool,
-    flag_all: bool,
-    flag_exclude: Vec<String>,
+    flag_locked: bool,
 }
 
 const BUILD_USAGE: &'static str = r#"
@@ -111,24 +96,15 @@ Usage:
 
 Options:
     -h, --help                   Print this message
-    -p SPEC, --package SPEC ...  Package to build
-    --all                        Build all packages in the workspace
-    --exclude SPEC ...           Exclude packages from the build
+    --bin NAME                   Name of the bin target to run
+    --example NAME               Name of the example target to run
+    -p SPEC, --package SPEC      Package with the target to run
     -j N, --jobs N               Number of parallel jobs, defaults to # of CPUs
-    --lib                        Build only this package's library
-    --bin NAME                   Build only the specified binary
-    --bins                       Build all binaries
-    --example NAME               Build only the specified example
-    --examples                   Build all examples
-    --test NAME                  Build only the specified test target
-    --tests                      Build all tests
-    --bench NAME                 Build only the specified bench target
-    --benches                    Build all benches
     --release                    Build artifacts in release mode, with optimizations
     --features FEATURES          Space-separated list of features to also build
     --all-features               Build all available features
     --no-default-features        Do not build the `default` feature
-    --manifest-path PATH         Path to the manifest to compile
+    --manifest-path PATH         Path to the manifest to execute
     -v, --verbose ...            Use verbose output (-vv very verbose/build.rs output)
     -q, --quiet                  No output printed to stdout
     --color WHEN                 Coloring: auto, always, never
@@ -145,24 +121,15 @@ Usage:
 
 Options:
     -h, --help                   Print this message
-    -p SPEC, --package SPEC ...  Package to build
-    --all                        Build all packages in the workspace
-    --exclude SPEC ...           Exclude packages from the build
+    --bin NAME                   Name of the bin target to run
+    --example NAME               Name of the example target to run
+    -p SPEC, --package SPEC      Package with the target to run
     -j N, --jobs N               Number of parallel jobs, defaults to # of CPUs
-    --lib                        Build only this package's library
-    --bin NAME                   Build only the specified binary
-    --bins                       Build all binaries
-    --example NAME               Build only the specified example
-    --examples                   Build all examples
-    --test NAME                  Build only the specified test target
-    --tests                      Build all tests
-    --bench NAME                 Build only the specified bench target
-    --benches                    Build all benches
     --release                    Build artifacts in release mode, with optimizations
     --features FEATURES          Space-separated list of features to also build
     --all-features               Build all available features
     --no-default-features        Do not build the `default` feature
-    --manifest-path PATH         Path to the manifest to compile
+    --manifest-path PATH         Path to the manifest to execute
     -v, --verbose ...            Use verbose output (-vv very verbose/build.rs output)
     -q, --quiet                  No output printed to stdout
     --color WHEN                 Coloring: auto, always, never

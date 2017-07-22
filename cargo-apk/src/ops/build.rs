@@ -4,6 +4,7 @@ use std::env;
 use std::fs;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader, Write};
+use std::iter::FromIterator;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
@@ -191,9 +192,15 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
                 "-C".to_owned(), format!("link-arg={}", build_target_dir.join("libs").into_os_string().into_string().unwrap()),
             ];
 
-            let spec = ops::Packages::from_flags(options.flag_all,
-                                                 &options.flag_exclude,
-                                                 &options.flag_package)?;
+            let (mut examples, mut bins) = (Vec::new(), Vec::new());
+            if let Some(ref s) = options.flag_bin {
+                bins.push(s.clone());
+            }
+            if let Some(ref s) = options.flag_example {
+                examples.push(s.clone());
+            }
+            let packages = Vec::from_iter(options.flag_package.iter().cloned());
+            let spec = ops::Packages::Packages(&packages);
 
             let opts = ops::CompileOptions {
                 config: workspace.config(),
@@ -205,11 +212,15 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
                 spec: spec,
                 mode: ops::CompileMode::Build,
                 release: options.flag_release,
-                filter: ops::CompileFilter::new(options.flag_lib,
-                                                &options.flag_bin, options.flag_bins,
-                                                &options.flag_test, options.flag_tests,
-                                                &options.flag_example, options.flag_examples,
-                                                &options.flag_bench, options.flag_benches,),
+                filter: if examples.is_empty() && bins.is_empty() {
+                    ops::CompileFilter::Everything { required_features_filterable: false, }
+                } else {
+                    ops::CompileFilter::new(false,
+                                            &bins, false,
+                                            &[], false,
+                                            &examples, false,
+                                            &[], false)
+                },
                 message_format: options.flag_message_format,
                 target_rustdoc_args: None,
                 target_rustc_args: Some(&extra_args),

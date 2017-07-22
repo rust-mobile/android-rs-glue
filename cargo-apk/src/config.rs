@@ -58,9 +58,6 @@ pub struct AndroidConfig {
     /// Appends this string to the activity attributes in the AndroidManifest.xml
     pub activity_attributes: Option<String>,
 
-    /// The name of the executable to compile.
-    pub target: Option<String>,
-
     /// The OpenGL ES major version in the AndroidManifest.xml
     pub opengles_version_major: u8,
 
@@ -121,7 +118,6 @@ pub fn load(manifest_path: &Path) -> AndroidConfig {
         fullscreen: manifest_content.as_ref().and_then(|a| a.fullscreen.clone()).unwrap_or(false),
         application_attributes: manifest_content.as_ref().and_then(|a| map_to_string(a.application_attributes.clone())),
         activity_attributes: manifest_content.as_ref().and_then(|a| map_to_string(a.activity_attributes.clone())),
-        target: None,
         opengles_version_major: manifest_content.as_ref().and_then(|a| a.opengles_version_major).unwrap_or(2),
         opengles_version_minor: manifest_content.as_ref().and_then(|a| a.opengles_version_minor).unwrap_or(0),
     }
