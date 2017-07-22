@@ -164,6 +164,12 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
         {
             workspace.config().shell().say("Compiling crate", 10)?;
 
+            // Set the current environment variables so that they are picked up by gcc-rs when
+            // compiling.
+            env::set_var("TARGET_CC", gcc_path.as_os_str());
+            env::set_var("TARGET_AR", ar_path.as_os_str());
+            env::set_var("TARGET_CFLAGS", &format!("--sysroot {}", gcc_sysroot.to_string_lossy()));
+
             let extra_args = vec![
                 "-C".to_owned(), format!("linker={}", android_artifacts_dir.join(if cfg!(target_os = "windows") { "linker_exe.exe" } else { "linker_exe" }).to_string_lossy()),
                 "--extern".to_owned(), format!("cargo_apk_injected_glue={}", injected_glue_lib.to_string_lossy()),
