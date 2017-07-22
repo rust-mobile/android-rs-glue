@@ -9,6 +9,7 @@ use cargo::core::Workspace;
 use cargo::ops::MessageFormat;
 use cargo::util::Config as CargoConfig;
 use cargo::util::important_paths::find_root_manifest_for_wd;
+use cargo::util::process_builder::process;
 
 mod config;
 mod ops;
@@ -19,6 +20,9 @@ fn main() {
     let args = env::args().collect::<Vec<_>>();
 
     let err = match args.get(2).map(|a| &a[..]) {
+        Some("logcat") => {
+            cargo::call_main_without_stdin(execute_logcat, &cargo_config, LOGCAT_USAGE, &args, false)
+        },
         Some("install") => {
             cargo::call_main_without_stdin(execute_install, &cargo_config, INSTALL_USAGE, &args, false)
         },
@@ -71,6 +75,29 @@ pub fn execute_install(options: Options, cargo_config: &CargoConfig) -> cargo::C
     Ok(())
 }
 
+pub fn execute_logcat(options: LogcatOptions, cargo_config: &CargoConfig) -> cargo::CliResult {
+    cargo_config.configure(options.flag_verbose,
+                           options.flag_quiet,
+                           &options.flag_color,
+                           options.flag_frozen,
+                           options.flag_locked)?;
+
+    let root_manifest = find_root_manifest_for_wd(options.flag_manifest_path.clone(),
+                                                  cargo_config.cwd())?;
+
+    let workspace = Workspace::new(&root_manifest, &cargo_config)?;
+
+    let android_config = config::load(workspace.current()?.manifest_path());
+    
+    workspace.config().shell().say("Starting logcat", 10)?;
+    let adb = android_config.sdk_path.join("platform-tools/adb");
+    process(&adb)
+        .arg("logcat")
+        .exec()?;
+
+    Ok(())
+}
+
 #[derive(RustcDecodable)]
 pub struct Options {
     flag_bin: Option<String>,
@@ -86,6 +113,16 @@ pub struct Options {
     flag_color: Option<String>,
     flag_message_format: MessageFormat,
     flag_release: bool,
+    flag_frozen: bool,
+    flag_locked: bool,
+}
+
+#[derive(RustcDecodable)]
+pub struct LogcatOptions {
+    flag_manifest_path: Option<String>,
+    flag_verbose: u32,
+    flag_quiet: Option<bool>,
+    flag_color: Option<String>,
     flag_frozen: bool,
     flag_locked: bool,
 }
@@ -138,4 +175,20 @@ Options:
     --locked                     Require Cargo.lock is up to date
 
 Does the same as `cargo build`.
+"#;
+
+const LOGCAT_USAGE: &'static str = r#"
+Usage:
+    cargo apk logcat [options]
+
+Options:
+    -h, --help                   Print this message
+    --manifest-path PATH         Path to the manifest to execute
+    -v, --verbose ...            Use verbose output (-vv very verbose/build.rs output)
+    -q, --quiet                  No output printed to stdout
+    --color WHEN                 Coloring: auto, always, never
+    --frozen                     Require Cargo.lock and cache are up to date
+    --locked                     Require Cargo.lock is up to date
+
+Starts `adb logcat`.
 "#;
