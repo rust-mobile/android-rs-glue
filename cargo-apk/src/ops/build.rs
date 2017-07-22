@@ -192,6 +192,9 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
                 "-C".to_owned(), format!("link-arg={}", build_target_dir.join("libs").into_os_string().into_string().unwrap()),
             ];
 
+            let packages = Vec::from_iter(options.flag_package.iter().cloned());
+            let spec = ops::Packages::Packages(&packages);
+
             let (mut examples, mut bins) = (Vec::new(), Vec::new());
             if let Some(ref s) = options.flag_bin {
                 bins.push(s.clone());
@@ -199,8 +202,36 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
             if let Some(ref s) = options.flag_example {
                 examples.push(s.clone());
             }
-            let packages = Vec::from_iter(options.flag_package.iter().cloned());
-            let spec = ops::Packages::Packages(&packages);
+            if !bins.is_empty() && !examples.is_empty() {
+                return Err(CargoError::from("You can only specify either a --bin or an --example but not both"));
+            }
+    
+            let pkg = match spec {
+                ops::Packages::All => unreachable!("cargo run supports single package only"),
+                ops::Packages::OptOut(_) => unreachable!("cargo run supports single package only"),
+                ops::Packages::Packages(xs) => match xs.len() {
+                    0 => workspace.current()?,
+                    1 => workspace.members()
+                        .find(|pkg| pkg.name() == xs[0])
+                        .ok_or_else(|| 
+                            CargoError::from(
+                                format!("package `{}` is not a member of the workspace", xs[0]))
+                        )?,
+                    _ => unreachable!("cargo run supports single package only"),
+                }
+            };
+
+            if bins.is_empty() && examples.is_empty() {
+                bins = pkg.manifest().targets().iter().filter(|a| {
+                    !a.is_lib() && !a.is_custom_build() && a.is_bin()
+                }).map(|a| a.name().to_owned()).collect();
+                if bins.len() >= 2 {
+                    return Err(CargoError::from("`cargo run` can run at most one executable, but \
+                        multiple exist"));
+                } else if bins.is_empty() {
+                    return Err(CargoError::from("a bin target must be available for `cargo apk`"));
+                }
+            }
 
             let opts = ops::CompileOptions {
                 config: workspace.config(),
@@ -212,15 +243,11 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
                 spec: spec,
                 mode: ops::CompileMode::Build,
                 release: options.flag_release,
-                filter: if examples.is_empty() && bins.is_empty() {
-                    ops::CompileFilter::Everything { required_features_filterable: false, }
-                } else {
-                    ops::CompileFilter::new(false,
+                filter: ops::CompileFilter::new(false,
                                             &bins, false,
                                             &[], false,
                                             &examples, false,
-                                            &[], false)
-                },
+                                            &[], false),
                 message_format: options.flag_message_format,
                 target_rustdoc_args: None,
                 target_rustc_args: Some(&extra_args),
