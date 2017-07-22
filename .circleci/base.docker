@@ -13,7 +13,7 @@ RUN rustup target add arm-linux-androideabi
 ENV ANDROID_HOME /opt/android-sdk-linux
 RUN cd /opt && \
     wget -q https://dl.google.com/android/repository/sdk-tools-linux-3859397.zip && \
-    tar -xzf sdk-tools-linux-3859397.zip && \
+    unzip -q sdk-tools-linux-3859397.zip && \
     rm sdk-tools-linux-3859397.zip && \
     chown -R root:root /opt
 RUN echo y | ${ANDROID_HOME}/tools/android update sdk --no-ui --all --filter platform-tools,android-18,build-tools-26.0.0
