@@ -1,17 +1,23 @@
-use std::path::Path;
-
+use cargo::core::Workspace;
+use cargo::util::errors::CargoError;
+use cargo::util::process_builder::process;
 use ops::build;
 use config::AndroidConfig;
+use Options;
 
-pub fn install(manifest_path: &Path, config: &AndroidConfig) {
-    /*let build_result = build::build(manifest_path, config);
+pub fn install(workspace: &Workspace, config: &AndroidConfig, options: &Options)
+               -> Result<(), CargoError>
+{
+    let build_result = build::build(workspace, config, options)?;
 
     let adb = config.sdk_path.join("platform-tools/adb");
 
-    TermCmd::new("Installing apk to the device", &adb)
+    workspace.config().shell().say("Installing apk to the device", 10)?;
+    process(&adb)
         .arg("install")
         .arg("-r")      // TODO: let user choose
         .arg(&build_result.apk_path)
-        .execute();*/
-    unimplemented!()
+        .exec()?;
+
+    Ok(())
 }

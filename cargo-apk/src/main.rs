@@ -44,7 +44,7 @@ pub fn execute(options: Options, cargo_config: &CargoConfig) -> cargo::CliResult
     }
 
     /*if command.as_ref().map(|s| &s[..]) == Some("install") {
-        install::install(current_package.manifest_path(), &android_config);
+        ops::install(current_package.manifest_path(), &android_config);
     } else {*/
         ops::build(&workspace, &android_config, &options)?;
     //}
