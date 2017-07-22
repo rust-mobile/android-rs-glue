@@ -157,7 +157,7 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
         }
 
         // Directory where we will put the native libraries for gradle to pick them up.
-        let native_libraries_dir = android_artifacts_dir.join(format!("app/libs/{}", abi));
+        let native_libraries_dir = android_artifacts_dir.join(format!("app/lib/{}", abi));
 
         if fs::metadata(&native_libraries_dir).is_err() {
             fs::DirBuilder::new().recursive(true).create(&native_libraries_dir).unwrap();
@@ -590,6 +590,12 @@ apply plugin: 'com.android.application'
 android {{
     compileSdkVersion rootProject.ext.compileSdkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
+
+    sourceSets {{
+        main {{
+            jniLibs.srcDirs 'lib/'
+        }}
+    }}
 }}
 "#)?;
     Ok(())
