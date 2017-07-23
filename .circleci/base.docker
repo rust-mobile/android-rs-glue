@@ -11,7 +11,8 @@ RUN rustup default nightly
 RUN rustup target add arm-linux-androideabi
 
 ENV ANDROID_HOME /opt/android-sdk-linux
-RUN cd /opt && \
+RUN mkdir ${ANDROID_HOME} && \
+    cd ${ANDROID_HOME} && \
     wget -q https://dl.google.com/android/repository/sdk-tools-linux-3859397.zip && \
     unzip -q sdk-tools-linux-3859397.zip && \
     rm sdk-tools-linux-3859397.zip && \
