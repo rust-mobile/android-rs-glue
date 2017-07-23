@@ -20,14 +20,31 @@ fn main() {
     let args = env::args().collect::<Vec<_>>();
 
     let err = match args.get(2).map(|a| &a[..]) {
-        Some("logcat") => {
-            cargo::call_main_without_stdin(execute_logcat, &cargo_config, LOGCAT_USAGE, &args, false)
+        Some("build") => {
+            cargo::call_main_without_stdin(execute_build, &cargo_config, BUILD_USAGE, &args, false)
         },
         Some("install") => {
             cargo::call_main_without_stdin(execute_install, &cargo_config, INSTALL_USAGE, &args, false)
         },
-        _ => {
-            cargo::call_main_without_stdin(execute_build, &cargo_config, BUILD_USAGE, &args, false)
+        Some("logcat") => {
+            cargo::call_main_without_stdin(execute_logcat, &cargo_config, LOGCAT_USAGE, &args, false)
+        },
+        Some(opt) if opt.starts_with("-") => {
+            println!("Note: `cargo apk [options]` is deprecated ; use `cargo apk build [options]` instead");
+            let mut tweaked_args = args.clone();
+            tweaked_args.insert(2, "build".to_owned());
+            cargo::call_main_without_stdin(execute_build, &cargo_config, BUILD_USAGE, &tweaked_args, false)
+        },
+        None => {
+            println!("Note: `cargo apk [options]` is deprecated ; use `cargo apk build [options]` instead");
+            let mut tweaked_args = args.clone();
+            tweaked_args.insert(2, "build".to_owned());
+            cargo::call_main_without_stdin(execute_build, &cargo_config, BUILD_USAGE, &tweaked_args, false)
+        },
+        Some(_) => {
+            // TODO: do more properly
+            println!("Try the following commands: build, install, logcat");
+            Ok(())
         }
     };
 
@@ -131,7 +148,7 @@ pub struct LogcatOptions {
 
 const BUILD_USAGE: &'static str = r#"
 Usage:
-    cargo apk [options]
+    cargo apk build [options]
 
 Options:
     -h, --help                   Print this message

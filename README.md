@@ -8,22 +8,19 @@ The easiest way to compile for Android is to use [docker](https://www.docker.com
 In order to build an APK, simply do this:
 
 ```
-docker run --rm -v <path-to-local-directory-with-Cargo.toml>:/root/src tomaka/cargo-apk cargo apk
+docker run --rm -v <path-to-local-directory-with-Cargo.toml>:/root/src tomaka/cargo-apk cargo apk build
 ```
 
 For example if you're on Linux and you want to compile the project in the current working
 directory.
 
 ```
-docker run --rm -v `pwd`:/root/src -w /root/src tomaka/cargo-apk cargo apk
+docker run --rm -v `pwd`:/root/src -w /root/src tomaka/cargo-apk cargo apk build
 ```
 
-`cargo apk` only compiles the Cargo.toml of the current working directory, so we have to set it
-before running the command. In the future `cargo apk` should be able to accept the
-`--manifest-path` option. Do not mount a volume on `/root` or you will erase the local
-installation of Cargo.
+Do not mount a volume on `/root` or you will erase the local installation of Cargo.
 
-After the build is finished, you should an Android package in `target/android-artifacts/build/bin`.
+After the build is finished, you should get an Android package in `target/android-artifacts/app/build/outputs/apk`.
 
 ## Manual usage
 
@@ -34,20 +31,22 @@ Before you can compile for Android, you need to setup your environment. This nee
  - Install [`rustup`](http://rustup.rs).
  - Run `rustup target add arm-linux-androideabi`, or any other target that you want to compile to.
 
- - Install the Java JDK and Ant (on Ubuntu, `sudo apt-get install openjdk-8-jdk ant`)
+ - Install the Java JDK (on Ubuntu, `sudo apt-get install openjdk-8-jdk`)
+ - [Install Gradle](https://gradle.org/install/).
 
  - Download and unzip [the Android NDK](http://developer.android.com/tools/sdk/ndk/index.html)
  - Download and unzip [the Android SDK](http://developer.android.com/sdk/index.html) (under *SDK Tools Only* at the bottom)
- - Update the SDK: `./android-sdk-linux/tools/android update sdk -u`
+ - Install some components in the SDK: `./android-sdk/tools/bin/sdkmanager "platform-tools" "platforms;android-18" "build-tools;26.0.0"`
 
  - Install `cargo-apk` with `cargo install cargo-apk`.
- - Be sure to set `NDK_HOME` to the path of your NDK and `ANDROID_HOME` to the path of your SDK.
+ - Set the environment variables `NDK_HOME` to the path of the NDK and `ANDROID_HOME` to the path of the SDK.
 
 ### Compiling
 
-In the project root for your Android crate, run `cargo apk`.
+In the project root for your Android crate, run `cargo apk build`. You can use the same options as
+with the regular `cargo build`.
 
-This will build an Android package in `target/android-artifacts/build/bin`.
+This will build an Android package in `target/android-artifacts/app/build/outputs/apk`.
 
 ### Testing on an Android emulator
 
@@ -58,6 +57,7 @@ adb install -r target/your_crate
 ```
 
 This will install your application on the emulator.
+Alternatively you can also use `cargo apk install`.
 
 To show log run: `adb logcat | grep RustAndroidGlueStdouterr`
 
@@ -82,4 +82,4 @@ The build process works by invoking `cargo rustc` and:
 This first step outputs a shared library, and is run once per target architecture.
 
 The command then sets up an Android build environment, which includes some Java code, in
-`target/android-artifacts` and puts the shared libraries in it. Then it runs `ant`.
+`target/android-artifacts` and puts the shared libraries in it. Then it runs `gradle`.
