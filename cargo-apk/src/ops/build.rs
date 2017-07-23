@@ -25,11 +25,11 @@ pub struct BuildResult {
 pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
             -> Result<BuildResult, CargoError>
 {
-    // First we detect whether `ant` works.
-    match Command::new(&config.ant_command).arg("-version").stdout(Stdio::null()).status() {
+    // First we detect whether `gradle` works.
+    match Command::new(&config.gradle_command).arg("-v").stdout(Stdio::null()).status() {
         Ok(s) if s.success() => (),
         _ => {
-            return Err(internal("Could not execute `ant`. Did you install it?").into());
+            return Err(CargoError::from("Could not execute `gradle`. Did you install it?"));
         }
     }
 
@@ -41,6 +41,7 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
     let mut abi_libs: HashMap<&str, Vec<String>> = HashMap::new();
 
     for build_target in config.build_targets.iter() {
+        assert_ne!(build_target, "app");
         let build_target_dir = android_artifacts_dir.join(build_target);
 
         // Finding the tools in the NDK.
@@ -155,8 +156,8 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
                .exec()?;
         }
 
-        // Directory where we will put the native libraries for ant to pick them up.
-        let native_libraries_dir = android_artifacts_dir.join(format!("build/libs/{}", abi));
+        // Directory where we will put the native libraries for gradle to pick them up.
+        let native_libraries_dir = android_artifacts_dir.join(format!("app/lib/{}", abi));
 
         if fs::metadata(&native_libraries_dir).is_err() {
             fs::DirBuilder::new().recursive(true).create(&native_libraries_dir).unwrap();
@@ -313,23 +314,23 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
     // Write the Java source
     build_java_src(workspace, &android_artifacts_dir, &config, &abi_libs)?;
 
-    // Invoking `ant` from within `android-artifacts` in order to compile the project.
-    workspace.config().shell().say("Invoking ant", 10)?;
-    let mut cmd = process(&config.ant_command);
+    // Invoking `gradle` from within `android-artifacts` in order to compile the project.
+    workspace.config().shell().say("Invoking gradle", 10)?;
+    let mut cmd = process(&config.gradle_command);
     if config.release {
-        cmd.arg("release");
+        cmd.arg("assembleRelease");
     } else {
-        cmd.arg("debug");
+        cmd.arg("assembleDebug");
     }
-    cmd.cwd(android_artifacts_dir.join("build"))
+    cmd.cwd(&android_artifacts_dir)
        .exec()?;
 
     Ok(BuildResult {
         apk_path: {
             let apk_name = if options.flag_release {
-                format!("build/bin/{}-release-unsigned.apk", config.project_name)
+                "app/build/outputs/apk/app-release-unsigned.apk"
             } else {
-                format!("build/bin/{}-debug.apk", config.project_name)
+                "app/build/outputs/apk/app-debug.apk"
             };
 
             android_artifacts_dir.join(apk_name)
@@ -338,8 +339,8 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
 }
 
 fn build_android_artifacts_dir(workspace: &Workspace, path: &Path, config: &AndroidConfig) -> Result<(), CargoError> {
-    if fs::metadata(path.join("build")).is_err() {
-        fs::DirBuilder::new().recursive(true).create(path.join("build")).unwrap();
+    if fs::metadata(path.join("app")).is_err() {
+        fs::DirBuilder::new().recursive(true).create(path.join("app")).unwrap();
     }
 
     {
@@ -354,9 +355,11 @@ fn build_android_artifacts_dir(workspace: &Workspace, path: &Path, config: &Andr
 
     build_linker(workspace, path)?;
     build_manifest(workspace, path, config)?;
-    build_build_xml(workspace, path, config)?;
+    build_build_gradle_root(workspace, path, config)?;
+    build_build_gradle_proj(workspace, path, config)?;
+    build_settings_dot_gradle(workspace, path, config)?;
+    build_gradle_properties(workspace, path, config)?;
     build_local_properties(workspace, path, config)?;
-    build_project_properties(workspace, path, config)?;
     build_assets(workspace, path, config)?;
     build_res(workspace, path, config)?;
 
@@ -392,7 +395,7 @@ fn build_linker(workspace: &Workspace, path: &Path) -> Result<(), CargoError> {
 
 fn build_java_src(_: &Workspace, path: &Path, config: &AndroidConfig, abi_libs: &HashMap<&str, Vec<String>>) -> Result<(), CargoError>
 {
-    let file = path.join("build/src/rust").join(config.project_name.replace("-", "_"))
+    let file = path.join("app/src/main/java/rust").join(config.project_name.replace("-", "_"))
                    .join("MainActivity.java");
     fs::create_dir_all(file.parent().unwrap())?;
     //if fs::metadata(&file).is_ok() { return; }
@@ -451,7 +454,8 @@ public class MainActivity extends android.app.NativeActivity {{
 }
 
 fn build_manifest(_: &Workspace, path: &Path, config: &AndroidConfig) -> Result<(), CargoError> {
-    let file = path.join("build/AndroidManifest.xml");
+    fs::create_dir_all(path.join("app/src/main")).unwrap();
+    let file = path.join("app/src/main/AndroidManifest.xml");
     //if fs::metadata(&file).is_ok() { return; }
     let mut file = File::create(&file)?;
 
@@ -519,7 +523,7 @@ fn build_assets(_: &Workspace, path: &Path, config: &AndroidConfig) -> Result<()
         None => return Ok(()),
         Some(ref p) => p,
     };
-    let dst_path = path.join("build/assets");
+    let dst_path = path.join("app/src/main/assets");
     if !dst_path.exists() {
         create_dir_symlink(&src_path, &dst_path)?;
     }
@@ -531,7 +535,7 @@ fn build_res(_: &Workspace, path: &Path, config: &AndroidConfig) -> Result<(), C
         None => return Ok(()),
         Some(ref p) => p,
     };
-    let dst_path = path.join("build/res");
+    let dst_path = path.join("app/src/main/res");
     if !dst_path.exists() {
         create_dir_symlink(&src_path, &dst_path)?;
     }
@@ -548,47 +552,100 @@ fn create_dir_symlink(src_path: &Path, dst_path: &Path) -> io::Result<()> {
     os::unix::fs::symlink(&src_path, &dst_path)
 }
 
-fn build_build_xml(_: &Workspace, path: &Path, config: &AndroidConfig) -> Result<(), CargoError> {
-    let file = path.join("build/build.xml");
+fn build_build_gradle_root(_: &Workspace, path: &Path, config: &AndroidConfig) -> Result<(), CargoError> {
+    let file = path.join("build.gradle");
     //if fs::metadata(&file).is_ok() { return; }
     let mut file = File::create(&file).unwrap();
 
-    write!(file, r#"<?xml version="1.0" encoding="UTF-8"?>
-<project name="{project_name}" default="help">
-    <property file="local.properties" />
-    <loadproperties srcFile="project.properties" />
-    <import file="custom_rules.xml" optional="true" />
-    <import file="${{sdk.dir}}/tools/ant/build.xml" />
+    write!(file, r#"
+buildscript {{
+    repositories {{
+        jcenter()
+    }}
+    dependencies {{
+        classpath 'com.android.tools.build:gradle:2.3.3'
+    }}
+}}
+allprojects {{
+    repositories {{
+        jcenter()
+    }}
+}}
+ext {{
+    compileSdkVersion = {android_version}
+    buildToolsVersion = "{build_tools_version}"
+}}
+"#, android_version = config.android_version,
+    build_tools_version = config.build_tools_version)?;
+    Ok(())
+}
 
-</project>
-"#, project_name = config.project_name)?;
+fn build_build_gradle_proj(_: &Workspace, path: &Path, config: &AndroidConfig) -> Result<(), CargoError> {
+    let file = path.join("app/build.gradle");
+    //if fs::metadata(&file).is_ok() { return; }
+    let mut file = File::create(&file).unwrap();
+
+    write!(file, r#"
+apply plugin: 'com.android.application'
+
+android {{
+    compileSdkVersion rootProject.ext.compileSdkVersion
+    buildToolsVersion rootProject.ext.buildToolsVersion
+
+    sourceSets {{
+        main {{
+            jniLibs.srcDirs 'lib/'
+        }}
+    }}
+}}
+"#)?;
+    Ok(())
+}
+
+fn build_settings_dot_gradle(_: &Workspace, path: &Path, _: &AndroidConfig) -> Result<(), CargoError> {
+    let file = path.join("settings.gradle");
+    //if fs::metadata(&file).is_ok() { return; }
+    let mut file = File::create(&file)?;
+    write!(file, r"include ':app'")?;
+    Ok(())
+}
+
+fn build_gradle_properties(_: &Workspace, path: &Path, _: &AndroidConfig) -> Result<(), CargoError> {
+    let file = path.join("gradle.properties");
+    //if fs::metadata(&file).is_ok() { return; }
+    let mut file = File::create(&file)?;
+    write!(file, r"android.builder.sdkDownload=false")?;
     Ok(())
 }
 
 fn build_local_properties(_: &Workspace, path: &Path, config: &AndroidConfig) -> Result<(), CargoError> {
-    let file = path.join("build/local.properties");
+    let file = path.join("local.properties");
     //if fs::metadata(&file).is_ok() { return; }
     let mut file = File::create(&file)?;
 
-    let abs_dir = if config.sdk_path.is_absolute() {
+    let sdk_abs_dir = if config.sdk_path.is_absolute() {
         config.sdk_path.clone()
     } else {
         env::current_dir()?.join(&config.sdk_path)
     };
 
-    if cfg!(target_os = "windows") {
-        write!(file, r"sdk.dir={}", abs_dir.to_str().unwrap().replace("\\", "\\\\"))?;
+    let ndk_abs_dir = if config.ndk_path.is_absolute() {
+        config.ndk_path.clone()
     } else {
-        write!(file, r"sdk.dir={}", abs_dir.to_str().unwrap())?;
+        env::current_dir()?.join(&config.ndk_path)
+    };
+
+    if cfg!(target_os = "windows") {
+        writeln!(file, r"sdk.dir={}", sdk_abs_dir.to_str().unwrap().replace("\\", "\\\\"))?;
+    } else {
+        writeln!(file, r"sdk.dir={}", sdk_abs_dir.to_str().unwrap())?;
     }
 
-    Ok(())
-}
+    if cfg!(target_os = "windows") {
+        writeln!(file, r"ndk.dir={}", ndk_abs_dir.to_str().unwrap().replace("\\", "\\\\"))?;
+    } else {
+        writeln!(file, r"ndk.dir={}", ndk_abs_dir.to_str().unwrap())?;
+    }
 
-fn build_project_properties(_: &Workspace, path: &Path, config: &AndroidConfig) -> Result<(), CargoError> {
-    let file = path.join("build/project.properties");
-    //if fs::metadata(&file).is_ok() { return; }
-    let mut file = File::create(&file)?;
-    write!(file, r"target=android-{}", config.android_version)?;
     Ok(())
 }
