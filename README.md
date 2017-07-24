@@ -17,7 +17,7 @@ For example if you're on Linux and you want to compile the project in the curren
 directory.
 
 ```
-docker run --rm -v `pwd`:/root/src -w /root/src tomaka/cargo-apk cargo apk build
+docker run --rm -v "$(pwd):/root/src" -w /root/src tomaka/cargo-apk cargo apk build
 ```
 
 Do not mount a volume on `/root` or you will erase the local installation of Cargo.
