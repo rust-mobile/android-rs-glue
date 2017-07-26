@@ -38,7 +38,7 @@ Before you can compile for Android, you need to setup your environment. This nee
 
  - Download and unzip [the Android NDK](http://developer.android.com/tools/sdk/ndk/index.html)
  - Download and unzip [the Android SDK](http://developer.android.com/sdk/index.html) (under *SDK Tools Only* at the bottom)
- - Install some components in the SDK: `./android-sdk/tools/bin/sdkmanager "platform-tools" "platforms;android-18" "build-tools;26.0.0"`
+ - Install some components in the SDK: `./android-sdk/tools/bin/sdkmanager "platform-tools" "platforms;android-18" "build-tools;26.0.1"`
 
  - Install `cargo-apk` with `cargo install cargo-apk`.
  - Set the environment variables `NDK_HOME` to the path of the NDK and `ANDROID_HOME` to the path of the SDK.
