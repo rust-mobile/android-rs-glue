@@ -339,9 +339,7 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
 }
 
 fn build_android_artifacts_dir(workspace: &Workspace, path: &Path, config: &AndroidConfig) -> Result<(), CargoError> {
-    if fs::metadata(path.join("app")).is_err() {
-        fs::DirBuilder::new().recursive(true).create(path.join("app")).unwrap();
-    }
+    fs::create_dir_all(path.join("app").join("src").join("main")).unwrap();
 
     {
         fs::create_dir_all(path.join("injected-glue")).unwrap();
@@ -523,7 +521,7 @@ fn build_assets(_: &Workspace, path: &Path, config: &AndroidConfig) -> Result<()
         None => return Ok(()),
         Some(ref p) => p,
     };
-    let dst_path = path.join("app/src/main/assets");
+    let dst_path = path.join("app").join("src").join("main").join("assets");
     if !dst_path.exists() {
         create_dir_symlink(&src_path, &dst_path)?;
     }
@@ -535,10 +533,16 @@ fn build_res(_: &Workspace, path: &Path, config: &AndroidConfig) -> Result<(), C
         None => return Ok(()),
         Some(ref p) => p,
     };
-    let dst_path = path.join("app/src/main/res");
+
+    if !src_path.exists() {
+        return Err(CargoError::from("Resources directory doesn't exist"));
+    }
+
+    let dst_path = path.join("app").join("src").join("main").join("res");
     if !dst_path.exists() {
         create_dir_symlink(&src_path, &dst_path)?;
     }
+
     Ok(())
 }
 
