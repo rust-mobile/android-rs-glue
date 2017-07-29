@@ -88,8 +88,6 @@ The command then sets up an Android build environment, which includes some Java 
 
 # Supported `[package.metadata.android]` entries
 
-In `cargo-apk/src/config.rs`, struct `TomlAndroid`.
-
 ```toml
 [package.metadata.android]
 
