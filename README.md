@@ -85,3 +85,60 @@ This first step outputs a shared library, and is run once per target architectur
 
 The command then sets up an Android build environment, which includes some Java code, in
 `target/android-artifacts` and puts the shared libraries in it. Then it runs `gradle`.
+
+# Supported `[package.metadata.android]` entries
+
+In `cargo-apk/src/config.rs`, struct `TomlAndroid`.
+
+```toml
+[package.metadata.android]
+
+# The Java package name for your application.
+# Hyphens are converted to underscores.
+package_name = "com.author-name.my-android-app"
+
+# The user-friendly name for your app, as displayed in the applications menu.
+label = "My Android App"
+
+# Path to your application's res/ folder. See `examples/use_icon/res`.
+res = "path/to/res_folder"
+
+# Virtual path your application's icon for any mipmap level. See `examples/use_icon/icon`.
+icon = "@mipmap/ic_laucher"
+
+# Path to the folder containing your application's assets. See `examples/use_assets/assets`.
+assets = "path/to/assets_folder"
+
+# The target Android API level.
+# It defaults to 18 because this is the minimum supported by rustc.
+android_version = 18
+
+# If set to true, makes the app run in full-screen, by adding the following line
+# as an XML attribute to the manifest's <application> tag :
+#     android:theme="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen
+# Defaults to false.
+fullscreen = false
+
+# Specifies the array of targets to build for.
+# Defaults to "arm-linux-androideabi".
+# Other possible targets include "aarch64-linux-android", 
+# "armv7-linux-androideabi", "i686-linux-android" and "x86_64-linux-android".
+build_targets = [ "arm-linux-androideabi", "armv7-linux-androideabi" ]
+
+# The maximum supported OpenGL ES version , as claimed by the manifest. Defaults to 2.0.
+# See https://developer.android.com/guide/topics/graphics/opengl.html#manifest
+opengles_version_major = 2
+opengles_version_minor = 0
+
+# Adds extra arbitrary XML attributes to the <application> tag in the manifest.
+# See https://developer.android.com/guide/topics/manifest/application-element.html
+[package.metadata.android.application_attributes]
+"android:debuggable" = "true"
+"android:hardwareAccelerated" = "true"
+
+# Adds extra arbitrary XML attributes to the <activity> tag in the manifest.
+# See https://developer.android.com/guide/topics/manifest/activity-element.html
+[package.metadata.android.activity_attributes]
+"android:screenOrientation" = "unspecified"
+"android:uiOptions" = "none"
+```
