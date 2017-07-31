@@ -28,6 +28,9 @@ fn main() {
         Some("install") => {
             cargo::call_main_without_stdin(execute_install, &cargo_config, INSTALL_USAGE, &args, false)
         },
+        Some("run") => {
+            cargo::call_main_without_stdin(execute_run, &cargo_config, RUN_USAGE, &args, false)
+        },
         Some("logcat") => {
             cargo::call_main_without_stdin(execute_logcat, &cargo_config, LOGCAT_USAGE, &args, false)
         },
@@ -45,7 +48,7 @@ fn main() {
         },
         Some(_) => {
             // TODO: do more properly
-            println!("Try the following commands: build, install, logcat");
+            println!("Try the following commands: build, install, run, logcat");
             Ok(())
         }
     };
@@ -92,6 +95,25 @@ pub fn execute_install(options: Options, cargo_config: &CargoConfig) -> cargo::C
     android_config.release = options.flag_release;
 
     ops::install(&workspace, &android_config, &options)?;
+    Ok(())
+}
+
+pub fn execute_run(options: Options, cargo_config: &CargoConfig) -> cargo::CliResult {
+    cargo_config.configure(options.flag_verbose,
+                           options.flag_quiet,
+                           &options.flag_color,
+                           options.flag_frozen,
+                           options.flag_locked)?;
+
+    let root_manifest = find_root_manifest_for_wd(options.flag_manifest_path.clone(),
+                                                  cargo_config.cwd())?;
+
+    let workspace = Workspace::new(&root_manifest, &cargo_config)?;
+
+    let mut android_config = config::load(&workspace, &options.flag_package)?;
+    android_config.release = options.flag_release;
+
+    ops::run(&workspace, &android_config, &options)?;
     Ok(())
 }
 
@@ -197,6 +219,32 @@ Options:
 
 Does the same as `cargo build`.
 "#;
+
+const RUN_USAGE: &'static str = r#"
+Usage:
+    cargo apk run [options]
+
+Options:
+    -h, --help                   Print this message
+    --bin NAME                   Name of the bin target to run
+    --example NAME               Name of the example target to run
+    -p SPEC, --package SPEC      Package with the target to run
+    -j N, --jobs N               Number of parallel jobs, defaults to # of CPUs
+    --release                    Build artifacts in release mode, with optimizations
+    --features FEATURES          Space-separated list of features to also build
+    --all-features               Build all available features
+    --no-default-features        Do not build the `default` feature
+    --manifest-path PATH         Path to the manifest to execute
+    -v, --verbose ...            Use verbose output (-vv very verbose/build.rs output)
+    -q, --quiet                  No output printed to stdout
+    --color WHEN                 Coloring: auto, always, never
+    --message-format FMT         Error format: human, json [default: human]
+    --frozen                     Require Cargo.lock and cache are up to date
+    --locked                     Require Cargo.lock is up to date
+
+Does the same as `cargo run`, using `adb`.
+"#;
+
 
 const LOGCAT_USAGE: &'static str = r#"
 Usage:
