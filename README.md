@@ -55,13 +55,13 @@ This will build an Android package in `target/android-artifacts/app/build/output
 Start the emulator, then run:
 
 ```sh
-adb install -r target/your_crate
+cargo apk run
 ```
 
-This will install your application on the emulator.
-Alternatively you can also use `cargo apk install`.
+This will install your application on the emulator, then run it.  
+If you only want to install, use `cargo apk install`.
 
-To show log run: `adb logcat | grep RustAndroidGlueStdouterr`
+To show log run: `cargo apk logcat | grep RustAndroidGlueStdouterr`
 
 # Interfacing with Android
 
