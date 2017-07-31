@@ -1,5 +1,3 @@
-#![deny(warnings)]
-
 use std::cell::{Cell};
 use std::ffi::{CString};
 use std::mem;

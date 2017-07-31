@@ -1,5 +1,3 @@
-#![deny(warnings)]
-
 extern crate cargo;
 extern crate rustc_serialize;
 extern crate term;
