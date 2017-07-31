@@ -1,3 +1,5 @@
+#![deny(warnings)]
+
 use std::cell::{Cell};
 use std::ffi::{CString};
 use std::mem;
@@ -6,15 +8,18 @@ use std::os::raw::c_char;
 use std::os::raw::c_int;
 use std::os::raw::c_long;
 use std::ptr;
-use std::sync::mpsc::{Sender, Receiver, TryRecvError, channel};
+use std::sync::mpsc::{Sender, Receiver, TryRecvError};
 use std::sync::Mutex;
 use std::thread;
+use std::time::Duration;
 use std::slice;
 use std::sync::atomic::{AtomicUsize, AtomicBool, Ordering};
-use std::io::Write;
 
+#[allow(non_camel_case_types)]
 pub type pthread_t = c_long;
+#[allow(non_camel_case_types)]
 pub type pthread_mutexattr_t = c_long;
+#[allow(non_camel_case_types)]
 pub type pthread_attr_t = c_void;       // FIXME: wrong
 
 extern {
@@ -158,14 +163,14 @@ pub trait SyncEventHandler {
 #[cfg(not(target_os = "android"))]
 use this_platform_is_not_supported;
 
-static mut g_mainthread_boxed: Option<*mut Receiver<()>> = Option::None;
+static mut G_MAINTHREAD_BOXED: Option<*mut Receiver<()>> = Option::None;
 
 /// Return a tuple with tuple.0 set to true is the application thread
 /// has terminated, and tuple.1 set to true if an abnormal exit occured.
 fn is_app_thread_terminated() -> (bool, bool) {
-    if unsafe { g_mainthread_boxed.is_some() } {
+    if unsafe { G_MAINTHREAD_BOXED.is_some() } {
         // Let us see if it had shutdown or paniced.
-        let raw = unsafe { g_mainthread_boxed.unwrap() };
+        let raw = unsafe { G_MAINTHREAD_BOXED.unwrap() };
         let br: &mut Receiver<()> = unsafe { std::mem::transmute(raw) };
         let result = br.try_recv();
         let terminated = if result.is_err() {
@@ -176,7 +181,7 @@ fn is_app_thread_terminated() -> (bool, bool) {
         } else {
             (true, false)
         };
-        unsafe { g_mainthread_boxed = Option::Some(raw) };
+        unsafe { G_MAINTHREAD_BOXED = Option::Some(raw) };
         terminated
     } else {
         (true, false)
@@ -212,7 +217,7 @@ pub fn android_main2<F>(app: *mut ffi::android_app, main_function: F)
 
     app.onAppCmd = commands_callback;
     app.onInputEvent = inputs_callback;
-    app.userData = unsafe { &context as *const Context as *mut Context as *mut _ };
+    app.userData = &context as *const Context as *mut Context as *mut _;
 
     // We have to take into consideration that the application we are wrapping
     // may not have been designed for android very well. It may not listen for
@@ -325,7 +330,7 @@ pub fn android_main2<F>(app: *mut ffi::android_app, main_function: F)
         // recalled after a Destroy event/command, then we can make check if the
         // main application thread we created above is still running, and if it is
         // we should wait on it to exit.
-        //unsafe { g_mainthread_boxed = Option::Some(std::mem::transmute(Box::new(mrx))) };
+        //unsafe { G_MAINTHREAD_BOXED = Option::Some(std::mem::transmute(Box::new(mrx))) };
 
     } else {
         write_log("Application thread was still running - not creating new one");
@@ -577,7 +582,7 @@ pub unsafe fn get_native_window() -> ffi::NativeWindowType {
         }
 
         // spin-locking
-        thread::sleep_ms(10);
+        thread::sleep(Duration::from_millis(10));
     }
 }
 
