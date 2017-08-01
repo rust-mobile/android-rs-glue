@@ -11,7 +11,6 @@ use std::process::{Command, Stdio};
 use cargo::ops;
 use cargo::core::Workspace;
 use cargo::util::errors::CargoError;
-use cargo::util::errors::internal;
 use cargo::util::process_builder::process;
 
 use config::AndroidConfig;
@@ -584,7 +583,7 @@ ext {{
     Ok(())
 }
 
-fn build_build_gradle_proj(_: &Workspace, path: &Path, config: &AndroidConfig) -> Result<(), CargoError> {
+fn build_build_gradle_proj(_: &Workspace, path: &Path, _config: &AndroidConfig) -> Result<(), CargoError> {
     let file = path.join("app/build.gradle");
     //if fs::metadata(&file).is_ok() { return; }
     let mut file = File::create(&file).unwrap();
