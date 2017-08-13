@@ -86,10 +86,7 @@ pub fn load(workspace: &Workspace, flag_package: &Option<String>) -> Result<Andr
                 0 => workspace.current()?,
                 1 => workspace.members()
                     .find(|pkg| pkg.name() == xs[0])
-                    .ok_or_else(|| 
-                        CargoError::from(
-                            format!("package `{}` is not a member of the workspace", xs[0]))
-                    )?,
+                    .ok_or_else(|| CargoError::from(format!("package `{}` is not a member of the workspace", xs[0])))?,
                 _ => unreachable!("cargo apk supports single package only"),
             }
         }
@@ -97,18 +94,22 @@ pub fn load(workspace: &Workspace, flag_package: &Option<String>) -> Result<Andr
 
     // Determine the name of the package and the Android-specific metadata from the Cargo.toml
     let (package_name, manifest_content) = {
+        // Load Cargo.toml & parse
         let content = {
             let mut file = File::open(package.manifest_path()).unwrap();
             let mut content = String::new();
             file.read_to_string(&mut content).unwrap();
             content
         };
-
         let toml = TomlParser::new(&content).parse().unwrap();
         let decoded: TomlPackage = toml::decode(toml["package"].clone()).unwrap();
         let package_name = decoded.name.clone();
         (package_name, decoded.metadata.and_then(|m| m.android))
     };
+
+    // Determine the gradle command from the manifest (can be set to gradle.bat
+    // on windows)
+    let gradle_command = manifest_content.as_ref().and_then(|m| m.gradle_command.clone());
 
     let ndk_path = env::var("NDK_HOME").expect("Please set the path to the Android NDK with the \
                                                 $NDK_HOME environment variable.");
@@ -154,15 +155,15 @@ pub fn load(workspace: &Workspace, flag_package: &Option<String>) -> Result<Andr
     Ok(AndroidConfig {
         sdk_path: Path::new(&sdk_path).to_owned(),
         ndk_path: Path::new(&ndk_path).to_owned(),
-        gradle_command: "gradle".to_owned(),
+        gradle_command: gradle_command.unwrap_or("gradle".to_owned()),
         package_name: manifest_content.as_ref().and_then(|a| a.package_name.clone())
                                        .unwrap_or_else(|| format!("rust.{}", package_name)),
         project_name: package_name.clone(),
         package_label: manifest_content.as_ref().and_then(|a| a.label.clone())
-                                       .unwrap_or_else(|| package_name.clone()),
+            .unwrap_or_else(|| package_name.clone()),
         package_icon: manifest_content.as_ref().and_then(|a| a.icon.clone()),
         build_targets: manifest_content.as_ref().and_then(|a| a.build_targets.clone())
-                                       .unwrap_or(vec!["arm-linux-androideabi".to_owned()]),
+            .unwrap_or(vec!["arm-linux-androideabi".to_owned()]),
         android_version: manifest_content.as_ref().and_then(|a| a.android_version).unwrap_or(18),
         build_tools_version: build_tools_version,
         assets_path: manifest_content.as_ref().and_then(|a| a.assets.as_ref())
@@ -214,6 +215,7 @@ struct TomlAndroid {
     application_attributes: Option<BTreeMap<String, String>>,
     activity_attributes: Option<BTreeMap<String, String>>,
     build_targets: Option<Vec<String>>,
+    gradle_command: Option<String>,
     opengles_version_major: Option<u8>,
     opengles_version_minor: Option<u8>,
 }
