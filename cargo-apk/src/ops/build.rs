@@ -30,8 +30,9 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
         _ => {
             return Err(CargoError::from(r#"Could not execute `gradle`. Did you
                 install it? (If already installed on windows with `gradle.bat`
-                in your classpath, you must customise the gradle command with
-                the gradle_command field under package.metadata.android)."#));
+                in your path, you must customise the gradle command to
+                `gradle.bat` with the CARGO_APK_GRADLE_COMMAND environment
+                variable)."#));
         }
     }
 

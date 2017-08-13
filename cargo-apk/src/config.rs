@@ -107,9 +107,8 @@ pub fn load(workspace: &Workspace, flag_package: &Option<String>) -> Result<Andr
         (package_name, decoded.metadata.and_then(|m| m.android))
     };
 
-    // Determine the gradle command from the manifest (can be set to gradle.bat
-    // on windows)
-    let gradle_command = manifest_content.as_ref().and_then(|m| m.gradle_command.clone());
+    // Determine the gradle command from the env variables
+    let gradle_command = env::var("CARGO_APK_GRADLE_COMMAND").ok();
 
     let ndk_path = env::var("NDK_HOME").expect("Please set the path to the Android NDK with the \
                                                 $NDK_HOME environment variable.");
