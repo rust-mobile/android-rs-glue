@@ -108,8 +108,7 @@ pub fn load(workspace: &Workspace, flag_package: &Option<String>) -> Result<Andr
     };
 
     // Determine the gradle command from the env variables
-    let gradle_command = env::var("CARGO_APK_GRADLE_COMMAND").ok();
-
+    let gradle_command = env::var("CARGO_APK_GRADLE_COMMAND").ok().unwrap_or("gradle".to_owned());
     let ndk_path = env::var("NDK_HOME").expect("Please set the path to the Android NDK with the \
                                                 $NDK_HOME environment variable.");
 
@@ -154,7 +153,7 @@ pub fn load(workspace: &Workspace, flag_package: &Option<String>) -> Result<Andr
     Ok(AndroidConfig {
         sdk_path: Path::new(&sdk_path).to_owned(),
         ndk_path: Path::new(&ndk_path).to_owned(),
-        gradle_command: gradle_command.unwrap_or("gradle".to_owned()),
+        gradle_command: gradle_command,
         package_name: manifest_content.as_ref().and_then(|a| a.package_name.clone())
                                        .unwrap_or_else(|| format!("rust.{}", package_name)),
         project_name: package_name.clone(),
