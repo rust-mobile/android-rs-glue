@@ -28,7 +28,11 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
     match Command::new(&config.gradle_command).arg("-v").stdout(Stdio::null()).status() {
         Ok(s) if s.success() => (),
         _ => {
-            return Err(CargoError::from("Could not execute `gradle`. Did you install it?"));
+            return Err(CargoError::from(r#"Could not execute `gradle`. Did you
+                install it? (If already installed on windows with `gradle.bat`
+                in your path, you must customise the gradle command to
+                `gradle.bat` with the CARGO_APK_GRADLE_COMMAND environment
+                variable)."#));
         }
     }
 
