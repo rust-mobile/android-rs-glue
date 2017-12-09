@@ -34,6 +34,7 @@ Before you can compile for Android, you need to setup your environment. This nee
  - Run `rustup target add arm-linux-androideabi`, or any other target that you want to compile to.
 
  - Install the Java JDK (on Ubuntu, `sudo apt-get install openjdk-8-jdk`)
+ - Install CMake (on Ubuntu, `sudo apt-get install cmake`)
  - [Install Gradle](https://gradle.org/install/).
 
  - Download and unzip [the Android NDK](http://developer.android.com/tools/sdk/ndk/index.html)
