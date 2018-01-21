@@ -78,7 +78,7 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
              base.join(format!("bin/{}-ar", tool_prefix)))
         };
 
-        let gcc_sysroot = {
+        let gcc_sysroot_linker = {
             let arch = if build_target.starts_with("arm") { "arm" }
                        else if build_target.starts_with("aarch64") { "arm64" }
                        else if build_target.starts_with("i") { "x86" }
@@ -90,9 +90,26 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
                                          v = config.android_version, a = arch))
         };
 
+        // TODO Test and make compatible with older android NDKs if needed
+
+        let gcc_sysroot = {
+            config.ndk_path.join("sysroot")
+        };
+
+        let gcc_isystem = {
+            let target_arch = if build_target.starts_with("arm") { "arm-linux-androideabi" }
+                       else if build_target.starts_with("aarch64") { "aarch64-linux-android" }
+                       else if build_target.starts_with("i") { "i686-linux-android" }
+                       else if build_target.starts_with("x86_64") { "x86_64-linux-android" }
+                       else if build_target.starts_with("mipsel") { "mipsel-linux-android" }
+                       // TODO: mips64
+                       else { panic!("Unknown or incompatible build target: {}", build_target) };
+            config.ndk_path.join(format!("sysroot/usr/include/{}", target_arch))
+        };
+
         // Create android cpu abi name
-        let abi = if build_target.starts_with("arm") { "armeabi" }
-                  // TODO: armeabi-v7a
+        let abi = if build_target.starts_with("armv7") { "armeabi-v7a" }
+                  else if build_target.starts_with("arm") { "armeabi" }
                   else if build_target.starts_with("aarch64") { "arm64-v8a" }
                   else if build_target.starts_with("i") { "x86" }
                   else if build_target.starts_with("x86_64") { "x86_64" }
@@ -111,6 +128,7 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
             }
             cmd.arg("-o").arg(build_target_dir.join("android_native_app_glue.o"))
                .arg("--sysroot").arg(&gcc_sysroot)
+               .arg("-isystem").arg(&gcc_isystem)
                .exec()?;
         }
 
@@ -176,8 +194,8 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
             env::set_var(&format!("CC_{}", build_target), gcc_path.as_os_str());
             env::set_var(&format!("CXX_{}", build_target), gxx_path.as_os_str());
             env::set_var(&format!("AR_{}", build_target), ar_path.as_os_str());
-            env::set_var(&format!("CFLAGS_{}", build_target), &format!("--sysroot {}", gcc_sysroot.to_string_lossy()));
-            env::set_var(&format!("CXXFLAGS_{}", build_target), &format!("--sysroot {}", gcc_sysroot.to_string_lossy()));
+            env::set_var(&format!("CFLAGS_{}", build_target), &format!("--sysroot {}", gcc_sysroot_linker.to_string_lossy()));
+            env::set_var(&format!("CXXFLAGS_{}", build_target), &format!("--sysroot {}", gcc_sysroot_linker.to_string_lossy()));
 
             let extra_args = vec![
                 "-C".to_owned(), format!("linker={}", android_artifacts_dir.join(if cfg!(target_os = "windows") { "linker_exe.exe" } else { "linker_exe" }).to_string_lossy()),
@@ -185,7 +203,7 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
                 "-C".to_owned(),"link-arg=--cargo-apk-gcc".to_owned(),
                 "-C".to_owned(), format!("link-arg={}", gcc_path.as_os_str().to_str().unwrap().to_owned()),
                 "-C".to_owned(),"link-arg=--cargo-apk-gcc-sysroot".to_owned(),
-                "-C".to_owned(), format!("link-arg={}", gcc_sysroot.as_os_str().to_str().unwrap().to_owned()),
+                "-C".to_owned(), format!("link-arg={}", gcc_sysroot_linker.as_os_str().to_str().unwrap().to_owned()),
                 "-C".to_owned(), "link-arg=--cargo-apk-native-app-glue".to_owned(),
                 "-C".to_owned(), format!("link-arg={}", build_target_dir.join("android_native_app_glue.o").into_os_string().into_string().unwrap()),
                 "-C".to_owned(), "link-arg=--cargo-apk-glue-obj".to_owned(),
@@ -198,6 +216,10 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
                 "-C".to_owned(), format!("link-arg={}", build_target_dir.join("lib_paths").into_os_string().into_string().unwrap()),
                 "-C".to_owned(), "link-arg=--cargo-apk-libs-output".to_owned(),
                 "-C".to_owned(), format!("link-arg={}", build_target_dir.join("libs").into_os_string().into_string().unwrap()),
+                // TODO Test and make compatible with different targets (tested only on armv7-linux-androideabi)
+                "-C".to_owned(), "relocation-model=pic".to_owned(),
+                "-C".to_owned(), "link-args=-no-pie".to_owned(),
+                "-C".to_owned(), "link-args=-Wl,-Bsymbolic".to_owned(),
             ];
 
             let packages = Vec::from_iter(options.flag_package.iter().cloned());
