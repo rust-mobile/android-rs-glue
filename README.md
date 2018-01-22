@@ -110,7 +110,10 @@ assets = "path/to/assets_folder"
 
 # The target Android API level.
 # It defaults to 18 because this is the minimum supported by rustc.
+# (target_sdk_version and min_sdk_version default to the value of "android_version")
 android_version = 18
+target_sdk_version = 18
+min_sdk_version = 18
 
 # If set to true, makes the app run in full-screen, by adding the following line
 # as an XML attribute to the manifest's <application> tag :
