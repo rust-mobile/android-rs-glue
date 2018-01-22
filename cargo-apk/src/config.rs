@@ -39,6 +39,10 @@ pub struct AndroidConfig {
 
     /// Version of android for which to compile. TODO: ensure that >=18 because Rustc only supports 18+
     pub android_version: u32,
+    /// Version of android:targetSdkVersion (optional). Default Value = android_version
+    pub target_sdk_version: u32,
+    /// Version of android:minSdkVersion (optional). Default Value = android_version
+    pub min_sdk_version: u32,
 
     /// Version of the build tools to use
     pub build_tools_version: String,
@@ -149,6 +153,11 @@ pub fn load(workspace: &Workspace, flag_package: &Option<String>) -> Result<Andr
         versions.into_iter().next().unwrap_or("26.0.0".to_owned())
     };
 
+    // Determine the Sdk versions (compile, target, min)
+    let android_version = manifest_content.as_ref().and_then(|a| a.android_version).unwrap_or(18);
+    let target_sdk_version = manifest_content.as_ref().and_then(|a| a.target_sdk_version).unwrap_or(android_version);
+    let min_sdk_verision = manifest_content.as_ref().and_then(|a| a.min_sdk_version).unwrap_or(android_version);
+
     // For the moment some fields of the config are dummies.
     Ok(AndroidConfig {
         sdk_path: Path::new(&sdk_path).to_owned(),
@@ -162,7 +171,9 @@ pub fn load(workspace: &Workspace, flag_package: &Option<String>) -> Result<Andr
         package_icon: manifest_content.as_ref().and_then(|a| a.icon.clone()),
         build_targets: manifest_content.as_ref().and_then(|a| a.build_targets.clone())
             .unwrap_or(vec!["arm-linux-androideabi".to_owned()]),
-        android_version: manifest_content.as_ref().and_then(|a| a.android_version).unwrap_or(18),
+        android_version: android_version,
+        target_sdk_version: target_sdk_version,
+        min_sdk_version: min_sdk_verision,
         build_tools_version: build_tools_version,
         assets_path: manifest_content.as_ref().and_then(|a| a.assets.as_ref())
             .map(|p| package.manifest_path().parent().unwrap().join(p)),
@@ -209,6 +220,8 @@ struct TomlAndroid {
     assets: Option<String>,
     res: Option<String>,
     android_version: Option<u32>,
+    target_sdk_version: Option<u32>,
+    min_sdk_version: Option<u32>,
     fullscreen: Option<bool>,
     application_attributes: Option<BTreeMap<String, String>>,
     activity_attributes: Option<BTreeMap<String, String>>,

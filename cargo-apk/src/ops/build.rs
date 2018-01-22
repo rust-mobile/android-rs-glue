@@ -513,6 +513,7 @@ fn build_manifest(_: &Workspace, path: &Path, config: &AndroidConfig) -> Result<
         android:versionCode="1"
         android:versionName="1.0">
 
+    <uses-sdk android:targetSdkVersion="{targetSdkVersion}" />
     <uses-sdk android:minSdkVersion="{minSdkVersion}" />
 
     <uses-feature android:glEsVersion="{glEsVersion}" android:required="true"></uses-feature>
@@ -533,7 +534,8 @@ fn build_manifest(_: &Workspace, path: &Path, config: &AndroidConfig) -> Result<
 <!-- END_INCLUDE(manifest) -->
 "#,
         package = config.package_name.replace("-", "_"),
-        minSdkVersion = config.android_version,
+        targetSdkVersion = config.target_sdk_version,
+        minSdkVersion = config.min_sdk_version,
         glEsVersion = format!("0x{:04}{:04}", config.opengles_version_major, config.opengles_version_minor),
         application_attrs = application_attrs,
         activity_attrs = activity_attrs
