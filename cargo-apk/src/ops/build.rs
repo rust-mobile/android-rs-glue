@@ -194,8 +194,8 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
             env::set_var(&format!("CC_{}", build_target), gcc_path.as_os_str());
             env::set_var(&format!("CXX_{}", build_target), gxx_path.as_os_str());
             env::set_var(&format!("AR_{}", build_target), ar_path.as_os_str());
-            env::set_var(&format!("CFLAGS_{}", build_target), &format!("--sysroot {}", gcc_sysroot_linker.to_string_lossy()));
-            env::set_var(&format!("CXXFLAGS_{}", build_target), &format!("--sysroot {}", gcc_sysroot_linker.to_string_lossy()));
+            env::set_var(&format!("CFLAGS_{}", build_target), &format!("--sysroot {} -isysroot {} -isystem {}", gcc_sysroot_linker.to_string_lossy(), gcc_sysroot.to_string_lossy(), gcc_isystem.to_string_lossy()));
+            env::set_var(&format!("CXXFLAGS_{}", build_target), &format!("--sysroot {} -isysroot {} -isystem {}", gcc_sysroot_linker.to_string_lossy(), gcc_sysroot.to_string_lossy(), gcc_isystem.to_string_lossy()));
 
             let extra_args = vec![
                 "-C".to_owned(), format!("linker={}", android_artifacts_dir.join(if cfg!(target_os = "windows") { "linker_exe.exe" } else { "linker_exe" }).to_string_lossy()),
