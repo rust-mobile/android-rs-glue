@@ -513,8 +513,7 @@ fn build_manifest(_: &Workspace, path: &Path, config: &AndroidConfig) -> Result<
         android:versionCode="1"
         android:versionName="1.0">
 
-    <uses-sdk android:targetSdkVersion="{targetSdkVersion}" />
-    <uses-sdk android:minSdkVersion="{minSdkVersion}" />
+    <uses-sdk android:targetSdkVersion="{targetSdkVersion}" android:minSdkVersion="{minSdkVersion}" />
 
     <uses-feature android:glEsVersion="{glEsVersion}" android:required="true"></uses-feature>
     <uses-permission android:name="android.permission.INTERNET" />
