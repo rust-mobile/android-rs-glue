@@ -5,6 +5,7 @@ authors = ["Pierre Krieger <pierre.krieger1708@gmail.com>"]
 
 [package.metadata.android]
 label = "Basic android-rs-glue example"
+build_targets = ["arm-linux-androideabi", "i686-linux-android"]
 
 [[bin]]
 name = "example"

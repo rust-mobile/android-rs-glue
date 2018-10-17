@@ -81,16 +81,17 @@ pub fn load(workspace: &Workspace, flag_package: &Option<String>) -> Result<Andr
     // Find out the package requested by the user.
     let package = {
         let packages = Vec::from_iter(flag_package.iter().cloned());
-        let spec = ops::Packages::Packages(&packages);
+        let spec = ops::Packages::Packages(packages);
 
         match spec {
+            ops::Packages::Default => unreachable!("cargo apk supports single package only"),
             ops::Packages::All => unreachable!("cargo apk supports single package only"),
             ops::Packages::OptOut(_) => unreachable!("cargo apk supports single package only"),
             ops::Packages::Packages(xs) => match xs.len() {
                 0 => workspace.current()?,
                 1 => workspace.members()
-                    .find(|pkg| pkg.name() == xs[0])
-                    .ok_or_else(|| CargoError::from(format!("package `{}` is not a member of the workspace", xs[0])))?,
+                    .find(|pkg| *pkg.name() == xs[0])
+                    .ok_or_else(|| format_err!("package `{}` is not a member of the workspace", xs[0]))?,
                 _ => unreachable!("cargo apk supports single package only"),
             }
         }
