@@ -10,6 +10,9 @@ use std::path::{Path, PathBuf};
 use std::process;
 use std::process::{Command, Stdio};
 
+use std::io::BufReader;
+use std::io::BufRead;
+
 fn main() {
     let (args, passthrough) = parse_arguments();
 
@@ -79,8 +82,7 @@ fn parse_arguments() -> (Args, Vec<String>) {
     let mut cargo_apk_libs_path_output: Option<String> = None;
     let mut cargo_apk_libs_output: Option<String> = None;
 
-    let args = env::args();
-    let mut args = args.skip(1);
+    let mut args = RustCArgsReader::new();
 
     loop {
         let arg = match args.next() {
@@ -166,5 +168,84 @@ fn parse_arguments() -> (Args, Vec<String>) {
                 result_passthrough.push(arg);
             }
         };
+    }
+}
+
+struct RustCArgsReader {
+    reader: Option<BufReader<File>>,
+    args: env::Args
+}
+
+impl RustCArgsReader {
+    pub fn new() -> RustCArgsReader {
+        let mut args = env::args();
+        args.next();
+
+        RustCArgsReader {
+            reader: None,
+            args
+        }
+    }
+
+    pub fn next(&mut self) -> Option<String> {
+
+        let mut replace = false;
+        let mut next_reader : Option<BufReader<File>> = None;
+
+        loop {
+            if replace {
+                self.reader = next_reader.take();
+            }
+
+            if let Some(ref mut r) = &mut self.reader {
+                let mut line = String::new();
+                match r.read_line(&mut line) {
+                    Ok(size) => {
+                        if size == 0 {
+                            replace = true;
+                            next_reader = None;
+                            continue;
+                        }
+
+                        if line.ends_with('\n') {
+                            line.pop();
+                        }
+
+                        if line.ends_with('\r') {
+                            line.pop();
+                        }
+
+                        return Some(line)
+                    },
+                    Err(e) => {
+                        println!("Error on file read: {}", e);
+                        replace = true;
+                        next_reader = None;
+                        continue;
+                    }
+                }
+            } else {
+                match self.args.next() {
+                    Some(arg) => {
+                        if arg.starts_with("@") {
+                            let file = match File::open(&arg[1..]) {
+                                Ok(f) => f,
+                                Err(e) => {
+                                    println!("Error on file open: {}", e);
+                                    continue;
+                                }
+                            };
+
+                            replace = true;
+                            next_reader = Some(BufReader::new(file));
+                            continue;
+                        } else {
+                            return Some(arg);
+                        }
+                    }
+                    None => return None
+                }
+            }
+        }
     }
 }
