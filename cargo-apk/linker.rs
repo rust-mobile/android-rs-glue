@@ -5,13 +5,10 @@
 use std::collections::HashSet;
 use std::env;
 use std::fs::File;
-use std::io::Write;
+use std::io::{Write, BufReader, BufRead};
 use std::path::{Path, PathBuf};
 use std::process;
 use std::process::{Command, Stdio};
-
-use std::io::BufReader;
-use std::io::BufRead;
 
 fn main() {
     let (args, passthrough) = parse_arguments();
