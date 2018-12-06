@@ -1,11 +1,11 @@
 use cargo::core::Workspace;
 use cargo::util::errors::CargoError;
 use cargo::util::process_builder::process;
+use clap::ArgMatches;
 use ops::install;
 use config::AndroidConfig;
-use Options;
 
-pub fn run(workspace: &Workspace, config: &AndroidConfig, options: &Options)
+pub fn run(workspace: &Workspace, config: &AndroidConfig, options: &ArgMatches)
                -> Result<(), CargoError>
 {
     let _build_result = install::install(workspace, config, options)?;
@@ -20,7 +20,7 @@ pub fn run(workspace: &Workspace, config: &AndroidConfig, options: &Options)
         config.project_name.replace("-", "_")
     );
 
-    workspace.config().shell().say("Running apk", 10)?;
+    drop(writeln!(workspace.config().shell().err(), "Running apk"));
     process(&adb)
         .arg("shell").arg("am").arg("start")
         .arg("-a").arg("android.intent.action.MAIN")

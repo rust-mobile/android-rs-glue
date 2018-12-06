@@ -4,31 +4,32 @@ use std::env;
 use std::fs;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader, Write};
-use std::iter::FromIterator;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use cargo::ops;
 use cargo::core::Workspace;
+use cargo::core::compiler::CompileMode;
 use cargo::util::errors::CargoError;
 use cargo::util::process_builder::process;
+use clap::ArgMatches;
 
+use ArgMatchesExt;
 use config::AndroidConfig;
-use Options;
 
 pub struct BuildResult {
     /// The absolute path where the apk is located.
     pub apk_path: PathBuf,
 }
 
-pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
+pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &ArgMatches)
             -> Result<BuildResult, CargoError>
 {
     // First we detect whether `gradle` works.
     match Command::new(&config.gradle_command).arg("-v").stdout(Stdio::null()).status() {
         Ok(s) if s.success() => (),
         _ => {
-            return Err(CargoError::from(r#"Could not execute `gradle`. Did you
+            return Err(format_err!(r#"Could not execute `gradle`. Did you
                 install it? (If already installed on windows with `gradle.bat`
                 in your path, you must customise the gradle command to
                 `gradle.bat` with the CARGO_APK_GRADLE_COMMAND environment
@@ -119,7 +120,8 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
 
         // Compiling android_native_app_glue.c
         {
-            workspace.config().shell().say("Compiling android_native_app_glue.c", 10)?;
+            drop(writeln!(workspace.config().shell().err(),
+                          "Compiling android_native_app_glue.c"));
             let mut cmd = process(&gcc_path);
             cmd.arg(config.ndk_path.join("sources/android/native_app_glue/android_native_app_glue.c"))
                .arg("-c");
@@ -134,8 +136,8 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
 
         // Compiling injected-glue
         let injected_glue_lib = {
-            workspace.config().shell().say("Compiling injected-glue", 10)?;
-            let mut cmd = workspace.config().rustc()?.process();
+            drop(writeln!(workspace.config().shell().err(), "Compiling injected-glue"));
+            let mut cmd = workspace.config().rustc(None)?.process();
             cmd.arg(android_artifacts_dir.join("injected-glue/lib.rs"))
                .arg("--crate-type").arg("rlib");
             if config.release {
@@ -162,8 +164,8 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
         }
         
         {
-            workspace.config().shell().say("Compiling glue_obj", 10)?;
-            let mut cmd = workspace.config().rustc()?.process();
+            drop(writeln!(workspace.config().shell().err(), "Compiling glue_obj"));
+            let mut cmd = workspace.config().rustc(None)?.process();
             cmd.arg(build_target_dir.join("glue_obj.rs"))
                .arg("--crate-type").arg("staticlib");
             if config.release {
@@ -187,7 +189,7 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
         // Compiling the crate thanks to `cargo rustc`. We set the linker to `linker_exe`, a hacky
         // linker that will tweak the options passed to `gcc`.
         {
-            workspace.config().shell().say("Compiling crate", 10)?;
+            drop(writeln!(workspace.config().shell().err(), "Compiling crate"));
 
             // Set the current environment variables so that they are picked up by gcc-rs when
             // compiling.
@@ -222,30 +224,30 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
                 "-C".to_owned(), "link-args=-Wl,-Bsymbolic".to_owned(),
             ];
 
-            let packages = Vec::from_iter(options.flag_package.iter().cloned());
-            let spec = ops::Packages::Packages(&packages);
+            let packages = options.values_of_lossy("package").unwrap_or_default();
+            let spec = ops::Packages::Packages(packages);
 
             let (mut examples, mut bins) = (Vec::new(), Vec::new());
-            if let Some(ref s) = options.flag_bin {
-                bins.push(s.clone());
+            if let Some(s) = options.values_of_lossy("bin") {
+                bins.extend(s.into_iter());
             }
-            if let Some(ref s) = options.flag_example {
-                examples.push(s.clone());
+            if let Some(s) = options.values_of_lossy("example") {
+                examples.extend(s.into_iter());
             }
             if !bins.is_empty() && !examples.is_empty() {
-                return Err(CargoError::from("You can only specify either a --bin or an --example but not both"));
+                return Err(format_err!("You can only specify either a --bin or an --example but not both"));
             }
 
             let pkg = match spec {
+                ops::Packages::Default => unreachable!("cargo apk supports single package only"),
                 ops::Packages::All => unreachable!("cargo apk supports single package only"),
                 ops::Packages::OptOut(_) => unreachable!("cargo apk supports single package only"),
-                ops::Packages::Packages(xs) => match xs.len() {
+                ops::Packages::Packages(ref xs) => match xs.len() {
                     0 => workspace.current()?,
                     1 => workspace.members()
-                        .find(|pkg| pkg.name() == xs[0])
+                        .find(|pkg| *pkg.name() == xs[0])
                         .ok_or_else(|| 
-                            CargoError::from(
-                                format!("package `{}` is not a member of the workspace", xs[0]))
+                            format_err!("package `{}` is not a member of the workspace", xs[0])
                         )?,
                     _ => unreachable!("cargo apk supports single package only"),
                 }
@@ -256,33 +258,16 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
                     !a.is_lib() && !a.is_custom_build() && a.is_bin()
                 }).map(|a| a.name().to_owned()).collect();
                 if bins.len() >= 2 {
-                    return Err(CargoError::from("`cargo apk` can run at most one executable, but \
+                    return Err(format_err!("`cargo apk` can run at most one executable, but \
                         multiple exist"));
                 } else if bins.is_empty() {
-                    return Err(CargoError::from("a bin target must be available for `cargo apk`"));
+                    return Err(format_err!("a bin target must be available for `cargo apk`"));
                 }
             }
 
-            let opts = ops::CompileOptions {
-                config: workspace.config(),
-                jobs: options.flag_jobs,
-                target: Some(build_target),
-                features: &options.flag_features,
-                all_features: options.flag_all_features,
-                no_default_features: options.flag_no_default_features,
-                spec: spec,
-                mode: ops::CompileMode::Build,
-                release: options.flag_release,
-                filter: ops::CompileFilter::new(false,
-                                            &bins, false,
-                                            &[], false,
-                                            &examples, false,
-                                            &[], false),
-                message_format: options.flag_message_format,
-                target_rustdoc_args: None,
-                target_rustc_args: Some(&extra_args),
-            };
-            
+            let mut opts = options.compile_options(workspace.config(), CompileMode::Build)?;
+            opts.build_config.requested_target = Some((*build_target).clone());
+            opts.target_rustc_args = Some(extra_args);
             ops::compile(workspace, &opts)?;
         }
 
@@ -340,7 +325,7 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
     build_java_src(workspace, &android_artifacts_dir, &config, &abi_libs)?;
 
     // Invoking `gradle` from within `android-artifacts` in order to compile the project.
-    workspace.config().shell().say("Invoking gradle", 10)?;
+    drop(writeln!(workspace.config().shell().err(), "Invoking gradle"));
     let mut cmd = process(&config.gradle_command);
     if config.release {
         cmd.arg("assembleRelease");
@@ -352,7 +337,7 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &Options)
 
     Ok(BuildResult {
         apk_path: {
-            let apk_name = if options.flag_release {
+            let apk_name = if options.is_present("release") {
                 "app/build/outputs/apk/app-release-unsigned.apk"
             } else {
                 "app/build/outputs/apk/app-debug.apk"
@@ -402,7 +387,13 @@ fn build_linker(workspace: &Workspace, path: &Path) -> Result<(), CargoError> {
         return;
     }*/
 
-    let mut command = workspace.config().rustc()?.process().arg("-").arg("-o").arg(&exe_file).build_command();
+    let mut command = workspace.config()
+                               .rustc(None)?
+                               .process()
+                               .arg("-")
+                               .arg("-o")
+                               .arg(&exe_file)
+                               .build_command();
 
     let mut child = command.stdin(Stdio::piped())
         .spawn()?;
@@ -561,7 +552,7 @@ fn build_res(_: &Workspace, path: &Path, config: &AndroidConfig) -> Result<(), C
     };
 
     if !src_path.exists() {
-        return Err(CargoError::from("Resources directory doesn't exist"));
+        return Err(format_err!("Resources directory doesn't exist"));
     }
 
     let dst_path = path.join("app").join("src").join("main").join("res");
