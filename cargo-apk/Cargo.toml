@@ -7,12 +7,9 @@ description = "Cargo subcommand that allows you to build Android packages"
 repository = "https://github.com/tomaka/android-rs-glue/tree/master/cargo-apk"
 
 [dependencies]
+cargo = "0.32.0"
 clap = "2.31"
 failure = "0.1.2"
 rustc-serialize = "0.3.19"
 term = "0.4.4"
 toml = "0.1.28"
-
-[dependencies.cargo]
-git = "https://github.com/rust-lang/cargo.git"
-rev = "aab0a3385932c8f5453c4fcd69e23c82bbc1c921"

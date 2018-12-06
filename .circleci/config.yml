@@ -40,9 +40,9 @@ jobs:
       - checkout
       - run: cargo build --verbose --manifest-path glue/Cargo.toml
       - run: cargo install --path cargo-apk
-      - run: cd examples/basic && cargo apk && cd ..
-      - run: cd examples/use_assets && cargo apk && cd ..
-      - run: cd examples/use_icon && cargo apk && cd ..
+      - run: cd examples/basic && cargo apk build && cd ..
+      - run: cd examples/use_assets && cargo apk build && cd ..
+      - run: cd examples/use_icon && cargo apk build && cd ..
 
   build-final-image:
     working_directory: ~/android-rs-glue
