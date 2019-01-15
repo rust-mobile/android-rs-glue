@@ -37,6 +37,7 @@ fn main() {
         .arg("-o").arg(args.cargo_apk_linker_output)
         .arg("-shared")
         .arg("-Wl,-E")
+        .arg("-gcc-toolchain").arg(args.cargo_apk_gcc_toolchain)
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status().unwrap().code().unwrap() != 0
@@ -55,6 +56,7 @@ struct Args {
 
     cargo_apk_gcc: String,
     cargo_apk_gcc_sysroot: String,
+    cargo_apk_gcc_toolchain: String,
     cargo_apk_native_app_glue: String,
     cargo_apk_glue_obj: String,
     cargo_apk_glue_lib: String,
@@ -72,6 +74,7 @@ fn parse_arguments() -> (Args, Vec<String>) {
 
     let mut cargo_apk_gcc: Option<String> = None;
     let mut cargo_apk_gcc_sysroot: Option<String> = None;
+    let mut cargo_apk_gcc_toolchain: Option<String> = None;
     let mut cargo_apk_native_app_glue: Option<String> = None;
     let mut cargo_apk_glue_obj: Option<String> = None;
     let mut cargo_apk_glue_lib: Option<String> = None;
@@ -93,6 +96,8 @@ fn parse_arguments() -> (Args, Vec<String>) {
                         .expect("Missing cargo_apk_gcc option in linker"),
                     cargo_apk_gcc_sysroot: cargo_apk_gcc_sysroot
                         .expect("Missing cargo_apk_gcc_sysroot option in linker"),
+                    cargo_apk_gcc_toolchain: cargo_apk_gcc_toolchain
+                        .expect("Missing cargo_apk_gcc_toolchain option in linker"),
                     cargo_apk_native_app_glue: cargo_apk_native_app_glue
                         .expect("Missing cargo_apk_native_app_glue option in linker"),
                     cargo_apk_glue_obj: cargo_apk_glue_obj
@@ -118,6 +123,9 @@ fn parse_arguments() -> (Args, Vec<String>) {
             "--cargo-apk-gcc-sysroot" => {
                 cargo_apk_gcc_sysroot = Some(args.next().unwrap());
             },
+            "--cargo-apk-gcc-toolchain" => {
+                cargo_apk_gcc_toolchain = Some(args.next().unwrap());
+            }
             "--cargo-apk-native-app-glue" => {
                 cargo_apk_native_app_glue = Some(args.next().unwrap());
             },

@@ -49,7 +49,7 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &ArgMatches
         let build_target_dir = android_artifacts_dir.join(build_target);
 
         // Finding the tools in the NDK.
-        let (gcc_path, gxx_path, ar_path) = {
+        let (gcc_path, gxx_path, ar_path, gcc_toolchain) = {
             let host_os = if cfg!(target_os = "windows") { "windows" }
                        else if cfg!(target_os = "linux") { "linux" }
                        else if cfg!(target_os = "macos") { "darwin" }
@@ -76,7 +76,8 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &ArgMatches
             let base = config.ndk_path.join(format!("toolchains/{}-4.9/prebuilt/{}-x86_64", target_arch, host_os));
             (base.join(format!("bin/{}-gcc", tool_prefix)),
              base.join(format!("bin/{}-g++", tool_prefix)),
-             base.join(format!("bin/{}-ar", tool_prefix)))
+             base.join(format!("bin/{}-ar", tool_prefix)),
+             base)
         };
 
         let gcc_sysroot_linker = {
@@ -206,6 +207,8 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &ArgMatches
                 "-C".to_owned(), format!("link-arg={}", gcc_path.as_os_str().to_str().unwrap().to_owned()),
                 "-C".to_owned(),"link-arg=--cargo-apk-gcc-sysroot".to_owned(),
                 "-C".to_owned(), format!("link-arg={}", gcc_sysroot_linker.as_os_str().to_str().unwrap().to_owned()),
+                "-C".to_owned(),"link-arg=--cargo-apk-gcc-toolchain".to_owned(),
+                "-C".to_owned(), format!("link-arg={}", gcc_toolchain.as_os_str().to_str().unwrap().to_owned()),
                 "-C".to_owned(), "link-arg=--cargo-apk-native-app-glue".to_owned(),
                 "-C".to_owned(), format!("link-arg={}", build_target_dir.join("android_native_app_glue.o").into_os_string().into_string().unwrap()),
                 "-C".to_owned(), "link-arg=--cargo-apk-glue-obj".to_owned(),
