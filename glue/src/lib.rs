@@ -1,6 +1,7 @@
 #![cfg(target_os = "android")]
 
 extern {
+    fn cargo_apk_injected_glue_get_native_activity() -> *const c_void;
     fn cargo_apk_injected_glue_get_native_window() -> *const c_void;
     fn cargo_apk_injected_glue_add_sender(sender: *mut ());
     fn cargo_apk_injected_glue_add_sender_missing(sender: *mut ());
@@ -115,6 +116,12 @@ pub fn add_sender_missing(sender: Sender<Event>) {
         let sender = Box::into_raw(Box::new(sender)) as *mut _;
         cargo_apk_injected_glue_add_sender_missing(sender);
     }
+}
+
+/// Returns a handle to the native activity.
+#[inline]
+pub unsafe fn get_native_activity() -> *const c_void {
+    cargo_apk_injected_glue_get_native_activity()
 }
 
 /// Returns a handle to the native window.

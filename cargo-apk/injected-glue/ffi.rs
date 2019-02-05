@@ -73,6 +73,7 @@ pub const MODE_UNKNOWN: i32 = 0;
 
 //
 pub type Asset = AAsset;
+pub type NativeActivityType = *const ANativeActivity;
 pub type NativeWindowType = *const ANativeWindow;
 
 //
