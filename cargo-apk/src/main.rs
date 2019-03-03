@@ -9,12 +9,12 @@ extern crate failure;
 
 use std::path::PathBuf;
 
-use cargo::core::Workspace;
 use cargo::core::compiler::{BuildConfig, CompileMode, MessageFormat};
+use cargo::core::Workspace;
 use cargo::ops::{CompileFilter, CompileOptions, Packages};
-use cargo::util::Config as CargoConfig;
 use cargo::util::important_paths::find_root_manifest_for_wd;
 use cargo::util::process_builder::process;
+use cargo::util::Config as CargoConfig;
 use cargo::CargoResult;
 use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
 
@@ -29,7 +29,36 @@ fn main() {
         Err(err) => cargo::exit_with_error(err.into(), &mut *cargo_config.shell()),
     };
 
-    let (command, subcommand_args)  = match args.subcommand() {
+    let (command, subcommand_args) = match args.subcommand() {
+        (command, Some(subcommand_args)) => (command, subcommand_args),
+        _ => {
+            drop(cli().print_help());
+            return;
+        }
+    };
+    assert_eq!(command, "apk");
+
+    let arg_target_dir = &subcommand_args.value_of_path("target-dir", &cargo_config);
+
+    cargo_config
+        .configure(
+            args.occurrences_of("verbose") as u32,
+            if args.is_present("quiet") {
+                Some(true)
+            } else {
+                None
+            },
+            &args.value_of("color").map(|s| s.to_string()),
+            args.is_present("frozen"),
+            args.is_present("locked"),
+            arg_target_dir,
+            &args
+                .values_of_lossy("unstable-features")
+                .unwrap_or_default(),
+        )
+        .unwrap();
+
+    let (command, subcommand_args) = match subcommand_args.subcommand() {
         (command, Some(subcommand_args)) => (command, subcommand_args),
         _ => {
             drop(cli().print_help());
@@ -37,69 +66,59 @@ fn main() {
         }
     };
 
-    let arg_target_dir = &subcommand_args.value_of_path("target-dir", &cargo_config);
-
-    cargo_config.configure(
-        args.occurrences_of("verbose") as u32,
-        if args.is_present("quiet") {
-            Some(true)
-        } else {
-            None
-        },
-        &args.value_of("color").map(|s| s.to_string()),
-        args.is_present("frozen"),
-        args.is_present("locked"),
-        arg_target_dir,
-        &args.values_of_lossy("unstable-features")
-            .unwrap_or_default(),
-    ).unwrap();
-
     let err = match command {
         "build" => execute_build(&subcommand_args, &cargo_config),
         "install" => execute_install(&subcommand_args, &cargo_config),
         "run" => execute_run(&subcommand_args, &cargo_config),
         "logcat" => execute_logcat(&subcommand_args, &cargo_config),
-        _ => {
-            cargo::exit_with_error(
-                format_err!("Expected `build`, `install`, `run`, or `logcat`").into(),
-                &mut *cargo_config.shell())
-        }
+        _ => cargo::exit_with_error(
+            format_err!("Expected `build`, `install`, `run`, or `logcat`, got {:?}", (command, subcommand_args)).into(),
+            &mut *cargo_config.shell(),
+        ),
     };
 
     match err {
         Ok(_) => (),
-        Err(err) => cargo::exit_with_error(err, &mut *cargo_config.shell())
+        Err(err) => cargo::exit_with_error(err, &mut *cargo_config.shell()),
     }
 }
 
 fn cli() -> App<'static, 'static> {
-    App::new("cargo-apk").settings(&[
-        AppSettings::UnifiedHelpMessage,
-        AppSettings::DeriveDisplayOrder,
-        AppSettings::VersionlessSubcommands,
-        AppSettings::AllowExternalSubcommands,
-    ]).subcommands(vec![
-        cli_build(),
-        cli_install(),
-        cli_run(),
-        cli_logcat(),
-    ]).arg(opt("verbose", "Verbose output"))
+    App::new("cargo-apk")
+        .settings(&[
+            AppSettings::UnifiedHelpMessage,
+            AppSettings::DeriveDisplayOrder,
+            AppSettings::VersionlessSubcommands,
+            AppSettings::AllowExternalSubcommands,
+        ])
+        .subcommand(
+            SubCommand::with_name("apk")
+                .subcommands(vec![
+                    cli_build(),
+                    cli_install(),
+                    cli_run(),
+                    cli_logcat(),
+                ])
+        )
+        .arg(opt("verbose", "Verbose output"))
 }
 
 fn cli_build() -> App<'static, 'static> {
-    SubCommand::with_name("build").settings(&[
-        AppSettings::UnifiedHelpMessage,
-        AppSettings::DeriveDisplayOrder,
-        AppSettings::DontCollapseArgsInUsage,
-    ]).alias("b")
-      .about("Compile a local package and all of its dependencies")
-      .arg_package_spec(
+    SubCommand::with_name("build")
+        .settings(&[
+            AppSettings::UnifiedHelpMessage,
+            AppSettings::DeriveDisplayOrder,
+            AppSettings::DontCollapseArgsInUsage,
+        ])
+        .alias("b")
+        .about("Compile a local package and all of its dependencies")
+        .arg_package_spec(
             "Package to build (see `cargo help pkgid`)",
             "Build all packages in the workspace",
             "Exclude packages from the build",
-      )
-      .arg_jobs()
-      .arg_targets_all(
+        )
+        .arg_jobs()
+        .arg_targets_all(
             "Build only this package's library",
             "Build only the specified binary",
             "Build all binaries",
@@ -110,16 +129,16 @@ fn cli_build() -> App<'static, 'static> {
             "Build only the specified bench target",
             "Build all benches",
             "Build all targets",
-      )
-      .arg_release("Build artifacts in release mode, with optimizations")
-      .arg_features()
-      .arg_target_triple("Build for the target triple")
-      .arg_target_dir()
-      .arg(opt("out-dir", "Copy final artifacts to this directory").value_name("PATH"))
-      .arg_manifest_path()
-      .arg_message_format()
-      .arg_build_plan()
-      .after_help(
+        )
+        .arg_release("Build artifacts in release mode, with optimizations")
+        .arg_features()
+        .arg_target_triple("Build for the target triple")
+        .arg_target_dir()
+        .arg(opt("out-dir", "Copy final artifacts to this directory").value_name("PATH"))
+        .arg_manifest_path()
+        .arg_message_format()
+        .arg_build_plan()
+        .after_help(
             "\
 All packages in the workspace are built if the `--all` flag is supplied. The
 `--all` flag is automatically assumed for a virtual manifest.
@@ -133,40 +152,42 @@ the --release flag will use the `release` profile instead.
 }
 
 fn cli_install() -> App<'static, 'static> {
-    SubCommand::with_name("install").settings(&[
-        AppSettings::UnifiedHelpMessage,
-        AppSettings::DeriveDisplayOrder,
-        AppSettings::DontCollapseArgsInUsage,
-    ]).about("Install a Rust binary")
-      .arg(Arg::with_name("crate").empty_values(false).multiple(true))
-      .arg(
+    SubCommand::with_name("install")
+        .settings(&[
+            AppSettings::UnifiedHelpMessage,
+            AppSettings::DeriveDisplayOrder,
+            AppSettings::DontCollapseArgsInUsage,
+        ])
+        .about("Install a Rust binary")
+        .arg(Arg::with_name("crate").empty_values(false).multiple(true))
+        .arg(
             opt("version", "Specify a version to install from crates.io")
                 .alias("vers")
                 .value_name("VERSION"),
-      )
-      .arg(opt("git", "Git URL to install the specified crate from").value_name("URL"))
-      .arg(opt("branch", "Branch to use when installing from git").value_name("BRANCH"))
-      .arg(opt("tag", "Tag to use when installing from git").value_name("TAG"))
-      .arg(opt("rev", "Specific commit to use when installing from git").value_name("SHA"))
-      .arg(opt("path", "Filesystem path to local crate to install").value_name("PATH"))
-      .arg(opt(
+        )
+        .arg(opt("git", "Git URL to install the specified crate from").value_name("URL"))
+        .arg(opt("branch", "Branch to use when installing from git").value_name("BRANCH"))
+        .arg(opt("tag", "Tag to use when installing from git").value_name("TAG"))
+        .arg(opt("rev", "Specific commit to use when installing from git").value_name("SHA"))
+        .arg(opt("path", "Filesystem path to local crate to install").value_name("PATH"))
+        .arg(opt(
             "list",
             "list all installed packages and their versions",
-      ))
-      .arg_jobs()
-      .arg(opt("force", "Force overwriting existing crates or binaries").short("f"))
-      .arg_features()
-      .arg(opt("debug", "Build in debug mode instead of release mode"))
-      .arg_targets_bins_examples(
+        ))
+        .arg_jobs()
+        .arg(opt("force", "Force overwriting existing crates or binaries").short("f"))
+        .arg_features()
+        .arg(opt("debug", "Build in debug mode instead of release mode"))
+        .arg_targets_bins_examples(
             "Install only the specified binary",
             "Install all binaries",
             "Install only the specified example",
             "Install all examples",
-      )
-      .arg_target_triple("Build for the target triple")
-      .arg(opt("root", "Directory to install packages into").value_name("DIR"))
-      .arg(opt("registry", "Registry to use").value_name("REGISTRY"))
-      .after_help(
+        )
+        .arg_target_triple("Build for the target triple")
+        .arg(opt("root", "Directory to install packages into").value_name("DIR"))
+        .arg(opt("registry", "Registry to use").value_name("REGISTRY"))
+        .after_help(
             "\
 This command manages Cargo's local set of installed binary crates. Only packages
 which have [[bin]] targets can be installed, and all binaries are installed into
@@ -202,31 +223,33 @@ in a temporary target directory.  To avoid this, the target directory can be
 specified by setting the `CARGO_TARGET_DIR` environment variable to a relative
 path.  In particular, this can be useful for caching build artifacts on
 continuous integration systems.",
-      )
+        )
 }
 
 fn cli_run() -> App<'static, 'static> {
-    SubCommand::with_name("run").settings(&[
-        AppSettings::UnifiedHelpMessage,
-        AppSettings::DeriveDisplayOrder,
-        AppSettings::DontCollapseArgsInUsage,
-    ]).alias("r")
-      .setting(AppSettings::TrailingVarArg)
-      .about("Run the main binary of the local package (src/main.rs)")
-      .arg(Arg::with_name("args").multiple(true))
-      .arg_targets_bin_example(
+    SubCommand::with_name("run")
+        .settings(&[
+            AppSettings::UnifiedHelpMessage,
+            AppSettings::DeriveDisplayOrder,
+            AppSettings::DontCollapseArgsInUsage,
+        ])
+        .alias("r")
+        .setting(AppSettings::TrailingVarArg)
+        .about("Run the main binary of the local package (src/main.rs)")
+        .arg(Arg::with_name("args").multiple(true))
+        .arg_targets_bin_example(
             "Name of the bin target to run",
             "Name of the example target to run",
-      )
-      .arg_package("Package with the target to run")
-      .arg_jobs()
-      .arg_release("Build artifacts in release mode, with optimizations")
-      .arg_features()
-      .arg_target_triple("Build for the target triple")
-      .arg_target_dir()
-      .arg_manifest_path()
-      .arg_message_format()
-      .after_help(
+        )
+        .arg_package("Package with the target to run")
+        .arg_jobs()
+        .arg_release("Build artifacts in release mode, with optimizations")
+        .arg_features()
+        .arg_target_triple("Build for the target triple")
+        .arg_target_dir()
+        .arg_manifest_path()
+        .arg_message_format()
+        .after_help(
             "\
 If neither `--bin` nor `--example` are given, then if the package only has one
 bin target it will be run. Otherwise `--bin` specifies the bin target to run,
@@ -237,17 +260,19 @@ All the arguments following the two dashes (`--`) are passed to the binary to
 run. If you're passing arguments to both Cargo and the binary, the ones after
 `--` go to the binary, the ones before go to Cargo.
 ",
-      )
+        )
 }
 
 fn cli_logcat() -> App<'static, 'static> {
-    SubCommand::with_name("logcat").settings(&[
-        AppSettings::UnifiedHelpMessage,
-        AppSettings::DeriveDisplayOrder,
-        AppSettings::DontCollapseArgsInUsage,
-    ]).alias("r")
-      .about("Print Android log")
-      .arg_message_format()
+    SubCommand::with_name("logcat")
+        .settings(&[
+            AppSettings::UnifiedHelpMessage,
+            AppSettings::DeriveDisplayOrder,
+            AppSettings::DontCollapseArgsInUsage,
+        ])
+        .alias("r")
+        .about("Print Android log")
+        .arg_message_format()
 }
 
 pub fn execute_build(options: &ArgMatches, cargo_config: &CargoConfig) -> cargo::CliResult {
@@ -255,8 +280,10 @@ pub fn execute_build(options: &ArgMatches, cargo_config: &CargoConfig) -> cargo:
 
     let workspace = Workspace::new(&root_manifest, &cargo_config)?;
 
-    let mut android_config = config::load(&workspace,
-                                          &options.value_of("package").map(|s| s.to_owned()))?;
+    let mut android_config = config::load(
+        &workspace,
+        &options.value_of("package").map(|s| s.to_owned()),
+    )?;
     android_config.release = options.is_present("release");
 
     ops::build(&workspace, &android_config, &options)?;
@@ -268,8 +295,10 @@ pub fn execute_install(options: &ArgMatches, cargo_config: &CargoConfig) -> carg
 
     let workspace = Workspace::new(&root_manifest, &cargo_config)?;
 
-    let mut android_config = config::load(&workspace,
-                                          &options.value_of("package").map(|s| s.to_owned()))?;
+    let mut android_config = config::load(
+        &workspace,
+        &options.value_of("package").map(|s| s.to_owned()),
+    )?;
     android_config.release = options.is_present("release");
 
     ops::install(&workspace, &android_config, &options)?;
@@ -281,8 +310,10 @@ pub fn execute_run(options: &ArgMatches, cargo_config: &CargoConfig) -> cargo::C
 
     let workspace = Workspace::new(&root_manifest, &cargo_config)?;
 
-    let mut android_config = config::load(&workspace,
-                                          &options.value_of("package").map(|s| s.to_owned()))?;
+    let mut android_config = config::load(
+        &workspace,
+        &options.value_of("package").map(|s| s.to_owned()),
+    )?;
     android_config.release = options.is_present("release");
 
     ops::run(&workspace, &android_config, &options)?;
@@ -294,14 +325,17 @@ pub fn execute_logcat(options: &ArgMatches, cargo_config: &CargoConfig) -> cargo
 
     let workspace = Workspace::new(&root_manifest, &cargo_config)?;
 
-    let android_config = config::load(&workspace,
-                                      &options.value_of("package").map(|s| s.to_owned()))?;
-    
-    drop(writeln!(workspace.config().shell().err(), "Starting logcat"));
+    let android_config = config::load(
+        &workspace,
+        &options.value_of("package").map(|s| s.to_owned()),
+    )?;
+
+    drop(writeln!(
+        workspace.config().shell().err(),
+        "Starting logcat"
+    ));
     let adb = android_config.sdk_path.join("platform-tools/adb");
-    process(&adb)
-        .arg("logcat")
-        .exec()?;
+    process(&adb).arg("logcat").exec()?;
 
     Ok(())
 }
@@ -388,11 +422,12 @@ pub trait AppExt: Sized {
     fn arg_features(self) -> Self {
         self._arg(
             opt("features", "Space-separated list of features to activate").value_name("FEATURES"),
-        )._arg(opt("all-features", "Activate all available features"))
-            ._arg(opt(
-                "no-default-features",
-                "Do not activate the `default` feature",
-            ))
+        )
+        ._arg(opt("all-features", "Activate all available features"))
+        ._arg(opt(
+            "no-default-features",
+            "Do not activate the `default` feature",
+        ))
     }
 
     fn arg_release(self, release: &'static str) -> Self {
@@ -408,7 +443,9 @@ pub trait AppExt: Sized {
     }
 
     fn arg_target_dir(self) -> Self {
-        self._arg(opt("target-dir", "Directory for all generated artifacts").value_name("DIRECTORY"))
+        self._arg(
+            opt("target-dir", "Directory for all generated artifacts").value_name("DIRECTORY"),
+        )
     }
 
     fn arg_manifest_path(self) -> Self {
@@ -438,22 +475,24 @@ pub trait AppExt: Sized {
                  control system (git, hg, pijul, or fossil) or do not \
                  initialize any version control at all (none), overriding \
                  a global configuration.",
-            ).value_name("VCS")
-                .possible_values(&["git", "hg", "pijul", "fossil", "none"]),
+            )
+            .value_name("VCS")
+            .possible_values(&["git", "hg", "pijul", "fossil", "none"]),
         )
-            ._arg(opt("bin", "Use a binary (application) template [default]"))
-            ._arg(opt("lib", "Use a library template"))
-            ._arg(
-                opt("edition", "Edition to set for the crate generated")
-                    .possible_values(&["2015", "2018"])
-                    .value_name("YEAR")
+        ._arg(opt("bin", "Use a binary (application) template [default]"))
+        ._arg(opt("lib", "Use a library template"))
+        ._arg(
+            opt("edition", "Edition to set for the crate generated")
+                .possible_values(&["2015", "2018"])
+                .value_name("YEAR"),
+        )
+        ._arg(
+            opt(
+                "name",
+                "Set the resulting package name, defaults to the directory name",
             )
-            ._arg(
-                opt(
-                    "name",
-                    "Set the resulting package name, defaults to the directory name",
-                ).value_name("NAME"),
-            )
+            .value_name("NAME"),
+        )
     }
 
     fn arg_index(self) -> Self {

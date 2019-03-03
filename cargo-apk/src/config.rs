@@ -1,3 +1,6 @@
+use cargo::core::Workspace;
+use cargo::ops;
+use cargo::util::errors::CargoError;
 use std::collections::btree_map::BTreeMap;
 use std::env;
 use std::fs;
@@ -6,9 +9,6 @@ use std::io::Read;
 use std::iter::FromIterator;
 use std::path::Path;
 use std::path::PathBuf;
-use cargo::core::Workspace;
-use cargo::ops;
-use cargo::util::errors::CargoError;
 use toml;
 use toml::Parser as TomlParser;
 
@@ -77,7 +77,10 @@ pub struct AndroidConfig {
     pub opengles_version_minor: u8,
 }
 
-pub fn load(workspace: &Workspace, flag_package: &Option<String>) -> Result<AndroidConfig, CargoError> {
+pub fn load(
+    workspace: &Workspace,
+    flag_package: &Option<String>,
+) -> Result<AndroidConfig, CargoError> {
     // Find out the package requested by the user.
     let package = {
         let packages = Vec::from_iter(flag_package.iter().cloned());
@@ -89,11 +92,14 @@ pub fn load(workspace: &Workspace, flag_package: &Option<String>) -> Result<Andr
             ops::Packages::OptOut(_) => unreachable!("cargo apk supports single package only"),
             ops::Packages::Packages(xs) => match xs.len() {
                 0 => workspace.current()?,
-                1 => workspace.members()
+                1 => workspace
+                    .members()
                     .find(|pkg| *pkg.name() == xs[0])
-                    .ok_or_else(|| format_err!("package `{}` is not a member of the workspace", xs[0]))?,
+                    .ok_or_else(|| {
+                        format_err!("package `{}` is not a member of the workspace", xs[0])
+                    })?,
                 _ => unreachable!("cargo apk supports single package only"),
-            }
+            },
         }
     };
 
@@ -113,9 +119,13 @@ pub fn load(workspace: &Workspace, flag_package: &Option<String>) -> Result<Andr
     };
 
     // Determine the gradle command from the env variables
-    let gradle_command = env::var("CARGO_APK_GRADLE_COMMAND").ok().unwrap_or("gradle".to_owned());
-    let ndk_path = env::var("NDK_HOME").expect("Please set the path to the Android NDK with the \
-                                                $NDK_HOME environment variable.");
+    let gradle_command = env::var("CARGO_APK_GRADLE_COMMAND")
+        .ok()
+        .unwrap_or("gradle".to_owned());
+    let ndk_path = env::var("NDK_HOME").expect(
+        "Please set the path to the Android NDK with the \
+         $NDK_HOME environment variable.",
+    );
 
     let sdk_path = {
         let mut try = env::var("ANDROID_SDK_HOME").ok();
@@ -124,8 +134,10 @@ pub fn load(workspace: &Workspace, flag_package: &Option<String>) -> Result<Andr
             try = env::var("ANDROID_HOME").ok();
         }
 
-        try.expect("Please set the path to the Android SDK with either the $ANDROID_SDK_HOME or \
-                    the $ANDROID_HOME environment variable.")
+        try.expect(
+            "Please set the path to the Android SDK with either the $ANDROID_SDK_HOME or \
+             the $ANDROID_HOME environment variable.",
+        )
     };
 
     // Find the highest build tools.
@@ -155,37 +167,69 @@ pub fn load(workspace: &Workspace, flag_package: &Option<String>) -> Result<Andr
     };
 
     // Determine the Sdk versions (compile, target, min)
-    let android_version = manifest_content.as_ref().and_then(|a| a.android_version).unwrap_or(18);
-    let target_sdk_version = manifest_content.as_ref().and_then(|a| a.target_sdk_version).unwrap_or(android_version);
-    let min_sdk_verision = manifest_content.as_ref().and_then(|a| a.min_sdk_version).unwrap_or(android_version);
+    let android_version = manifest_content
+        .as_ref()
+        .and_then(|a| a.android_version)
+        .unwrap_or(18);
+    let target_sdk_version = manifest_content
+        .as_ref()
+        .and_then(|a| a.target_sdk_version)
+        .unwrap_or(android_version);
+    let min_sdk_verision = manifest_content
+        .as_ref()
+        .and_then(|a| a.min_sdk_version)
+        .unwrap_or(android_version);
 
     // For the moment some fields of the config are dummies.
     Ok(AndroidConfig {
         sdk_path: Path::new(&sdk_path).to_owned(),
         ndk_path: Path::new(&ndk_path).to_owned(),
         gradle_command: gradle_command,
-        package_name: manifest_content.as_ref().and_then(|a| a.package_name.clone())
-                                       .unwrap_or_else(|| format!("rust.{}", package_name)),
+        package_name: manifest_content
+            .as_ref()
+            .and_then(|a| a.package_name.clone())
+            .unwrap_or_else(|| format!("rust.{}", package_name)),
         project_name: package_name.clone(),
-        package_label: manifest_content.as_ref().and_then(|a| a.label.clone())
+        package_label: manifest_content
+            .as_ref()
+            .and_then(|a| a.label.clone())
             .unwrap_or_else(|| package_name.clone()),
         package_icon: manifest_content.as_ref().and_then(|a| a.icon.clone()),
-        build_targets: manifest_content.as_ref().and_then(|a| a.build_targets.clone())
+        build_targets: manifest_content
+            .as_ref()
+            .and_then(|a| a.build_targets.clone())
             .unwrap_or(vec!["arm-linux-androideabi".to_owned()]),
         android_version: android_version,
         target_sdk_version: target_sdk_version,
         min_sdk_version: min_sdk_verision,
         build_tools_version: build_tools_version,
-        assets_path: manifest_content.as_ref().and_then(|a| a.assets.as_ref())
+        assets_path: manifest_content
+            .as_ref()
+            .and_then(|a| a.assets.as_ref())
             .map(|p| package.manifest_path().parent().unwrap().join(p)),
-        res_path: manifest_content.as_ref().and_then(|a| a.res.as_ref())
+        res_path: manifest_content
+            .as_ref()
+            .and_then(|a| a.res.as_ref())
             .map(|p| package.manifest_path().parent().unwrap().join(p)),
         release: false,
-        fullscreen: manifest_content.as_ref().and_then(|a| a.fullscreen.clone()).unwrap_or(false),
-        application_attributes: manifest_content.as_ref().and_then(|a| map_to_string(a.application_attributes.clone())),
-        activity_attributes: manifest_content.as_ref().and_then(|a| map_to_string(a.activity_attributes.clone())),
-        opengles_version_major: manifest_content.as_ref().and_then(|a| a.opengles_version_major).unwrap_or(2),
-        opengles_version_minor: manifest_content.as_ref().and_then(|a| a.opengles_version_minor).unwrap_or(0),
+        fullscreen: manifest_content
+            .as_ref()
+            .and_then(|a| a.fullscreen.clone())
+            .unwrap_or(false),
+        application_attributes: manifest_content
+            .as_ref()
+            .and_then(|a| map_to_string(a.application_attributes.clone())),
+        activity_attributes: manifest_content
+            .as_ref()
+            .and_then(|a| map_to_string(a.activity_attributes.clone())),
+        opengles_version_major: manifest_content
+            .as_ref()
+            .and_then(|a| a.opengles_version_major)
+            .unwrap_or(2),
+        opengles_version_minor: manifest_content
+            .as_ref()
+            .and_then(|a| a.opengles_version_minor)
+            .unwrap_or(0),
     })
 }
 
