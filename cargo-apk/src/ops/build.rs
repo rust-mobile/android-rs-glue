@@ -327,11 +327,15 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &ArgMatches
     // Invoking `gradle` from within `android-artifacts` in order to compile the project.
     drop(writeln!(workspace.config().shell().err(), "Invoking gradle"));
     let mut cmd = process(&config.gradle_command);
+    if workspace.config().frozen() {
+        cmd.arg("--offline");
+    }
     if config.release {
         cmd.arg("assembleRelease");
     } else {
         cmd.arg("assembleDebug");
     }
+    drop(writeln!(workspace.config().shell().err(), "{}", cmd));
     cmd.cwd(&android_artifacts_dir)
        .exec()?;
 
