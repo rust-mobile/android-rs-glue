@@ -3,7 +3,7 @@ use std::collections::{HashSet, HashMap};
 use std::env;
 use std::fs;
 use std::fs::File;
-use std::io::{self, BufRead, BufReader, Write};
+use std::io::{self, BufRead, BufReader, Read, Write};
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
@@ -582,7 +582,13 @@ fn build_build_gradle_root(_: &Workspace, path: &Path, config: &AndroidConfig) -
     //if fs::metadata(&file).is_ok() { return; }
     let mut file = File::create(&file).unwrap();
 
-    write!(file, r#"
+    if let Some(ref inc) = config.build_gradle_inc {
+        let mut inc_contents = File::open(inc).unwrap();
+        let mut contents = String::new();
+        inc_contents.read_to_string(&mut contents).unwrap();
+        writeln!(file, "{}", contents)?;
+    } else {
+        write!(file, r#"
 buildscript {{
     repositories {{
         jcenter()
@@ -596,6 +602,9 @@ allprojects {{
         jcenter()
     }}
 }}
+"#)?;
+    }
+    write!(file, r#"
 ext {{
     compileSdkVersion = {android_version}
     buildToolsVersion = "{build_tools_version}"
