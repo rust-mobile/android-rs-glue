@@ -4,7 +4,7 @@ version = "0.4.3"
 authors = ["Pierre Krieger <pierre.krieger1708@gmail.com>"]
 license = "MIT"
 description = "Cargo subcommand that allows you to build Android packages"
-repository = "https://github.com/tomaka/android-rs-glue/tree/master/cargo-apk"
+repository = "https://github.com/rust-windowing/android-rs-glue/tree/master/cargo-apk"
 
 [dependencies]
 cargo = "0.32.0"
