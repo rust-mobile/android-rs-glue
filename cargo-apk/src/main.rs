@@ -29,6 +29,11 @@ fn main() {
         Err(err) => cargo::exit_with_error(err.into(), &mut *cargo_config.shell()),
     };
 
+    let args = match args.subcommand() {
+        ("apk", Some(subcommand_matches)) => subcommand_matches,
+        _ => &args
+    };
+
     let (command, subcommand_args)  = match args.subcommand() {
         (command, Some(subcommand_args)) => (command, subcommand_args),
         _ => {
@@ -61,7 +66,7 @@ fn main() {
         "logcat" => execute_logcat(&subcommand_args, &cargo_config),
         _ => {
             cargo::exit_with_error(
-                format_err!("Expected `build`, `install`, `run`, or `logcat`").into(),
+                format_err!("Expected `build`, `install`, `run`, or `logcat`. Got {}", command).into(),
                 &mut *cargo_config.shell())
         }
     };
@@ -79,11 +84,25 @@ fn cli() -> App<'static, 'static> {
         AppSettings::VersionlessSubcommands,
         AppSettings::AllowExternalSubcommands,
     ]).subcommands(vec![
+        cli_apk(),
         cli_build(),
         cli_install(),
         cli_run(),
         cli_logcat(),
     ]).arg(opt("verbose", "Verbose output"))
+}
+
+fn cli_apk() -> App<'static, 'static> {
+    SubCommand::with_name("apk").settings(&[
+        AppSettings::UnifiedHelpMessage,
+        AppSettings::DeriveDisplayOrder,
+        AppSettings::DontCollapseArgsInUsage,
+    ]).about("dummy subcommand to allow for calling cargo apk instead of cargo-apk")
+      .subcommands(vec![
+          cli_build(),
+          cli_install(),
+          cli_run(),
+          cli_logcat()])
 }
 
 fn cli_build() -> App<'static, 'static> {
