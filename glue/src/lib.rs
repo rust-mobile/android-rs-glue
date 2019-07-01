@@ -38,7 +38,8 @@ pub enum Event {
     Pause,
     Stop,
     Destroy,
-    Wake
+    Wake,
+    User,
 }
 
 /// Data about a motion event.
