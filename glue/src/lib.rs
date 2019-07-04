@@ -1,6 +1,9 @@
 #![cfg(target_os = "android")]
 
-extern {
+pub mod event;
+pub mod ffi;
+
+extern "C" {
     fn cargo_apk_injected_glue_get_native_window() -> *const c_void;
     fn cargo_apk_injected_glue_add_sender(sender: *mut ());
     fn cargo_apk_injected_glue_add_sender_missing(sender: *mut ());
@@ -81,7 +84,7 @@ pub fn add_sender(sender: Sender<Event>) {
 
 /// Adds a SyncEventHandler which will receive sync events from the polling loop.
 #[inline]
-pub fn add_sync_event_handler(handler: Box<SyncEventHandler>) {
+pub fn add_sync_event_handler(handler: Box<dyn SyncEventHandler>) {
     unsafe {
         let handler = Box::into_raw(Box::new(handler)) as *mut _;
         cargo_apk_injected_glue_add_sync_event_handler(handler);
@@ -90,7 +93,7 @@ pub fn add_sync_event_handler(handler: Box<SyncEventHandler>) {
 
 /// Removes a SyncEventHandler.
 #[inline]
-pub fn remove_sync_event_handler(handler: *const SyncEventHandler) {
+pub fn remove_sync_event_handler(handler: *const dyn SyncEventHandler) {
     unsafe {
         let handler = Box::into_raw(Box::new(handler)) as *mut _;
         cargo_apk_injected_glue_remove_sync_event_handler(handler);
@@ -143,7 +146,7 @@ pub fn load_asset(filename: &str) -> Result<Vec<u8>, AssetError> {
     }
 }
 
-// Wakes the event poll asynchronously and sends a Event::Wake event to the senders. 
+// Wakes the event poll asynchronously and sends a Event::Wake event to the senders.
 // This method can be called on any thread. This method returns immediately.
 #[inline]
 pub fn wake_event_loop() {
