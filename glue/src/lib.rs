@@ -2,8 +2,11 @@
 
 pub mod event;
 pub mod ffi;
+pub mod glue;
+pub mod looper;
+pub mod queue;
 
-extern "C" {
+/*extern "C" {
     fn cargo_apk_injected_glue_get_native_window() -> *const c_void;
     fn cargo_apk_injected_glue_add_sender(sender: *mut ());
     fn cargo_apk_injected_glue_add_sender_missing(sender: *mut ());
@@ -154,3 +157,4 @@ pub fn wake_event_loop() {
         cargo_apk_injected_glue_wake_event_loop();
     }
 }
+*/

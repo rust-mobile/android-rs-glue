@@ -52,7 +52,7 @@ impl AInputEvent {
     /// By calling this function, you assert that the pointer is a valid, non-null pointer to a
     /// native `AInputEvent`.
     #[inline]
-    pub unsafe fn from_ptr(ptr: *const ffi::AInputEvent) -> Self {
+    pub unsafe fn from_ptr(ptr: *mut ffi::AInputEvent) -> Self {
         match ffi::AInputEvent_getType(ptr) {
             ffi::AINPUT_EVENT_TYPE_KEY => AInputEvent::AKeyEvent(AKeyEvent::from_ptr(ptr)),
             ffi::AINPUT_EVENT_TYPE_MOTION => AInputEvent::AMotionEvent(AMotionEvent::from_ptr(ptr)),
@@ -62,7 +62,7 @@ impl AInputEvent {
 
     /// Returns a pointer to the native `AInputEvent`.
     #[inline]
-    pub fn ptr(&self) -> *const ffi::AInputEvent {
+    pub fn ptr(&self) -> *mut ffi::AInputEvent {
         match self {
             AInputEvent::AMotionEvent(AMotionEvent { ptr }) => *ptr,
             AInputEvent::AKeyEvent(AKeyEvent { ptr }) => *ptr,
@@ -171,7 +171,7 @@ impl MetaState {
 /// For general discussion of motion events in Android, see [the relevant
 /// javadoc](https://developer.android.com/reference/android/view/MotionEvent).
 pub struct AMotionEvent {
-    ptr: *const ffi::AInputEvent,
+    ptr: *mut ffi::AInputEvent,
 }
 
 impl fmt::Debug for AMotionEvent {
@@ -338,13 +338,13 @@ impl AMotionEvent {
     /// By calling this method, you assert that the pointer is a valid, non-null pointer to an
     /// `AInputEvent`, and that that `AInputEvent` is an `AMotionEvent`.
     #[inline]
-    pub unsafe fn from_ptr(ptr: *const ffi::AInputEvent) -> Self {
+    pub unsafe fn from_ptr(ptr: *mut ffi::AInputEvent) -> Self {
         Self { ptr }
     }
 
     /// Returns a pointer to the native `AInputEvent`
     #[inline]
-    pub fn ptr(&self) -> *const ffi::AInputEvent {
+    pub fn ptr(&self) -> *mut ffi::AInputEvent {
         self.ptr
     }
 
@@ -881,7 +881,7 @@ impl ExactSizeIterator for HistoricalPointersIter<'_> {
 /// javadoc](https://developer.android.com/reference/android/view/KeyEvent).
 #[derive(Copy, Clone)]
 pub struct AKeyEvent {
-    ptr: *const ffi::AInputEvent,
+    ptr: *mut ffi::AInputEvent,
 }
 
 impl fmt::Debug for AKeyEvent {
@@ -1206,13 +1206,13 @@ impl AKeyEvent {
     /// By calling this method, you assert that the pointer is a valid, non-null pointer to an
     /// `AInputEvent`, and that that `AInputEvent` is an `AKeyEvent`.
     #[inline]
-    pub unsafe fn from_ptr(ptr: *const ffi::AInputEvent) -> Self {
+    pub unsafe fn from_ptr(ptr: *mut ffi::AInputEvent) -> Self {
         Self { ptr }
     }
 
     /// Returns a pointer to the native `AInputEvent`
     #[inline]
-    pub fn ptr(&self) -> *const ffi::AInputEvent {
+    pub fn ptr(&self) -> *mut ffi::AInputEvent {
         self.ptr
     }
 
