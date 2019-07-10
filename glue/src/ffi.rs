@@ -3,16 +3,16 @@
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
 
-use std::os::raw::c_void;
-use std::os::raw::c_float;
-use std::os::raw::c_double;
 use std::os::raw::c_char;
-use std::os::raw::c_schar;
-use std::os::raw::c_uchar;
+use std::os::raw::c_double;
+use std::os::raw::c_float;
 use std::os::raw::c_int;
-use std::os::raw::c_short;
-use std::os::raw::c_ushort;
 use std::os::raw::c_longlong;
+use std::os::raw::c_schar;
+use std::os::raw::c_short;
+use std::os::raw::c_uchar;
+use std::os::raw::c_ushort;
+use std::os::raw::c_void;
 
 /*
  * android_native_app_glue.h
@@ -20,15 +20,15 @@ use std::os::raw::c_longlong;
 #[repr(C)]
 pub struct android_app {
     pub userData: *mut c_void,
-    pub onAppCmd: extern fn(*mut android_app, i32),
-    pub onInputEvent: extern fn(*mut android_app, *const AInputEvent) -> i32,
-    pub activity: *const ANativeActivity,
-    pub config: *const AConfiguration,
+    pub onAppCmd: extern "C" fn(*mut android_app, i32),
+    pub onInputEvent: extern "C" fn(*mut android_app, *const AInputEvent) -> i32,
+    pub activity: *mut ANativeActivity,
+    pub config: *mut AConfiguration,
     pub savedState: *mut c_void,
     pub savedStateSize: usize,
     pub looper: *mut ALooper,
-    pub inputQueue: *const AInputQueue,
-    pub window: *const ANativeWindow,
+    pub inputQueue: *mut AInputQueue,
+    pub window: *mut ANativeWindow,
     pub contentRect: ARect,
     pub activityState: c_int,
     pub destroyRequested: c_int,
@@ -36,14 +36,20 @@ pub struct android_app {
 
 #[repr(C)]
 pub struct android_poll_source {
-    pub id: i32,      // can be LOOPER_ID_MAIN, LOOPER_ID_INPUT or LOOPER_ID_USER
+    pub id: i32, // can be LOOPER_ID_MAIN, LOOPER_ID_INPUT or LOOPER_ID_USER
     pub app: *mut android_app,
-    pub process: extern fn(*mut android_app, *mut android_poll_source),
+    pub process: extern "C" fn(*mut android_app, *mut android_poll_source),
+}
+
+extern "C" {
+    pub fn android_app_read_cmd(android_app: *mut android_app) -> u8;
+    pub fn android_app_pre_exec_cmd(android_app: *mut android_app, cmd: u8);
+    pub fn android_app_post_exec_cmd(android_app: *mut android_app, cmd: u8);
 }
 
 pub const LOOPER_ID_MAIN: i32 = 1;
-pub const LOOPER_ID_INPUT: i32 = 1;
-pub const LOOPER_ID_USER: i32 = 1;
+pub const LOOPER_ID_INPUT: i32 = 2;
+pub const LOOPER_ID_USER: i32 = 3;
 
 pub const APP_CMD_INPUT_CHANGED: i32 = 0;
 pub const APP_CMD_INIT_WINDOW: i32 = 1;
@@ -62,10 +68,6 @@ pub const APP_CMD_PAUSE: i32 = 13;
 pub const APP_CMD_STOP: i32 = 14;
 pub const APP_CMD_DESTROY: i32 = 15;
 
-extern {
-    pub fn app_dummy();
-}
-
 pub const MODE_BUFFER: i32 = 3;
 pub const MODE_RANDOM: i32 = 1;
 pub const MODE_STREAMING: i32 = 2;
@@ -82,9 +84,9 @@ pub type __va_list_tag = c_void;
 
 //
 #[link(name = "log")]
-extern {}
+extern "C" {}
 #[link(name = "android")]
-extern {}
+extern "C" {}
 
 //
 //       android/asset_manager.h
@@ -95,29 +97,78 @@ pub const AASSET_MODE_STREAMING: i32 = 2;
 pub const AASSET_MODE_UNKNOWN: i32 = 0;
 pub type AAsset = c_void;
 pub type AAssetDir = c_void;
-extern { pub fn AAssetDir_close(assetDir: *mut AAssetDir); }
-extern { pub fn AAssetDir_getNextFileName(assetDir: *mut AAssetDir) -> *const c_char; }
-extern { pub fn AAssetDir_rewind(assetDir: *mut AAssetDir); }
+extern "C" {
+    pub fn AAssetDir_close(assetDir: *mut AAssetDir);
+}
+extern "C" {
+    pub fn AAssetDir_getNextFileName(assetDir: *mut AAssetDir) -> *const c_char;
+}
+extern "C" {
+    pub fn AAssetDir_rewind(assetDir: *mut AAssetDir);
+}
 pub type AAssetManager = c_void;
-extern { pub fn AAssetManager_open(mgr: *mut AAssetManager, filename: *const c_char, mode: c_int) -> *mut AAsset; }
-extern { pub fn AAssetManager_openDir(mgr: *mut AAssetManager, dirName: *const c_char) -> *mut AAssetDir; }
-extern { pub fn AAsset_close(asset: *mut AAsset); }
-extern { pub fn AAsset_getBuffer(asset: *mut AAsset) -> *const c_void; }
-extern { pub fn AAsset_getLength(asset: *mut AAsset) -> isize; }
-extern { pub fn AAsset_getLength64(asset: *mut AAsset) -> u64; }
-extern { pub fn AAsset_getRemainingLength(asset: *mut AAsset) -> isize; }
-extern { pub fn AAsset_getRemainingLength64(asset: *mut AAsset) -> u64; }
-extern { pub fn AAsset_isAllocated(asset: *mut AAsset) -> c_int; }
-extern { pub fn AAsset_openFileDescriptor(asset: *mut AAsset, outStart: *mut isize, outLength: *mut isize) -> c_int; }
-extern { pub fn AAsset_openFileDescriptor64(asset: *mut AAsset, outStart: *mut u64, outLength: *mut u64) -> c_int; }
-extern { pub fn AAsset_read(asset: *mut AAsset, buf: *mut c_void, count: usize) -> c_int; }
-extern { pub fn AAsset_seek(asset: *mut AAsset, offset: isize, whence: c_int) -> isize; }
-extern { pub fn AAsset_seek64(asset: *mut AAsset, offset: u64, whence: c_int) -> u64; }
+extern "C" {
+    pub fn AAssetManager_open(
+        mgr: *mut AAssetManager,
+        filename: *const c_char,
+        mode: c_int,
+    ) -> *mut AAsset;
+}
+extern "C" {
+    pub fn AAssetManager_openDir(mgr: *mut AAssetManager, dirName: *const c_char)
+        -> *mut AAssetDir;
+}
+extern "C" {
+    pub fn AAsset_close(asset: *mut AAsset);
+}
+extern "C" {
+    pub fn AAsset_getBuffer(asset: *mut AAsset) -> *const c_void;
+}
+extern "C" {
+    pub fn AAsset_getLength(asset: *mut AAsset) -> isize;
+}
+extern "C" {
+    pub fn AAsset_getLength64(asset: *mut AAsset) -> u64;
+}
+extern "C" {
+    pub fn AAsset_getRemainingLength(asset: *mut AAsset) -> isize;
+}
+extern "C" {
+    pub fn AAsset_getRemainingLength64(asset: *mut AAsset) -> u64;
+}
+extern "C" {
+    pub fn AAsset_isAllocated(asset: *mut AAsset) -> c_int;
+}
+extern "C" {
+    pub fn AAsset_openFileDescriptor(
+        asset: *mut AAsset,
+        outStart: *mut isize,
+        outLength: *mut isize,
+    ) -> c_int;
+}
+extern "C" {
+    pub fn AAsset_openFileDescriptor64(
+        asset: *mut AAsset,
+        outStart: *mut u64,
+        outLength: *mut u64,
+    ) -> c_int;
+}
+extern "C" {
+    pub fn AAsset_read(asset: *mut AAsset, buf: *mut c_void, count: usize) -> c_int;
+}
+extern "C" {
+    pub fn AAsset_seek(asset: *mut AAsset, offset: isize, whence: c_int) -> isize;
+}
+extern "C" {
+    pub fn AAsset_seek64(asset: *mut AAsset, offset: u64, whence: c_int) -> u64;
+}
 
 //
 //       android/asset_manager_jni.h
 //
-extern { pub fn AAssetManager_fromJava(env: *mut JNIEnv, assetManager: jobject) -> *mut AAssetManager; }
+extern "C" {
+    pub fn AAssetManager_fromJava(env: *mut JNIEnv, assetManager: jobject) -> *mut AAssetManager;
+}
 
 //
 //       android/bitmap.h
@@ -129,15 +180,29 @@ pub const ANDROID_BITMAP_FORMAT_RGBA_8888: i32 = 1;
 pub const ANDROID_BITMAP_FORMAT_RGB_565: i32 = 4;
 #[repr(C)]
 pub struct AndroidBitmapInfo {
-     pub width:             u32,
-     pub height:                u32,
-     pub stride:                u32,
-     pub format:                i32,
-     pub flags:             u32,
+    pub width: u32,
+    pub height: u32,
+    pub stride: u32,
+    pub format: i32,
+    pub flags: u32,
 }
-extern { pub fn AndroidBitmap_getInfo(env: *mut JNIEnv, jbitmap: jobject, info: *mut AndroidBitmapInfo) -> c_int; }
-extern { pub fn AndroidBitmap_lockPixels(env: *mut JNIEnv, jbitmap: jobject, addrPtr: *mut *mut c_void) -> c_int; }
-extern { pub fn AndroidBitmap_unlockPixels(env: *mut JNIEnv, jbitmap: jobject) -> c_int; }
+extern "C" {
+    pub fn AndroidBitmap_getInfo(
+        env: *mut JNIEnv,
+        jbitmap: jobject,
+        info: *mut AndroidBitmapInfo,
+    ) -> c_int;
+}
+extern "C" {
+    pub fn AndroidBitmap_lockPixels(
+        env: *mut JNIEnv,
+        jbitmap: jobject,
+        addrPtr: *mut *mut c_void,
+    ) -> c_int;
+}
+extern "C" {
+    pub fn AndroidBitmap_unlockPixels(env: *mut JNIEnv, jbitmap: jobject) -> c_int;
+}
 
 //
 //       android/configuration.h
@@ -217,53 +282,151 @@ pub const ACONFIGURATION_UI_MODE_TYPE_TELEVISION: i32 = 4;
 pub const ACONFIGURATION_UI_MODE_TYPE_WATCH: i32 = 6;
 pub const ACONFIGURATION_VERSION: i32 = 1024;
 pub type AConfiguration = c_void;
-extern { pub fn AConfiguration_copy(dest: *mut AConfiguration, src: *mut AConfiguration); }
-extern { pub fn AConfiguration_delete(config: *mut AConfiguration); }
-extern { pub fn AConfiguration_diff(config1: *mut AConfiguration, config2: *mut AConfiguration) -> i32; }
-extern { pub fn AConfiguration_fromAssetManager(out: *mut AConfiguration, am: *mut AAssetManager); }
-extern { pub fn AConfiguration_getCountry(config: *mut AConfiguration, outCountry: *mut c_char); }
-extern { pub fn AConfiguration_getDensity(config: *mut AConfiguration) -> i32; }
-extern { pub fn AConfiguration_getKeyboard(config: *mut AConfiguration) -> i32; }
-extern { pub fn AConfiguration_getKeysHidden(config: *mut AConfiguration) -> i32; }
-extern { pub fn AConfiguration_getLanguage(config: *mut AConfiguration, outLanguage: *mut c_char); }
-extern { pub fn AConfiguration_getLayoutDirection(config: *mut AConfiguration) -> i32; }
-extern { pub fn AConfiguration_getMcc(config: *mut AConfiguration) -> i32; }
-extern { pub fn AConfiguration_getMnc(config: *mut AConfiguration) -> i32; }
-extern { pub fn AConfiguration_getNavHidden(config: *mut AConfiguration) -> i32; }
-extern { pub fn AConfiguration_getNavigation(config: *mut AConfiguration) -> i32; }
-extern { pub fn AConfiguration_getOrientation(config: *mut AConfiguration) -> i32; }
-extern { pub fn AConfiguration_getScreenHeightDp(config: *mut AConfiguration) -> i32; }
-extern { pub fn AConfiguration_getScreenLong(config: *mut AConfiguration) -> i32; }
-extern { pub fn AConfiguration_getScreenSize(config: *mut AConfiguration) -> i32; }
-extern { pub fn AConfiguration_getScreenWidthDp(config: *mut AConfiguration) -> i32; }
-extern { pub fn AConfiguration_getSdkVersion(config: *mut AConfiguration) -> i32; }
-extern { pub fn AConfiguration_getSmallestScreenWidthDp(config: *mut AConfiguration) -> i32; }
-extern { pub fn AConfiguration_getTouchscreen(config: *mut AConfiguration) -> i32; }
-extern { pub fn AConfiguration_getUiModeNight(config: *mut AConfiguration) -> i32; }
-extern { pub fn AConfiguration_getUiModeType(config: *mut AConfiguration) -> i32; }
-extern { pub fn AConfiguration_isBetterThan(base: *mut AConfiguration, test: *mut AConfiguration, requested: *mut AConfiguration) -> i32; }
-extern { pub fn AConfiguration_match(base: *mut AConfiguration, requested: *mut AConfiguration) -> i32; }
-extern { pub fn AConfiguration_new() -> *mut AConfiguration; }
-extern { pub fn AConfiguration_setCountry(config: *mut AConfiguration, country: *const c_char); }
-extern { pub fn AConfiguration_setDensity(config: *mut AConfiguration, density: i32); }
-extern { pub fn AConfiguration_setKeyboard(config: *mut AConfiguration, keyboard: i32); }
-extern { pub fn AConfiguration_setKeysHidden(config: *mut AConfiguration, keysHidden: i32); }
-extern { pub fn AConfiguration_setLanguage(config: *mut AConfiguration, language: *const c_char); }
-extern { pub fn AConfiguration_setLayoutDirection(config: *mut AConfiguration, value: i32); }
-extern { pub fn AConfiguration_setMcc(config: *mut AConfiguration, mcc: i32); }
-extern { pub fn AConfiguration_setMnc(config: *mut AConfiguration, mnc: i32); }
-extern { pub fn AConfiguration_setNavHidden(config: *mut AConfiguration, navHidden: i32); }
-extern { pub fn AConfiguration_setNavigation(config: *mut AConfiguration, navigation: i32); }
-extern { pub fn AConfiguration_setOrientation(config: *mut AConfiguration, orientation: i32); }
-extern { pub fn AConfiguration_setScreenHeightDp(config: *mut AConfiguration, value: i32); }
-extern { pub fn AConfiguration_setScreenLong(config: *mut AConfiguration, screenLong: i32); }
-extern { pub fn AConfiguration_setScreenSize(config: *mut AConfiguration, screenSize: i32); }
-extern { pub fn AConfiguration_setScreenWidthDp(config: *mut AConfiguration, value: i32); }
-extern { pub fn AConfiguration_setSdkVersion(config: *mut AConfiguration, sdkVersion: i32); }
-extern { pub fn AConfiguration_setSmallestScreenWidthDp(config: *mut AConfiguration, value: i32); }
-extern { pub fn AConfiguration_setTouchscreen(config: *mut AConfiguration, touchscreen: i32); }
-extern { pub fn AConfiguration_setUiModeNight(config: *mut AConfiguration, uiModeNight: i32); }
-extern { pub fn AConfiguration_setUiModeType(config: *mut AConfiguration, uiModeType: i32); }
+extern "C" {
+    pub fn AConfiguration_copy(dest: *mut AConfiguration, src: *mut AConfiguration);
+}
+extern "C" {
+    pub fn AConfiguration_delete(config: *mut AConfiguration);
+}
+extern "C" {
+    pub fn AConfiguration_diff(config1: *mut AConfiguration, config2: *mut AConfiguration) -> i32;
+}
+extern "C" {
+    pub fn AConfiguration_fromAssetManager(out: *mut AConfiguration, am: *mut AAssetManager);
+}
+extern "C" {
+    pub fn AConfiguration_getCountry(config: *mut AConfiguration, outCountry: *mut c_char);
+}
+extern "C" {
+    pub fn AConfiguration_getDensity(config: *mut AConfiguration) -> i32;
+}
+extern "C" {
+    pub fn AConfiguration_getKeyboard(config: *mut AConfiguration) -> i32;
+}
+extern "C" {
+    pub fn AConfiguration_getKeysHidden(config: *mut AConfiguration) -> i32;
+}
+extern "C" {
+    pub fn AConfiguration_getLanguage(config: *mut AConfiguration, outLanguage: *mut c_char);
+}
+extern "C" {
+    pub fn AConfiguration_getLayoutDirection(config: *mut AConfiguration) -> i32;
+}
+extern "C" {
+    pub fn AConfiguration_getMcc(config: *mut AConfiguration) -> i32;
+}
+extern "C" {
+    pub fn AConfiguration_getMnc(config: *mut AConfiguration) -> i32;
+}
+extern "C" {
+    pub fn AConfiguration_getNavHidden(config: *mut AConfiguration) -> i32;
+}
+extern "C" {
+    pub fn AConfiguration_getNavigation(config: *mut AConfiguration) -> i32;
+}
+extern "C" {
+    pub fn AConfiguration_getOrientation(config: *mut AConfiguration) -> i32;
+}
+extern "C" {
+    pub fn AConfiguration_getScreenHeightDp(config: *mut AConfiguration) -> i32;
+}
+extern "C" {
+    pub fn AConfiguration_getScreenLong(config: *mut AConfiguration) -> i32;
+}
+extern "C" {
+    pub fn AConfiguration_getScreenSize(config: *mut AConfiguration) -> i32;
+}
+extern "C" {
+    pub fn AConfiguration_getScreenWidthDp(config: *mut AConfiguration) -> i32;
+}
+extern "C" {
+    pub fn AConfiguration_getSdkVersion(config: *mut AConfiguration) -> i32;
+}
+extern "C" {
+    pub fn AConfiguration_getSmallestScreenWidthDp(config: *mut AConfiguration) -> i32;
+}
+extern "C" {
+    pub fn AConfiguration_getTouchscreen(config: *mut AConfiguration) -> i32;
+}
+extern "C" {
+    pub fn AConfiguration_getUiModeNight(config: *mut AConfiguration) -> i32;
+}
+extern "C" {
+    pub fn AConfiguration_getUiModeType(config: *mut AConfiguration) -> i32;
+}
+extern "C" {
+    pub fn AConfiguration_isBetterThan(
+        base: *mut AConfiguration,
+        test: *mut AConfiguration,
+        requested: *mut AConfiguration,
+    ) -> i32;
+}
+extern "C" {
+    pub fn AConfiguration_match(base: *mut AConfiguration, requested: *mut AConfiguration) -> i32;
+}
+extern "C" {
+    pub fn AConfiguration_new() -> *mut AConfiguration;
+}
+extern "C" {
+    pub fn AConfiguration_setCountry(config: *mut AConfiguration, country: *const c_char);
+}
+extern "C" {
+    pub fn AConfiguration_setDensity(config: *mut AConfiguration, density: i32);
+}
+extern "C" {
+    pub fn AConfiguration_setKeyboard(config: *mut AConfiguration, keyboard: i32);
+}
+extern "C" {
+    pub fn AConfiguration_setKeysHidden(config: *mut AConfiguration, keysHidden: i32);
+}
+extern "C" {
+    pub fn AConfiguration_setLanguage(config: *mut AConfiguration, language: *const c_char);
+}
+extern "C" {
+    pub fn AConfiguration_setLayoutDirection(config: *mut AConfiguration, value: i32);
+}
+extern "C" {
+    pub fn AConfiguration_setMcc(config: *mut AConfiguration, mcc: i32);
+}
+extern "C" {
+    pub fn AConfiguration_setMnc(config: *mut AConfiguration, mnc: i32);
+}
+extern "C" {
+    pub fn AConfiguration_setNavHidden(config: *mut AConfiguration, navHidden: i32);
+}
+extern "C" {
+    pub fn AConfiguration_setNavigation(config: *mut AConfiguration, navigation: i32);
+}
+extern "C" {
+    pub fn AConfiguration_setOrientation(config: *mut AConfiguration, orientation: i32);
+}
+extern "C" {
+    pub fn AConfiguration_setScreenHeightDp(config: *mut AConfiguration, value: i32);
+}
+extern "C" {
+    pub fn AConfiguration_setScreenLong(config: *mut AConfiguration, screenLong: i32);
+}
+extern "C" {
+    pub fn AConfiguration_setScreenSize(config: *mut AConfiguration, screenSize: i32);
+}
+extern "C" {
+    pub fn AConfiguration_setScreenWidthDp(config: *mut AConfiguration, value: i32);
+}
+extern "C" {
+    pub fn AConfiguration_setSdkVersion(config: *mut AConfiguration, sdkVersion: i32);
+}
+extern "C" {
+    pub fn AConfiguration_setSmallestScreenWidthDp(config: *mut AConfiguration, value: i32);
+}
+extern "C" {
+    pub fn AConfiguration_setTouchscreen(config: *mut AConfiguration, touchscreen: i32);
+}
+extern "C" {
+    pub fn AConfiguration_setUiModeNight(config: *mut AConfiguration, uiModeNight: i32);
+}
+extern "C" {
+    pub fn AConfiguration_setUiModeType(config: *mut AConfiguration, uiModeType: i32);
+}
 
 //
 //       android/dlext.h
@@ -276,13 +439,19 @@ pub const ANDROID_DLEXT_VALID_FLAG_BITS: i32 = 31;
 pub const ANDROID_DLEXT_WRITE_RELRO: i32 = 4;
 #[repr(C)]
 pub struct android_dlextinfo {
-     pub flags:             u64,
-     pub reserved_addr:             *mut c_void,
-     pub reserved_size:             usize,
-     pub relro_fd:              c_int,
-     pub library_fd:                c_int,
+    pub flags: u64,
+    pub reserved_addr: *mut c_void,
+    pub reserved_size: usize,
+    pub relro_fd: c_int,
+    pub library_fd: c_int,
 }
-extern { pub fn android_dlopen_ext(filename: *const c_char, flag: c_int, extinfo: *const android_dlextinfo) -> *mut c_void; }
+extern "C" {
+    pub fn android_dlopen_ext(
+        filename: *const c_char,
+        flag: c_int,
+        extinfo: *const android_dlextinfo,
+    ) -> *mut c_void;
+}
 
 //
 //       android/input.h
@@ -321,16 +490,44 @@ pub const AINPUT_SOURCE_TOUCH_NAVIGATION: i32 = 2097152;
 pub const AINPUT_SOURCE_TRACKBALL: i32 = 65540;
 pub const AINPUT_SOURCE_UNKNOWN: i32 = 0;
 pub type AInputEvent = c_void;
-extern { pub fn AInputEvent_getDeviceId(event: *const AInputEvent) -> i32; }
-extern { pub fn AInputEvent_getSource(event: *const AInputEvent) -> i32; }
-extern { pub fn AInputEvent_getType(event: *const AInputEvent) -> i32; }
+extern "C" {
+    pub fn AInputEvent_getDeviceId(event: *const AInputEvent) -> i32;
+}
+extern "C" {
+    pub fn AInputEvent_getSource(event: *const AInputEvent) -> i32;
+}
+extern "C" {
+    pub fn AInputEvent_getType(event: *const AInputEvent) -> i32;
+}
 pub type AInputQueue = c_void;
-extern { pub fn AInputQueue_attachLooper(queue: *mut AInputQueue, looper: *mut ALooper, ident: c_int, callback: ALooper_callbackFunc, data: *mut c_void); }
-extern { pub fn AInputQueue_detachLooper(queue: *mut AInputQueue); }
-extern { pub fn AInputQueue_finishEvent(queue: *mut AInputQueue, event: *mut AInputEvent, handled: c_int); }
-extern { pub fn AInputQueue_getEvent(queue: *mut AInputQueue, outEvent: *mut *mut AInputEvent) -> i32; }
-extern { pub fn AInputQueue_hasEvents(queue: *mut AInputQueue) -> i32; }
-extern { pub fn AInputQueue_preDispatchEvent(queue: *mut AInputQueue, event: *mut AInputEvent) -> i32; }
+extern "C" {
+    pub fn AInputQueue_attachLooper(
+        queue: *mut AInputQueue,
+        looper: *mut ALooper,
+        ident: c_int,
+        callback: ALooper_callbackFunc,
+        data: *mut c_void,
+    );
+}
+extern "C" {
+    pub fn AInputQueue_detachLooper(queue: *mut AInputQueue);
+}
+extern "C" {
+    pub fn AInputQueue_finishEvent(
+        queue: *mut AInputQueue,
+        event: *mut AInputEvent,
+        handled: c_int,
+    );
+}
+extern "C" {
+    pub fn AInputQueue_getEvent(queue: *mut AInputQueue, outEvent: *mut *mut AInputEvent) -> i32;
+}
+extern "C" {
+    pub fn AInputQueue_hasEvents(queue: *mut AInputQueue) -> i32;
+}
+extern "C" {
+    pub fn AInputQueue_preDispatchEvent(queue: *mut AInputQueue, event: *mut AInputEvent) -> i32;
+}
 pub const AKEY_EVENT_ACTION_DOWN: i32 = 0;
 pub const AKEY_EVENT_ACTION_MULTIPLE: i32 = 2;
 pub const AKEY_EVENT_ACTION_UP: i32 = 1;
@@ -349,14 +546,30 @@ pub const AKEY_STATE_DOWN: i32 = 1;
 pub const AKEY_STATE_UNKNOWN: i32 = -1;
 pub const AKEY_STATE_UP: i32 = 0;
 pub const AKEY_STATE_VIRTUAL: i32 = 2;
-extern { pub fn AKeyEvent_getAction(key_event: *const AInputEvent) -> i32; }
-extern { pub fn AKeyEvent_getDownTime(key_event: *const AInputEvent) -> i64; }
-extern { pub fn AKeyEvent_getEventTime(key_event: *const AInputEvent) -> i64; }
-extern { pub fn AKeyEvent_getFlags(key_event: *const AInputEvent) -> i32; }
-extern { pub fn AKeyEvent_getKeyCode(key_event: *const AInputEvent) -> i32; }
-extern { pub fn AKeyEvent_getMetaState(key_event: *const AInputEvent) -> i32; }
-extern { pub fn AKeyEvent_getRepeatCount(key_event: *const AInputEvent) -> i32; }
-extern { pub fn AKeyEvent_getScanCode(key_event: *const AInputEvent) -> i32; }
+extern "C" {
+    pub fn AKeyEvent_getAction(key_event: *const AInputEvent) -> i32;
+}
+extern "C" {
+    pub fn AKeyEvent_getDownTime(key_event: *const AInputEvent) -> i64;
+}
+extern "C" {
+    pub fn AKeyEvent_getEventTime(key_event: *const AInputEvent) -> i64;
+}
+extern "C" {
+    pub fn AKeyEvent_getFlags(key_event: *const AInputEvent) -> i32;
+}
+extern "C" {
+    pub fn AKeyEvent_getKeyCode(key_event: *const AInputEvent) -> i32;
+}
+extern "C" {
+    pub fn AKeyEvent_getMetaState(key_event: *const AInputEvent) -> i32;
+}
+extern "C" {
+    pub fn AKeyEvent_getRepeatCount(key_event: *const AInputEvent) -> i32;
+}
+extern "C" {
+    pub fn AKeyEvent_getScanCode(key_event: *const AInputEvent) -> i32;
+}
 pub const AMETA_ALT_LEFT_ON: i32 = 16;
 pub const AMETA_ALT_ON: i32 = 2;
 pub const AMETA_ALT_RIGHT_ON: i32 = 32;
@@ -447,46 +660,201 @@ pub const AMOTION_EVENT_TOOL_TYPE_FINGER: i32 = 1;
 pub const AMOTION_EVENT_TOOL_TYPE_MOUSE: i32 = 3;
 pub const AMOTION_EVENT_TOOL_TYPE_STYLUS: i32 = 2;
 pub const AMOTION_EVENT_TOOL_TYPE_UNKNOWN: i32 = 0;
-extern { pub fn AMotionEvent_getAction(motion_event: *const AInputEvent) -> i32; }
-extern { pub fn AMotionEvent_getAxisValue(motion_event: *const AInputEvent, axis: i32, pointer_index: usize) -> c_float; }
-extern { pub fn AMotionEvent_getButtonState(motion_event: *const AInputEvent) -> i32; }
-extern { pub fn AMotionEvent_getDownTime(motion_event: *const AInputEvent) -> i64; }
-extern { pub fn AMotionEvent_getEdgeFlags(motion_event: *const AInputEvent) -> i32; }
-extern { pub fn AMotionEvent_getEventTime(motion_event: *const AInputEvent) -> i64; }
-extern { pub fn AMotionEvent_getFlags(motion_event: *const AInputEvent) -> i32; }
-extern { pub fn AMotionEvent_getHistoricalAxisValue(motion_event: *const AInputEvent, axis: i32, pointer_index: usize, history_index: usize) -> c_float; }
-extern { pub fn AMotionEvent_getHistoricalEventTime(motion_event: *const AInputEvent, history_index: usize) -> i64; }
-extern { pub fn AMotionEvent_getHistoricalOrientation(motion_event: *const AInputEvent, pointer_index: usize, history_index: usize) -> c_float; }
-extern { pub fn AMotionEvent_getHistoricalPressure(motion_event: *const AInputEvent, pointer_index: usize, history_index: usize) -> c_float; }
-extern { pub fn AMotionEvent_getHistoricalRawX(motion_event: *const AInputEvent, pointer_index: usize, history_index: usize) -> c_float; }
-extern { pub fn AMotionEvent_getHistoricalRawY(motion_event: *const AInputEvent, pointer_index: usize, history_index: usize) -> c_float; }
-extern { pub fn AMotionEvent_getHistoricalSize(motion_event: *const AInputEvent, pointer_index: usize, history_index: usize) -> c_float; }
-extern { pub fn AMotionEvent_getHistoricalToolMajor(motion_event: *const AInputEvent, pointer_index: usize, history_index: usize) -> c_float; }
-extern { pub fn AMotionEvent_getHistoricalToolMinor(motion_event: *const AInputEvent, pointer_index: usize, history_index: usize) -> c_float; }
-extern { pub fn AMotionEvent_getHistoricalTouchMajor(motion_event: *const AInputEvent, pointer_index: usize, history_index: usize) -> c_float; }
-extern { pub fn AMotionEvent_getHistoricalTouchMinor(motion_event: *const AInputEvent, pointer_index: usize, history_index: usize) -> c_float; }
-extern { pub fn AMotionEvent_getHistoricalX(motion_event: *const AInputEvent, pointer_index: usize, history_index: usize) -> c_float; }
-extern { pub fn AMotionEvent_getHistoricalY(motion_event: *const AInputEvent, pointer_index: usize, history_index: usize) -> c_float; }
-extern { pub fn AMotionEvent_getHistorySize(motion_event: *const AInputEvent) -> usize; }
-extern { pub fn AMotionEvent_getMetaState(motion_event: *const AInputEvent) -> i32; }
-extern { pub fn AMotionEvent_getOrientation(motion_event: *const AInputEvent, pointer_index: usize) -> c_float; }
-extern { pub fn AMotionEvent_getPointerCount(motion_event: *const AInputEvent) -> usize; }
-extern { pub fn AMotionEvent_getPointerId(motion_event: *const AInputEvent, pointer_index: usize) -> i32; }
-extern { pub fn AMotionEvent_getPressure(motion_event: *const AInputEvent, pointer_index: usize) -> c_float; }
-extern { pub fn AMotionEvent_getRawX(motion_event: *const AInputEvent, pointer_index: usize) -> c_float; }
-extern { pub fn AMotionEvent_getRawY(motion_event: *const AInputEvent, pointer_index: usize) -> c_float; }
-extern { pub fn AMotionEvent_getSize(motion_event: *const AInputEvent, pointer_index: usize) -> c_float; }
-extern { pub fn AMotionEvent_getToolMajor(motion_event: *const AInputEvent, pointer_index: usize) -> c_float; }
-extern { pub fn AMotionEvent_getToolMinor(motion_event: *const AInputEvent, pointer_index: usize) -> c_float; }
-extern { pub fn AMotionEvent_getToolType(motion_event: *const AInputEvent, pointer_index: usize) -> i32; }
-extern { pub fn AMotionEvent_getTouchMajor(motion_event: *const AInputEvent, pointer_index: usize) -> c_float; }
-extern { pub fn AMotionEvent_getTouchMinor(motion_event: *const AInputEvent, pointer_index: usize) -> c_float; }
-extern { pub fn AMotionEvent_getX(motion_event: *const AInputEvent, pointer_index: usize) -> c_float; }
-extern { pub fn AMotionEvent_getXOffset(motion_event: *const AInputEvent) -> c_float; }
-extern { pub fn AMotionEvent_getXPrecision(motion_event: *const AInputEvent) -> c_float; }
-extern { pub fn AMotionEvent_getY(motion_event: *const AInputEvent, pointer_index: usize) -> c_float; }
-extern { pub fn AMotionEvent_getYOffset(motion_event: *const AInputEvent) -> c_float; }
-extern { pub fn AMotionEvent_getYPrecision(motion_event: *const AInputEvent) -> c_float; }
+extern "C" {
+    pub fn AMotionEvent_getAction(motion_event: *const AInputEvent) -> i32;
+}
+extern "C" {
+    pub fn AMotionEvent_getAxisValue(
+        motion_event: *const AInputEvent,
+        axis: i32,
+        pointer_index: usize,
+    ) -> c_float;
+}
+extern "C" {
+    pub fn AMotionEvent_getButtonState(motion_event: *const AInputEvent) -> i32;
+}
+extern "C" {
+    pub fn AMotionEvent_getDownTime(motion_event: *const AInputEvent) -> i64;
+}
+extern "C" {
+    pub fn AMotionEvent_getEdgeFlags(motion_event: *const AInputEvent) -> i32;
+}
+extern "C" {
+    pub fn AMotionEvent_getEventTime(motion_event: *const AInputEvent) -> i64;
+}
+extern "C" {
+    pub fn AMotionEvent_getFlags(motion_event: *const AInputEvent) -> i32;
+}
+extern "C" {
+    pub fn AMotionEvent_getHistoricalAxisValue(
+        motion_event: *const AInputEvent,
+        axis: i32,
+        pointer_index: usize,
+        history_index: usize,
+    ) -> c_float;
+}
+extern "C" {
+    pub fn AMotionEvent_getHistoricalEventTime(
+        motion_event: *const AInputEvent,
+        history_index: usize,
+    ) -> i64;
+}
+extern "C" {
+    pub fn AMotionEvent_getHistoricalOrientation(
+        motion_event: *const AInputEvent,
+        pointer_index: usize,
+        history_index: usize,
+    ) -> c_float;
+}
+extern "C" {
+    pub fn AMotionEvent_getHistoricalPressure(
+        motion_event: *const AInputEvent,
+        pointer_index: usize,
+        history_index: usize,
+    ) -> c_float;
+}
+extern "C" {
+    pub fn AMotionEvent_getHistoricalRawX(
+        motion_event: *const AInputEvent,
+        pointer_index: usize,
+        history_index: usize,
+    ) -> c_float;
+}
+extern "C" {
+    pub fn AMotionEvent_getHistoricalRawY(
+        motion_event: *const AInputEvent,
+        pointer_index: usize,
+        history_index: usize,
+    ) -> c_float;
+}
+extern "C" {
+    pub fn AMotionEvent_getHistoricalSize(
+        motion_event: *const AInputEvent,
+        pointer_index: usize,
+        history_index: usize,
+    ) -> c_float;
+}
+extern "C" {
+    pub fn AMotionEvent_getHistoricalToolMajor(
+        motion_event: *const AInputEvent,
+        pointer_index: usize,
+        history_index: usize,
+    ) -> c_float;
+}
+extern "C" {
+    pub fn AMotionEvent_getHistoricalToolMinor(
+        motion_event: *const AInputEvent,
+        pointer_index: usize,
+        history_index: usize,
+    ) -> c_float;
+}
+extern "C" {
+    pub fn AMotionEvent_getHistoricalTouchMajor(
+        motion_event: *const AInputEvent,
+        pointer_index: usize,
+        history_index: usize,
+    ) -> c_float;
+}
+extern "C" {
+    pub fn AMotionEvent_getHistoricalTouchMinor(
+        motion_event: *const AInputEvent,
+        pointer_index: usize,
+        history_index: usize,
+    ) -> c_float;
+}
+extern "C" {
+    pub fn AMotionEvent_getHistoricalX(
+        motion_event: *const AInputEvent,
+        pointer_index: usize,
+        history_index: usize,
+    ) -> c_float;
+}
+extern "C" {
+    pub fn AMotionEvent_getHistoricalY(
+        motion_event: *const AInputEvent,
+        pointer_index: usize,
+        history_index: usize,
+    ) -> c_float;
+}
+extern "C" {
+    pub fn AMotionEvent_getHistorySize(motion_event: *const AInputEvent) -> usize;
+}
+extern "C" {
+    pub fn AMotionEvent_getMetaState(motion_event: *const AInputEvent) -> i32;
+}
+extern "C" {
+    pub fn AMotionEvent_getOrientation(
+        motion_event: *const AInputEvent,
+        pointer_index: usize,
+    ) -> c_float;
+}
+extern "C" {
+    pub fn AMotionEvent_getPointerCount(motion_event: *const AInputEvent) -> usize;
+}
+extern "C" {
+    pub fn AMotionEvent_getPointerId(motion_event: *const AInputEvent, pointer_index: usize)
+        -> i32;
+}
+extern "C" {
+    pub fn AMotionEvent_getPressure(
+        motion_event: *const AInputEvent,
+        pointer_index: usize,
+    ) -> c_float;
+}
+extern "C" {
+    pub fn AMotionEvent_getRawX(motion_event: *const AInputEvent, pointer_index: usize) -> c_float;
+}
+extern "C" {
+    pub fn AMotionEvent_getRawY(motion_event: *const AInputEvent, pointer_index: usize) -> c_float;
+}
+extern "C" {
+    pub fn AMotionEvent_getSize(motion_event: *const AInputEvent, pointer_index: usize) -> c_float;
+}
+extern "C" {
+    pub fn AMotionEvent_getToolMajor(
+        motion_event: *const AInputEvent,
+        pointer_index: usize,
+    ) -> c_float;
+}
+extern "C" {
+    pub fn AMotionEvent_getToolMinor(
+        motion_event: *const AInputEvent,
+        pointer_index: usize,
+    ) -> c_float;
+}
+extern "C" {
+    pub fn AMotionEvent_getToolType(motion_event: *const AInputEvent, pointer_index: usize) -> i32;
+}
+extern "C" {
+    pub fn AMotionEvent_getTouchMajor(
+        motion_event: *const AInputEvent,
+        pointer_index: usize,
+    ) -> c_float;
+}
+extern "C" {
+    pub fn AMotionEvent_getTouchMinor(
+        motion_event: *const AInputEvent,
+        pointer_index: usize,
+    ) -> c_float;
+}
+extern "C" {
+    pub fn AMotionEvent_getX(motion_event: *const AInputEvent, pointer_index: usize) -> c_float;
+}
+extern "C" {
+    pub fn AMotionEvent_getXOffset(motion_event: *const AInputEvent) -> c_float;
+}
+extern "C" {
+    pub fn AMotionEvent_getXPrecision(motion_event: *const AInputEvent) -> c_float;
+}
+extern "C" {
+    pub fn AMotionEvent_getY(motion_event: *const AInputEvent, pointer_index: usize) -> c_float;
+}
+extern "C" {
+    pub fn AMotionEvent_getYOffset(motion_event: *const AInputEvent) -> c_float;
+}
+extern "C" {
+    pub fn AMotionEvent_getYPrecision(motion_event: *const AInputEvent) -> c_float;
+}
 
 //
 //       android/keycodes.h
@@ -764,8 +1132,17 @@ pub const ANDROID_LOG_SILENT: i32 = 8;
 pub const ANDROID_LOG_UNKNOWN: i32 = 0;
 pub const ANDROID_LOG_VERBOSE: i32 = 2;
 pub const ANDROID_LOG_WARN: i32 = 5;
-extern { pub fn __android_log_vprint(prio: c_int, tag: *const c_char, fmt: *const c_char, ap: *mut __va_list_tag) -> c_int; }
-extern { pub fn __android_log_write(prio: c_int, tag: *const c_char, text: *const c_char) -> c_int; }
+extern "C" {
+    pub fn __android_log_vprint(
+        prio: c_int,
+        tag: *const c_char,
+        fmt: *const c_char,
+        ap: *mut __va_list_tag,
+    ) -> c_int;
+}
+extern "C" {
+    pub fn __android_log_write(prio: c_int, tag: *const c_char, text: *const c_char) -> c_int;
+}
 pub type android_LogPriority = i32;
 
 //
@@ -782,16 +1159,51 @@ pub const ALOOPER_POLL_TIMEOUT: i32 = -3;
 pub const ALOOPER_POLL_WAKE: i32 = -1;
 pub const ALOOPER_PREPARE_ALLOW_NON_CALLBACKS: i32 = 1;
 pub type ALooper = c_void;
-extern { pub fn ALooper_acquire(looper: *mut ALooper); }
-extern { pub fn ALooper_addFd(looper: *mut ALooper, fd: c_int, ident: c_int, events: c_int, callback: ALooper_callbackFunc, data: *mut c_void) -> c_int; }
-pub type ALooper_callbackFunc = extern fn(c_int, c_int, *mut c_void) -> c_int;
-extern { pub fn ALooper_forThread() -> *mut ALooper; }
-extern { pub fn ALooper_pollAll(timeoutMillis: c_int, outFd: *mut c_int, outEvents: *mut c_int, outData: *mut *mut c_void) -> c_int; }
-extern { pub fn ALooper_pollOnce(timeoutMillis: c_int, outFd: *mut c_int, outEvents: *mut c_int, outData: *mut *mut c_void) -> c_int; }
-extern { pub fn ALooper_prepare(opts: c_int) -> *mut ALooper; }
-extern { pub fn ALooper_release(looper: *mut ALooper); }
-extern { pub fn ALooper_removeFd(looper: *mut ALooper, fd: c_int) -> c_int; }
-extern { pub fn ALooper_wake(looper: *mut ALooper); }
+extern "C" {
+    pub fn ALooper_acquire(looper: *mut ALooper);
+}
+extern "C" {
+    pub fn ALooper_addFd(
+        looper: *mut ALooper,
+        fd: c_int,
+        ident: c_int,
+        events: c_int,
+        callback: ALooper_callbackFunc,
+        data: *mut c_void,
+    ) -> c_int;
+}
+pub type ALooper_callbackFunc = extern "C" fn(c_int, c_int, *mut c_void) -> c_int;
+extern "C" {
+    pub fn ALooper_forThread() -> *mut ALooper;
+}
+extern "C" {
+    pub fn ALooper_pollAll(
+        timeoutMillis: c_int,
+        outFd: *mut c_int,
+        outEvents: *mut c_int,
+        outData: *mut *mut c_void,
+    ) -> c_int;
+}
+extern "C" {
+    pub fn ALooper_pollOnce(
+        timeoutMillis: c_int,
+        outFd: *mut c_int,
+        outEvents: *mut c_int,
+        outData: *mut *mut c_void,
+    ) -> c_int;
+}
+extern "C" {
+    pub fn ALooper_prepare(opts: c_int) -> *mut ALooper;
+}
+extern "C" {
+    pub fn ALooper_release(looper: *mut ALooper);
+}
+extern "C" {
+    pub fn ALooper_removeFd(looper: *mut ALooper, fd: c_int) -> c_int;
+}
+extern "C" {
+    pub fn ALooper_wake(looper: *mut ALooper);
+}
 
 //
 //       android/native_activity.h
@@ -802,42 +1214,56 @@ pub const ANATIVEACTIVITY_SHOW_SOFT_INPUT_FORCED: i32 = 2;
 pub const ANATIVEACTIVITY_SHOW_SOFT_INPUT_IMPLICIT: i32 = 1;
 #[repr(C)]
 pub struct ANativeActivity {
-     pub callbacks:             *mut ANativeActivityCallbacks,
-     pub vm:                *mut JavaVM,
-     pub env:               *mut JNIEnv,
-     pub clazz:             jobject,
-     pub internalDataPath:              *const c_char,
-     pub externalDataPath:              *const c_char,
-     pub sdkVersion:                i32,
-     pub instance:              *mut c_void,
-     pub assetManager:              *mut AAssetManager,
-     pub obbPath:               *const c_char,
+    pub callbacks: *mut ANativeActivityCallbacks,
+    pub vm: *mut JavaVM,
+    pub env: *mut JNIEnv,
+    pub clazz: jobject,
+    pub internalDataPath: *const c_char,
+    pub externalDataPath: *const c_char,
+    pub sdkVersion: i32,
+    pub instance: *mut c_void,
+    pub assetManager: *mut AAssetManager,
+    pub obbPath: *const c_char,
 }
 #[repr(C)]
 pub struct ANativeActivityCallbacks {
-     pub onStart:               extern fn(*mut ANativeActivity),
-     pub onResume:              extern fn(*mut ANativeActivity),
-     pub onSaveInstanceState:               extern fn(*mut ANativeActivity, *mut usize) -> *mut c_void,
-     pub onPause:               extern fn(*mut ANativeActivity),
-     pub onStop:                extern fn(*mut ANativeActivity),
-     pub onDestroy:             extern fn(*mut ANativeActivity),
-     pub onWindowFocusChanged:              extern fn(*mut ANativeActivity, c_int),
-     pub onNativeWindowCreated:             extern fn(*mut ANativeActivity, *mut ANativeWindow),
-     pub onNativeWindowResized:             extern fn(*mut ANativeActivity, *mut ANativeWindow),
-     pub onNativeWindowRedrawNeeded:                extern fn(*mut ANativeActivity, *mut ANativeWindow),
-     pub onNativeWindowDestroyed:               extern fn(*mut ANativeActivity, *mut ANativeWindow),
-     pub onInputQueueCreated:               extern fn(*mut ANativeActivity, *mut AInputQueue),
-     pub onInputQueueDestroyed:             extern fn(*mut ANativeActivity, *mut AInputQueue),
-     pub onContentRectChanged:              extern fn(*mut ANativeActivity, *const ARect),
-     pub onConfigurationChanged:                extern fn(*mut ANativeActivity),
-     pub onLowMemory:               extern fn(*mut ANativeActivity),
+    pub onStart: extern "C" fn(*mut ANativeActivity),
+    pub onResume: extern "C" fn(*mut ANativeActivity),
+    pub onSaveInstanceState: extern "C" fn(*mut ANativeActivity, *mut usize) -> *mut c_void,
+    pub onPause: extern "C" fn(*mut ANativeActivity),
+    pub onStop: extern "C" fn(*mut ANativeActivity),
+    pub onDestroy: extern "C" fn(*mut ANativeActivity),
+    pub onWindowFocusChanged: extern "C" fn(*mut ANativeActivity, c_int),
+    pub onNativeWindowCreated: extern "C" fn(*mut ANativeActivity, *mut ANativeWindow),
+    pub onNativeWindowResized: extern "C" fn(*mut ANativeActivity, *mut ANativeWindow),
+    pub onNativeWindowRedrawNeeded: extern "C" fn(*mut ANativeActivity, *mut ANativeWindow),
+    pub onNativeWindowDestroyed: extern "C" fn(*mut ANativeActivity, *mut ANativeWindow),
+    pub onInputQueueCreated: extern "C" fn(*mut ANativeActivity, *mut AInputQueue),
+    pub onInputQueueDestroyed: extern "C" fn(*mut ANativeActivity, *mut AInputQueue),
+    pub onContentRectChanged: extern "C" fn(*mut ANativeActivity, *const ARect),
+    pub onConfigurationChanged: extern "C" fn(*mut ANativeActivity),
+    pub onLowMemory: extern "C" fn(*mut ANativeActivity),
 }
-pub type ANativeActivity_createFunc = extern fn(*mut ANativeActivity, *mut c_void, usize);
-extern { pub fn ANativeActivity_finish(activity: *mut ANativeActivity); }
-extern { pub fn ANativeActivity_hideSoftInput(activity: *mut ANativeActivity, flags: u32); }
-extern { pub fn ANativeActivity_setWindowFlags(activity: *mut ANativeActivity, addFlags: u32, removeFlags: u32); }
-extern { pub fn ANativeActivity_setWindowFormat(activity: *mut ANativeActivity, format: i32); }
-extern { pub fn ANativeActivity_showSoftInput(activity: *mut ANativeActivity, flags: u32); }
+pub type ANativeActivity_createFunc = extern "C" fn(*mut ANativeActivity, *mut c_void, usize);
+extern "C" {
+    pub fn ANativeActivity_finish(activity: *mut ANativeActivity);
+}
+extern "C" {
+    pub fn ANativeActivity_hideSoftInput(activity: *mut ANativeActivity, flags: u32);
+}
+extern "C" {
+    pub fn ANativeActivity_setWindowFlags(
+        activity: *mut ANativeActivity,
+        addFlags: u32,
+        removeFlags: u32,
+    );
+}
+extern "C" {
+    pub fn ANativeActivity_setWindowFormat(activity: *mut ANativeActivity, format: i32);
+}
+extern "C" {
+    pub fn ANativeActivity_showSoftInput(activity: *mut ANativeActivity, flags: u32);
+}
 
 //
 //       android/native_window.h
@@ -845,21 +1271,46 @@ extern { pub fn ANativeActivity_showSoftInput(activity: *mut ANativeActivity, fl
 pub type ANativeWindow = c_void;
 #[repr(C)]
 pub struct ANativeWindow_Buffer {
-     pub width:             i32,
-     pub height:                i32,
-     pub stride:                i32,
-     pub format:                i32,
-     pub bits:              *mut c_void,
-     pub reserved:              [u32; 5],
+    pub width: i32,
+    pub height: i32,
+    pub stride: i32,
+    pub format: i32,
+    pub bits: *mut c_void,
+    pub reserved: [u32; 5],
 }
-extern { pub fn ANativeWindow_acquire(window: *mut ANativeWindow); }
-extern { pub fn ANativeWindow_getFormat(window: *mut ANativeWindow) -> i32; }
-extern { pub fn ANativeWindow_getHeight(window: *mut ANativeWindow) -> i32; }
-extern { pub fn ANativeWindow_getWidth(window: *mut ANativeWindow) -> i32; }
-extern { pub fn ANativeWindow_lock(window: *mut ANativeWindow, outBuffer: *mut ANativeWindow_Buffer, inOutDirtyBounds: *mut ARect) -> i32; }
-extern { pub fn ANativeWindow_release(window: *mut ANativeWindow); }
-extern { pub fn ANativeWindow_setBuffersGeometry(window: *mut ANativeWindow, width: i32, height: i32, format: i32) -> i32; }
-extern { pub fn ANativeWindow_unlockAndPost(window: *mut ANativeWindow) -> i32; }
+extern "C" {
+    pub fn ANativeWindow_acquire(window: *mut ANativeWindow);
+}
+extern "C" {
+    pub fn ANativeWindow_getFormat(window: *mut ANativeWindow) -> i32;
+}
+extern "C" {
+    pub fn ANativeWindow_getHeight(window: *mut ANativeWindow) -> i32;
+}
+extern "C" {
+    pub fn ANativeWindow_getWidth(window: *mut ANativeWindow) -> i32;
+}
+extern "C" {
+    pub fn ANativeWindow_lock(
+        window: *mut ANativeWindow,
+        outBuffer: *mut ANativeWindow_Buffer,
+        inOutDirtyBounds: *mut ARect,
+    ) -> i32;
+}
+extern "C" {
+    pub fn ANativeWindow_release(window: *mut ANativeWindow);
+}
+extern "C" {
+    pub fn ANativeWindow_setBuffersGeometry(
+        window: *mut ANativeWindow,
+        width: i32,
+        height: i32,
+        format: i32,
+    ) -> i32;
+}
+extern "C" {
+    pub fn ANativeWindow_unlockAndPost(window: *mut ANativeWindow) -> i32;
+}
 pub const WINDOW_FORMAT_RGBA_8888: i32 = 1;
 pub const WINDOW_FORMAT_RGBX_8888: i32 = 2;
 pub const WINDOW_FORMAT_RGB_565: i32 = 4;
@@ -867,28 +1318,40 @@ pub const WINDOW_FORMAT_RGB_565: i32 = 4;
 //
 //       android/native_window_jni.h
 //
-extern { pub fn ANativeWindow_fromSurface(env: *mut JNIEnv, surface: jobject) -> *mut ANativeWindow; }
+extern "C" {
+    pub fn ANativeWindow_fromSurface(env: *mut JNIEnv, surface: jobject) -> *mut ANativeWindow;
+}
 
 //
 //       android/obb.h
 //
 pub const AOBBINFO_OVERLAY: i32 = 1;
 pub type AObbInfo = c_void;
-extern { pub fn AObbInfo_delete(obbInfo: *mut AObbInfo); }
-extern { pub fn AObbInfo_getFlags(obbInfo: *mut AObbInfo) -> i32; }
-extern { pub fn AObbInfo_getPackageName(obbInfo: *mut AObbInfo) -> *const c_char; }
-extern { pub fn AObbInfo_getVersion(obbInfo: *mut AObbInfo) -> i32; }
-extern { pub fn AObbScanner_getObbInfo(filename: *const c_char) -> *mut AObbInfo; }
+extern "C" {
+    pub fn AObbInfo_delete(obbInfo: *mut AObbInfo);
+}
+extern "C" {
+    pub fn AObbInfo_getFlags(obbInfo: *mut AObbInfo) -> i32;
+}
+extern "C" {
+    pub fn AObbInfo_getPackageName(obbInfo: *mut AObbInfo) -> *const c_char;
+}
+extern "C" {
+    pub fn AObbInfo_getVersion(obbInfo: *mut AObbInfo) -> i32;
+}
+extern "C" {
+    pub fn AObbScanner_getObbInfo(filename: *const c_char) -> *mut AObbInfo;
+}
 
 //
 //       android/rect.h
 //
 #[repr(C)]
 pub struct ARect {
-     pub left:              i32,
-     pub top:               i32,
-     pub right:             i32,
-     pub bottom:                i32,
+    pub left: i32,
+    pub top: i32,
+    pub right: i32,
+    pub bottom: i32,
 }
 pub type value_type = i32;
 
@@ -897,13 +1360,13 @@ pub type value_type = i32;
 //
 #[repr(C)]
 pub struct AHeartRateEvent {
-     pub bpm:               c_float,
-     pub status:                i8,
+    pub bpm: c_float,
+    pub status: i8,
 }
 #[repr(C)]
 pub struct AMetaDataEvent {
-     pub what:              i32,
-     pub sensor:                i32,
+    pub what: i32,
+    pub sensor: i32,
 }
 pub const AREPORTING_MODE_CONTINUOUS: i32 = 0;
 pub const AREPORTING_MODE_ONE_SHOT: i32 = 2;
@@ -922,74 +1385,149 @@ pub const ASENSOR_TYPE_PROXIMITY: i32 = 8;
 pub type ASensor = c_void;
 #[repr(C)]
 pub struct ASensorEvent {
-     pub version:           i32,
-     pub sensor:            i32,
-     pub xtype:             i32,
-     pub reserved0:         i32,
-     pub timestamp:         i64,
-     pub data:              [c_float; 16],
-     pub flags:             u32,
-     pub reserved1:         [i32; 2],
+    pub version: i32,
+    pub sensor: i32,
+    pub xtype: i32,
+    pub reserved0: i32,
+    pub timestamp: i64,
+    pub data: [c_float; 16],
+    pub flags: u32,
+    pub reserved1: [i32; 2],
 }
 pub type ASensorEventQueue = c_void;
-extern { pub fn ASensorEventQueue_disableSensor(queue: *mut ASensorEventQueue, sensor: *const ASensor) -> c_int; }
-extern { pub fn ASensorEventQueue_enableSensor(queue: *mut ASensorEventQueue, sensor: *const ASensor) -> c_int; }
-extern { pub fn ASensorEventQueue_getEvents(queue: *mut ASensorEventQueue, events: *mut ASensorEvent, count: usize) -> isize; }
-extern { pub fn ASensorEventQueue_hasEvents(queue: *mut ASensorEventQueue) -> c_int; }
-extern { pub fn ASensorEventQueue_setEventRate(queue: *mut ASensorEventQueue, sensor: *const ASensor, usec: i32) -> c_int; }
+extern "C" {
+    pub fn ASensorEventQueue_disableSensor(
+        queue: *mut ASensorEventQueue,
+        sensor: *const ASensor,
+    ) -> c_int;
+}
+extern "C" {
+    pub fn ASensorEventQueue_enableSensor(
+        queue: *mut ASensorEventQueue,
+        sensor: *const ASensor,
+    ) -> c_int;
+}
+extern "C" {
+    pub fn ASensorEventQueue_getEvents(
+        queue: *mut ASensorEventQueue,
+        events: *mut ASensorEvent,
+        count: usize,
+    ) -> isize;
+}
+extern "C" {
+    pub fn ASensorEventQueue_hasEvents(queue: *mut ASensorEventQueue) -> c_int;
+}
+extern "C" {
+    pub fn ASensorEventQueue_setEventRate(
+        queue: *mut ASensorEventQueue,
+        sensor: *const ASensor,
+        usec: i32,
+    ) -> c_int;
+}
 pub type ASensorList = *const ASensorRef;
 pub type ASensorManager = c_void;
-extern { pub fn ASensorManager_createEventQueue(manager: *mut ASensorManager, looper: *mut ALooper, ident: c_int, callback: ALooper_callbackFunc, data: *mut c_void) -> *mut ASensorEventQueue; }
-extern { pub fn ASensorManager_destroyEventQueue(manager: *mut ASensorManager, queue: *mut ASensorEventQueue) -> c_int; }
-extern { pub fn ASensorManager_getDefaultSensor(manager: *mut ASensorManager, xtype: c_int) -> *const ASensor; }
-extern { pub fn ASensorManager_getDefaultSensorEx(manager: *mut ASensorManager, xtype: c_int, wakeUp: bool) -> *const ASensor; }
-extern { pub fn ASensorManager_getInstance() -> *mut ASensorManager; }
-extern { pub fn ASensorManager_getSensorList(manager: *mut ASensorManager, list: *mut ASensorList) -> c_int; }
+extern "C" {
+    pub fn ASensorManager_createEventQueue(
+        manager: *mut ASensorManager,
+        looper: *mut ALooper,
+        ident: c_int,
+        callback: ALooper_callbackFunc,
+        data: *mut c_void,
+    ) -> *mut ASensorEventQueue;
+}
+extern "C" {
+    pub fn ASensorManager_destroyEventQueue(
+        manager: *mut ASensorManager,
+        queue: *mut ASensorEventQueue,
+    ) -> c_int;
+}
+extern "C" {
+    pub fn ASensorManager_getDefaultSensor(
+        manager: *mut ASensorManager,
+        xtype: c_int,
+    ) -> *const ASensor;
+}
+extern "C" {
+    pub fn ASensorManager_getDefaultSensorEx(
+        manager: *mut ASensorManager,
+        xtype: c_int,
+        wakeUp: bool,
+    ) -> *const ASensor;
+}
+extern "C" {
+    pub fn ASensorManager_getInstance() -> *mut ASensorManager;
+}
+extern "C" {
+    pub fn ASensorManager_getSensorList(
+        manager: *mut ASensorManager,
+        list: *mut ASensorList,
+    ) -> c_int;
+}
 pub type ASensorRef = *const ASensor;
 #[repr(C)]
 pub struct ASensorVector {
-     pub unnamed0:              [u8; 12],
-     pub status:                i8,
-     pub reserved:              [u8; 2],
+    pub unnamed0: [u8; 12],
+    pub status: i8,
+    pub reserved: [u8; 2],
 }
-extern { pub fn ASensor_getFifoMaxEventCount(sensor: *const ASensor) -> c_int; }
-extern { pub fn ASensor_getFifoReservedEventCount(sensor: *const ASensor) -> c_int; }
-extern { pub fn ASensor_getMinDelay(sensor: *const ASensor) -> c_int; }
-extern { pub fn ASensor_getName(sensor: *const ASensor) -> *const c_char; }
-extern { pub fn ASensor_getReportingMode(sensor: *const ASensor) -> c_int; }
-extern { pub fn ASensor_getResolution(sensor: *const ASensor) -> c_float; }
-extern { pub fn ASensor_getStringType(sensor: *const ASensor) -> *const c_char; }
-extern { pub fn ASensor_getType(sensor: *const ASensor) -> c_int; }
-extern { pub fn ASensor_getVendor(sensor: *const ASensor) -> *const c_char; }
-extern { pub fn ASensor_isWakeUpSensor(sensor: *const ASensor) -> bool; }
+extern "C" {
+    pub fn ASensor_getFifoMaxEventCount(sensor: *const ASensor) -> c_int;
+}
+extern "C" {
+    pub fn ASensor_getFifoReservedEventCount(sensor: *const ASensor) -> c_int;
+}
+extern "C" {
+    pub fn ASensor_getMinDelay(sensor: *const ASensor) -> c_int;
+}
+extern "C" {
+    pub fn ASensor_getName(sensor: *const ASensor) -> *const c_char;
+}
+extern "C" {
+    pub fn ASensor_getReportingMode(sensor: *const ASensor) -> c_int;
+}
+extern "C" {
+    pub fn ASensor_getResolution(sensor: *const ASensor) -> c_float;
+}
+extern "C" {
+    pub fn ASensor_getStringType(sensor: *const ASensor) -> *const c_char;
+}
+extern "C" {
+    pub fn ASensor_getType(sensor: *const ASensor) -> c_int;
+}
+extern "C" {
+    pub fn ASensor_getVendor(sensor: *const ASensor) -> *const c_char;
+}
+extern "C" {
+    pub fn ASensor_isWakeUpSensor(sensor: *const ASensor) -> bool;
+}
 #[repr(C)]
 pub struct AUncalibratedEvent {
-     pub unnamed0:              [u8; 12],
-     pub unnamed1:              [u8; 12],
+    pub unnamed0: [u8; 12],
+    pub unnamed1: [u8; 12],
 }
 #[repr(C)]
 pub struct unknown_1714 {
-     pub x_uncalib:             c_float,
-     pub y_uncalib:             c_float,
-     pub z_uncalib:             c_float,
+    pub x_uncalib: c_float,
+    pub y_uncalib: c_float,
+    pub z_uncalib: c_float,
 }
 #[repr(C)]
 pub struct unknown_1717 {
-     pub x_bias:                c_float,
-     pub y_bias:                c_float,
-     pub z_bias:                c_float,
+    pub x_bias: c_float,
+    pub y_bias: c_float,
+    pub z_bias: c_float,
 }
 #[repr(C)]
 pub struct unknown_1758 {
-     pub x:             c_float,
-     pub y:             c_float,
-     pub z:             c_float,
+    pub x: c_float,
+    pub y: c_float,
+    pub z: c_float,
 }
 #[repr(C)]
 pub struct unknown_1759 {
-     pub azimuth:               c_float,
-     pub pitch:             c_float,
-     pub roll:              c_float,
+    pub azimuth: c_float,
+    pub pitch: c_float,
+    pub roll: c_float,
 }
 
 //
@@ -1004,13 +1542,43 @@ pub const AOBB_STATE_ERROR_PERMISSION_DENIED: i32 = 25;
 pub const AOBB_STATE_MOUNTED: i32 = 1;
 pub const AOBB_STATE_UNMOUNTED: i32 = 2;
 pub type AStorageManager = c_void;
-extern { pub fn AStorageManager_delete(mgr: *mut AStorageManager); }
-extern { pub fn AStorageManager_getMountedObbPath(mgr: *mut AStorageManager, filename: *const c_char) -> *const c_char; }
-extern { pub fn AStorageManager_isObbMounted(mgr: *mut AStorageManager, filename: *const c_char) -> c_int; }
-extern { pub fn AStorageManager_mountObb(mgr: *mut AStorageManager, filename: *const c_char, key: *const c_char, cb: AStorageManager_obbCallbackFunc, data: *mut c_void); }
-extern { pub fn AStorageManager_new() -> *mut AStorageManager; }
-pub type AStorageManager_obbCallbackFunc = extern fn(*const c_char, i32, *mut c_void);
-extern { pub fn AStorageManager_unmountObb(mgr: *mut AStorageManager, filename: *const c_char, force: c_int, cb: AStorageManager_obbCallbackFunc, data: *mut c_void); }
+extern "C" {
+    pub fn AStorageManager_delete(mgr: *mut AStorageManager);
+}
+extern "C" {
+    pub fn AStorageManager_getMountedObbPath(
+        mgr: *mut AStorageManager,
+        filename: *const c_char,
+    ) -> *const c_char;
+}
+extern "C" {
+    pub fn AStorageManager_isObbMounted(
+        mgr: *mut AStorageManager,
+        filename: *const c_char,
+    ) -> c_int;
+}
+extern "C" {
+    pub fn AStorageManager_mountObb(
+        mgr: *mut AStorageManager,
+        filename: *const c_char,
+        key: *const c_char,
+        cb: AStorageManager_obbCallbackFunc,
+        data: *mut c_void,
+    );
+}
+extern "C" {
+    pub fn AStorageManager_new() -> *mut AStorageManager;
+}
+pub type AStorageManager_obbCallbackFunc = extern "C" fn(*const c_char, i32, *mut c_void);
+extern "C" {
+    pub fn AStorageManager_unmountObb(
+        mgr: *mut AStorageManager,
+        filename: *const c_char,
+        force: c_int,
+        cb: AStorageManager_obbCallbackFunc,
+        data: *mut c_void,
+    );
+}
 
 //
 //       android/tts.h
@@ -1035,28 +1603,36 @@ pub const ANDROID_TTS_SUCCESS: i32 = 0;
 pub const ANDROID_TTS_SYNTH_DONE: i32 = 0;
 pub const ANDROID_TTS_SYNTH_PENDING: i32 = 1;
 pub const ANDROID_TTS_VALUE_INVALID: i32 = -3;
-extern { pub fn android_getTtsEngine() -> *mut android_tts_engine_t; }
+extern "C" {
+    pub fn android_getTtsEngine() -> *mut android_tts_engine_t;
+}
 #[repr(C)]
 pub struct android_tts_engine_funcs_t {
-     pub reserved:              *mut c_void,
-     pub init:              extern fn(*mut c_void, android_tts_synth_cb_t, *const c_char) -> i32,
-     pub shutdown:              extern fn(*mut c_void) -> i32,
-     pub stop:              extern fn(*mut c_void) -> i32,
-     pub isLanguageAvailable:               extern fn(*mut c_void, *const c_char, *const c_char, *const c_char) -> i32,
-     pub loadLanguage:              extern fn(*mut c_void, *const c_char, *const c_char, *const c_char) -> i32,
-     pub setLanguage:               extern fn(*mut c_void, *const c_char, *const c_char, *const c_char) -> i32,
-     pub getLanguage:               extern fn(*mut c_void, *mut c_char, *mut c_char, *mut c_char) -> i32,
-     pub setAudioFormat:                extern fn(*mut c_void, *mut i32, *mut u32, *mut c_int) -> i32,
-     pub setProperty:               extern fn(*mut c_void, *const c_char, *const c_char, usize) -> i32,
-     pub getProperty:               extern fn(*mut c_void, *const c_char, *mut c_char, *mut usize) -> i32,
-     pub synthesizeText:                extern fn(*mut c_void, *const c_char, *mut i8, usize, *mut c_void) -> i32,
+    pub reserved: *mut c_void,
+    pub init: extern "C" fn(*mut c_void, android_tts_synth_cb_t, *const c_char) -> i32,
+    pub shutdown: extern "C" fn(*mut c_void) -> i32,
+    pub stop: extern "C" fn(*mut c_void) -> i32,
+    pub isLanguageAvailable:
+        extern "C" fn(*mut c_void, *const c_char, *const c_char, *const c_char) -> i32,
+    pub loadLanguage:
+        extern "C" fn(*mut c_void, *const c_char, *const c_char, *const c_char) -> i32,
+    pub setLanguage: extern "C" fn(*mut c_void, *const c_char, *const c_char, *const c_char) -> i32,
+    pub getLanguage: extern "C" fn(*mut c_void, *mut c_char, *mut c_char, *mut c_char) -> i32,
+    pub setAudioFormat: extern "C" fn(*mut c_void, *mut i32, *mut u32, *mut c_int) -> i32,
+    pub setProperty: extern "C" fn(*mut c_void, *const c_char, *const c_char, usize) -> i32,
+    pub getProperty: extern "C" fn(*mut c_void, *const c_char, *mut c_char, *mut usize) -> i32,
+    pub synthesizeText:
+        extern "C" fn(*mut c_void, *const c_char, *mut i8, usize, *mut c_void) -> i32,
 }
 #[repr(C)]
 pub struct android_tts_engine_t {
-     pub funcs:             *mut android_tts_engine_funcs_t,
+    pub funcs: *mut android_tts_engine_funcs_t,
 }
-pub type android_tts_synth_cb_t = extern fn(*mut *mut c_void, u32, i32, c_int, *mut *mut i8, *mut usize, i32) -> i32;
-extern { pub fn getTtsEngine() -> *mut android_tts_engine_t; }
+pub type android_tts_synth_cb_t =
+    extern "C" fn(*mut *mut c_void, u32, i32, c_int, *mut *mut i8, *mut usize, i32) -> i32;
+extern "C" {
+    pub fn getTtsEngine() -> *mut android_tts_engine_t;
+}
 
 //
 //       android/window.h
@@ -1094,287 +1670,353 @@ pub const JNIGlobalRefType: i32 = 2;
 pub const JNIInvalidRefType: i32 = 0;
 #[repr(C)]
 pub struct JNIInvokeInterface {
-     pub reserved0:             *mut c_void,
-     pub reserved1:             *mut c_void,
-     pub reserved2:             *mut c_void,
-     pub DestroyJavaVM:             extern fn(*mut JavaVM) -> jint,
-     pub AttachCurrentThread:               extern fn(*mut JavaVM, *mut *mut JNIEnv, *mut c_void) -> jint,
-     pub DetachCurrentThread:               extern fn(*mut JavaVM) -> jint,
-     pub GetEnv:                extern fn(*mut JavaVM, *mut *mut c_void, jint) -> jint,
-     pub AttachCurrentThreadAsDaemon:               extern fn(*mut JavaVM, *mut *mut JNIEnv, *mut c_void) -> jint,
+    pub reserved0: *mut c_void,
+    pub reserved1: *mut c_void,
+    pub reserved2: *mut c_void,
+    pub DestroyJavaVM: extern "C" fn(*mut JavaVM) -> jint,
+    pub AttachCurrentThread: extern "C" fn(*mut JavaVM, *mut *mut JNIEnv, *mut c_void) -> jint,
+    pub DetachCurrentThread: extern "C" fn(*mut JavaVM) -> jint,
+    pub GetEnv: extern "C" fn(*mut JavaVM, *mut *mut c_void, jint) -> jint,
+    pub AttachCurrentThreadAsDaemon:
+        extern "C" fn(*mut JavaVM, *mut *mut JNIEnv, *mut c_void) -> jint,
 }
 pub const JNILocalRefType: i32 = 1;
 #[repr(C)]
 pub struct JNINativeInterface {
-     pub reserved0:             *mut c_void,
-     pub reserved1:             *mut c_void,
-     pub reserved2:             *mut c_void,
-     pub reserved3:             *mut c_void,
-     pub GetVersion:                extern fn(*mut JNIEnv) -> jint,
-     pub DefineClass:               extern fn(*mut JNIEnv, *const c_char, jobject, *const jbyte, jsize) -> jclass,
-     pub FindClass:             extern fn(*mut JNIEnv, *const c_char) -> jclass,
-     pub FromReflectedMethod:               extern fn(*mut JNIEnv, jobject) -> jmethodID,
-     pub FromReflectedField:                extern fn(*mut JNIEnv, jobject) -> jfieldID,
-     pub ToReflectedMethod:             extern fn(*mut JNIEnv, jclass, jmethodID, jboolean) -> jobject,
-     pub GetSuperclass:             extern fn(*mut JNIEnv, jclass) -> jclass,
-     pub IsAssignableFrom:              extern fn(*mut JNIEnv, jclass, jclass) -> jboolean,
-     pub ToReflectedField:              extern fn(*mut JNIEnv, jclass, jfieldID, jboolean) -> jobject,
-     pub Throw:             extern fn(*mut JNIEnv, jthrowable) -> jint,
-     pub ThrowNew:              extern fn(*mut JNIEnv, jclass, *const c_char) -> jint,
-     pub ExceptionOccurred:             extern fn(*mut JNIEnv) -> jthrowable,
-     pub ExceptionDescribe:             extern fn(*mut JNIEnv),
-     pub ExceptionClear:                extern fn(*mut JNIEnv),
-     pub FatalError:                extern fn(*mut JNIEnv, *const c_char),
-     pub PushLocalFrame:                extern fn(*mut JNIEnv, jint) -> jint,
-     pub PopLocalFrame:             extern fn(*mut JNIEnv, jobject) -> jobject,
-     pub NewGlobalRef:              extern fn(*mut JNIEnv, jobject) -> jobject,
-     pub DeleteGlobalRef:               extern fn(*mut JNIEnv, jobject),
-     pub DeleteLocalRef:                extern fn(*mut JNIEnv, jobject),
-     pub IsSameObject:              extern fn(*mut JNIEnv, jobject, jobject) -> jboolean,
-     pub NewLocalRef:               extern fn(*mut JNIEnv, jobject) -> jobject,
-     pub EnsureLocalCapacity:               extern fn(*mut JNIEnv, jint) -> jint,
-     pub AllocObject:               extern fn(*mut JNIEnv, jclass) -> jobject,
-     pub NewObject:             extern fn(*mut JNIEnv, jclass, jmethodID, ...) -> jobject,
-     pub NewObjectV:                extern fn(*mut JNIEnv, jclass, jmethodID, *mut __va_list_tag) -> jobject,
-     pub NewObjectA:                extern fn(*mut JNIEnv, jclass, jmethodID, *mut jvalue) -> jobject,
-     pub GetObjectClass:                extern fn(*mut JNIEnv, jobject) -> jclass,
-     pub IsInstanceOf:              extern fn(*mut JNIEnv, jobject, jclass) -> jboolean,
-     pub GetMethodID:               extern fn(*mut JNIEnv, jclass, *const c_char, *const c_char) -> jmethodID,
-     pub CallObjectMethod:              extern fn(*mut JNIEnv, jobject, jmethodID, ...) -> jobject,
-     pub CallObjectMethodV:             extern fn(*mut JNIEnv, jobject, jmethodID, *mut __va_list_tag) -> jobject,
-     pub CallObjectMethodA:             extern fn(*mut JNIEnv, jobject, jmethodID, *mut jvalue) -> jobject,
-     pub CallBooleanMethod:             extern fn(*mut JNIEnv, jobject, jmethodID, ...) -> jboolean,
-     pub CallBooleanMethodV:                extern fn(*mut JNIEnv, jobject, jmethodID, *mut __va_list_tag) -> jboolean,
-     pub CallBooleanMethodA:                extern fn(*mut JNIEnv, jobject, jmethodID, *mut jvalue) -> jboolean,
-     pub CallByteMethod:                extern fn(*mut JNIEnv, jobject, jmethodID, ...) -> jbyte,
-     pub CallByteMethodV:               extern fn(*mut JNIEnv, jobject, jmethodID, *mut __va_list_tag) -> jbyte,
-     pub CallByteMethodA:               extern fn(*mut JNIEnv, jobject, jmethodID, *mut jvalue) -> jbyte,
-     pub CallCharMethod:                extern fn(*mut JNIEnv, jobject, jmethodID, ...) -> jchar,
-     pub CallCharMethodV:               extern fn(*mut JNIEnv, jobject, jmethodID, *mut __va_list_tag) -> jchar,
-     pub CallCharMethodA:               extern fn(*mut JNIEnv, jobject, jmethodID, *mut jvalue) -> jchar,
-     pub CallShortMethod:               extern fn(*mut JNIEnv, jobject, jmethodID, ...) -> jshort,
-     pub CallShortMethodV:              extern fn(*mut JNIEnv, jobject, jmethodID, *mut __va_list_tag) -> jshort,
-     pub CallShortMethodA:              extern fn(*mut JNIEnv, jobject, jmethodID, *mut jvalue) -> jshort,
-     pub CallIntMethod:             extern fn(*mut JNIEnv, jobject, jmethodID, ...) -> jint,
-     pub CallIntMethodV:                extern fn(*mut JNIEnv, jobject, jmethodID, *mut __va_list_tag) -> jint,
-     pub CallIntMethodA:                extern fn(*mut JNIEnv, jobject, jmethodID, *mut jvalue) -> jint,
-     pub CallLongMethod:                extern fn(*mut JNIEnv, jobject, jmethodID, ...) -> jlong,
-     pub CallLongMethodV:               extern fn(*mut JNIEnv, jobject, jmethodID, *mut __va_list_tag) -> jlong,
-     pub CallLongMethodA:               extern fn(*mut JNIEnv, jobject, jmethodID, *mut jvalue) -> jlong,
-     pub CallFloatMethod:               extern fn(*mut JNIEnv, jobject, jmethodID, ...) -> jfloat,
-     pub CallFloatMethodV:              extern fn(*mut JNIEnv, jobject, jmethodID, *mut __va_list_tag) -> jfloat,
-     pub CallFloatMethodA:              extern fn(*mut JNIEnv, jobject, jmethodID, *mut jvalue) -> jfloat,
-     pub CallDoubleMethod:              extern fn(*mut JNIEnv, jobject, jmethodID, ...) -> jdouble,
-     pub CallDoubleMethodV:             extern fn(*mut JNIEnv, jobject, jmethodID, *mut __va_list_tag) -> jdouble,
-     pub CallDoubleMethodA:             extern fn(*mut JNIEnv, jobject, jmethodID, *mut jvalue) -> jdouble,
-     pub CallVoidMethod:                extern fn(*mut JNIEnv, jobject, jmethodID, ...),
-     pub CallVoidMethodV:               extern fn(*mut JNIEnv, jobject, jmethodID, *mut __va_list_tag),
-     pub CallVoidMethodA:               extern fn(*mut JNIEnv, jobject, jmethodID, *mut jvalue),
-     pub CallNonvirtualObjectMethod:                extern fn(*mut JNIEnv, jobject, jclass, jmethodID, ...) -> jobject,
-     pub CallNonvirtualObjectMethodV:               extern fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut __va_list_tag) -> jobject,
-     pub CallNonvirtualObjectMethodA:               extern fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut jvalue) -> jobject,
-     pub CallNonvirtualBooleanMethod:               extern fn(*mut JNIEnv, jobject, jclass, jmethodID, ...) -> jboolean,
-     pub CallNonvirtualBooleanMethodV:              extern fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut __va_list_tag) -> jboolean,
-     pub CallNonvirtualBooleanMethodA:              extern fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut jvalue) -> jboolean,
-     pub CallNonvirtualByteMethod:              extern fn(*mut JNIEnv, jobject, jclass, jmethodID, ...) -> jbyte,
-     pub CallNonvirtualByteMethodV:             extern fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut __va_list_tag) -> jbyte,
-     pub CallNonvirtualByteMethodA:             extern fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut jvalue) -> jbyte,
-     pub CallNonvirtualCharMethod:              extern fn(*mut JNIEnv, jobject, jclass, jmethodID, ...) -> jchar,
-     pub CallNonvirtualCharMethodV:             extern fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut __va_list_tag) -> jchar,
-     pub CallNonvirtualCharMethodA:             extern fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut jvalue) -> jchar,
-     pub CallNonvirtualShortMethod:             extern fn(*mut JNIEnv, jobject, jclass, jmethodID, ...) -> jshort,
-     pub CallNonvirtualShortMethodV:                extern fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut __va_list_tag) -> jshort,
-     pub CallNonvirtualShortMethodA:                extern fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut jvalue) -> jshort,
-     pub CallNonvirtualIntMethod:               extern fn(*mut JNIEnv, jobject, jclass, jmethodID, ...) -> jint,
-     pub CallNonvirtualIntMethodV:              extern fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut __va_list_tag) -> jint,
-     pub CallNonvirtualIntMethodA:              extern fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut jvalue) -> jint,
-     pub CallNonvirtualLongMethod:              extern fn(*mut JNIEnv, jobject, jclass, jmethodID, ...) -> jlong,
-     pub CallNonvirtualLongMethodV:             extern fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut __va_list_tag) -> jlong,
-     pub CallNonvirtualLongMethodA:             extern fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut jvalue) -> jlong,
-     pub CallNonvirtualFloatMethod:             extern fn(*mut JNIEnv, jobject, jclass, jmethodID, ...) -> jfloat,
-     pub CallNonvirtualFloatMethodV:                extern fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut __va_list_tag) -> jfloat,
-     pub CallNonvirtualFloatMethodA:                extern fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut jvalue) -> jfloat,
-     pub CallNonvirtualDoubleMethod:                extern fn(*mut JNIEnv, jobject, jclass, jmethodID, ...) -> jdouble,
-     pub CallNonvirtualDoubleMethodV:               extern fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut __va_list_tag) -> jdouble,
-     pub CallNonvirtualDoubleMethodA:               extern fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut jvalue) -> jdouble,
-     pub CallNonvirtualVoidMethod:              extern fn(*mut JNIEnv, jobject, jclass, jmethodID, ...),
-     pub CallNonvirtualVoidMethodV:             extern fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut __va_list_tag),
-     pub CallNonvirtualVoidMethodA:             extern fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut jvalue),
-     pub GetFieldID:                extern fn(*mut JNIEnv, jclass, *const c_char, *const c_char) -> jfieldID,
-     pub GetObjectField:                extern fn(*mut JNIEnv, jobject, jfieldID) -> jobject,
-     pub GetBooleanField:               extern fn(*mut JNIEnv, jobject, jfieldID) -> jboolean,
-     pub GetByteField:              extern fn(*mut JNIEnv, jobject, jfieldID) -> jbyte,
-     pub GetCharField:              extern fn(*mut JNIEnv, jobject, jfieldID) -> jchar,
-     pub GetShortField:             extern fn(*mut JNIEnv, jobject, jfieldID) -> jshort,
-     pub GetIntField:               extern fn(*mut JNIEnv, jobject, jfieldID) -> jint,
-     pub GetLongField:              extern fn(*mut JNIEnv, jobject, jfieldID) -> jlong,
-     pub GetFloatField:             extern fn(*mut JNIEnv, jobject, jfieldID) -> jfloat,
-     pub GetDoubleField:                extern fn(*mut JNIEnv, jobject, jfieldID) -> jdouble,
-     pub SetObjectField:                extern fn(*mut JNIEnv, jobject, jfieldID, jobject),
-     pub SetBooleanField:               extern fn(*mut JNIEnv, jobject, jfieldID, jboolean),
-     pub SetByteField:              extern fn(*mut JNIEnv, jobject, jfieldID, jbyte),
-     pub SetCharField:              extern fn(*mut JNIEnv, jobject, jfieldID, jchar),
-     pub SetShortField:             extern fn(*mut JNIEnv, jobject, jfieldID, jshort),
-     pub SetIntField:               extern fn(*mut JNIEnv, jobject, jfieldID, jint),
-     pub SetLongField:              extern fn(*mut JNIEnv, jobject, jfieldID, jlong),
-     pub SetFloatField:             extern fn(*mut JNIEnv, jobject, jfieldID, jfloat),
-     pub SetDoubleField:                extern fn(*mut JNIEnv, jobject, jfieldID, jdouble),
-     pub GetStaticMethodID:             extern fn(*mut JNIEnv, jclass, *const c_char, *const c_char) -> jmethodID,
-     pub CallStaticObjectMethod:                extern fn(*mut JNIEnv, jclass, jmethodID, ...) -> jobject,
-     pub CallStaticObjectMethodV:               extern fn(*mut JNIEnv, jclass, jmethodID, *mut __va_list_tag) -> jobject,
-     pub CallStaticObjectMethodA:               extern fn(*mut JNIEnv, jclass, jmethodID, *mut jvalue) -> jobject,
-     pub CallStaticBooleanMethod:               extern fn(*mut JNIEnv, jclass, jmethodID, ...) -> jboolean,
-     pub CallStaticBooleanMethodV:              extern fn(*mut JNIEnv, jclass, jmethodID, *mut __va_list_tag) -> jboolean,
-     pub CallStaticBooleanMethodA:              extern fn(*mut JNIEnv, jclass, jmethodID, *mut jvalue) -> jboolean,
-     pub CallStaticByteMethod:              extern fn(*mut JNIEnv, jclass, jmethodID, ...) -> jbyte,
-     pub CallStaticByteMethodV:             extern fn(*mut JNIEnv, jclass, jmethodID, *mut __va_list_tag) -> jbyte,
-     pub CallStaticByteMethodA:             extern fn(*mut JNIEnv, jclass, jmethodID, *mut jvalue) -> jbyte,
-     pub CallStaticCharMethod:              extern fn(*mut JNIEnv, jclass, jmethodID, ...) -> jchar,
-     pub CallStaticCharMethodV:             extern fn(*mut JNIEnv, jclass, jmethodID, *mut __va_list_tag) -> jchar,
-     pub CallStaticCharMethodA:             extern fn(*mut JNIEnv, jclass, jmethodID, *mut jvalue) -> jchar,
-     pub CallStaticShortMethod:             extern fn(*mut JNIEnv, jclass, jmethodID, ...) -> jshort,
-     pub CallStaticShortMethodV:                extern fn(*mut JNIEnv, jclass, jmethodID, *mut __va_list_tag) -> jshort,
-     pub CallStaticShortMethodA:                extern fn(*mut JNIEnv, jclass, jmethodID, *mut jvalue) -> jshort,
-     pub CallStaticIntMethod:               extern fn(*mut JNIEnv, jclass, jmethodID, ...) -> jint,
-     pub CallStaticIntMethodV:              extern fn(*mut JNIEnv, jclass, jmethodID, *mut __va_list_tag) -> jint,
-     pub CallStaticIntMethodA:              extern fn(*mut JNIEnv, jclass, jmethodID, *mut jvalue) -> jint,
-     pub CallStaticLongMethod:              extern fn(*mut JNIEnv, jclass, jmethodID, ...) -> jlong,
-     pub CallStaticLongMethodV:             extern fn(*mut JNIEnv, jclass, jmethodID, *mut __va_list_tag) -> jlong,
-     pub CallStaticLongMethodA:             extern fn(*mut JNIEnv, jclass, jmethodID, *mut jvalue) -> jlong,
-     pub CallStaticFloatMethod:             extern fn(*mut JNIEnv, jclass, jmethodID, ...) -> jfloat,
-     pub CallStaticFloatMethodV:                extern fn(*mut JNIEnv, jclass, jmethodID, *mut __va_list_tag) -> jfloat,
-     pub CallStaticFloatMethodA:                extern fn(*mut JNIEnv, jclass, jmethodID, *mut jvalue) -> jfloat,
-     pub CallStaticDoubleMethod:                extern fn(*mut JNIEnv, jclass, jmethodID, ...) -> jdouble,
-     pub CallStaticDoubleMethodV:               extern fn(*mut JNIEnv, jclass, jmethodID, *mut __va_list_tag) -> jdouble,
-     pub CallStaticDoubleMethodA:               extern fn(*mut JNIEnv, jclass, jmethodID, *mut jvalue) -> jdouble,
-     pub CallStaticVoidMethod:              extern fn(*mut JNIEnv, jclass, jmethodID, ...),
-     pub CallStaticVoidMethodV:             extern fn(*mut JNIEnv, jclass, jmethodID, *mut __va_list_tag),
-     pub CallStaticVoidMethodA:             extern fn(*mut JNIEnv, jclass, jmethodID, *mut jvalue),
-     pub GetStaticFieldID:              extern fn(*mut JNIEnv, jclass, *const c_char, *const c_char) -> jfieldID,
-     pub GetStaticObjectField:              extern fn(*mut JNIEnv, jclass, jfieldID) -> jobject,
-     pub GetStaticBooleanField:             extern fn(*mut JNIEnv, jclass, jfieldID) -> jboolean,
-     pub GetStaticByteField:                extern fn(*mut JNIEnv, jclass, jfieldID) -> jbyte,
-     pub GetStaticCharField:                extern fn(*mut JNIEnv, jclass, jfieldID) -> jchar,
-     pub GetStaticShortField:               extern fn(*mut JNIEnv, jclass, jfieldID) -> jshort,
-     pub GetStaticIntField:             extern fn(*mut JNIEnv, jclass, jfieldID) -> jint,
-     pub GetStaticLongField:                extern fn(*mut JNIEnv, jclass, jfieldID) -> jlong,
-     pub GetStaticFloatField:               extern fn(*mut JNIEnv, jclass, jfieldID) -> jfloat,
-     pub GetStaticDoubleField:              extern fn(*mut JNIEnv, jclass, jfieldID) -> jdouble,
-     pub SetStaticObjectField:              extern fn(*mut JNIEnv, jclass, jfieldID, jobject),
-     pub SetStaticBooleanField:             extern fn(*mut JNIEnv, jclass, jfieldID, jboolean),
-     pub SetStaticByteField:                extern fn(*mut JNIEnv, jclass, jfieldID, jbyte),
-     pub SetStaticCharField:                extern fn(*mut JNIEnv, jclass, jfieldID, jchar),
-     pub SetStaticShortField:               extern fn(*mut JNIEnv, jclass, jfieldID, jshort),
-     pub SetStaticIntField:             extern fn(*mut JNIEnv, jclass, jfieldID, jint),
-     pub SetStaticLongField:                extern fn(*mut JNIEnv, jclass, jfieldID, jlong),
-     pub SetStaticFloatField:               extern fn(*mut JNIEnv, jclass, jfieldID, jfloat),
-     pub SetStaticDoubleField:              extern fn(*mut JNIEnv, jclass, jfieldID, jdouble),
-     pub NewString:             extern fn(*mut JNIEnv, *const jchar, jsize) -> jstring,
-     pub GetStringLength:               extern fn(*mut JNIEnv, jstring) -> jsize,
-     pub GetStringChars:                extern fn(*mut JNIEnv, jstring, *mut jboolean) -> *const jchar,
-     pub ReleaseStringChars:                extern fn(*mut JNIEnv, jstring, *const jchar),
-     pub NewStringUTF:              extern fn(*mut JNIEnv, *const c_char) -> jstring,
-     pub GetStringUTFLength:                extern fn(*mut JNIEnv, jstring) -> jsize,
-     pub GetStringUTFChars:             extern fn(*mut JNIEnv, jstring, *mut jboolean) -> *const c_char,
-     pub ReleaseStringUTFChars:             extern fn(*mut JNIEnv, jstring, *const c_char),
-     pub GetArrayLength:                extern fn(*mut JNIEnv, jarray) -> jsize,
-     pub NewObjectArray:                extern fn(*mut JNIEnv, jsize, jclass, jobject) -> jobjectArray,
-     pub GetObjectArrayElement:             extern fn(*mut JNIEnv, jobjectArray, jsize) -> jobject,
-     pub SetObjectArrayElement:             extern fn(*mut JNIEnv, jobjectArray, jsize, jobject),
-     pub NewBooleanArray:               extern fn(*mut JNIEnv, jsize) -> jbooleanArray,
-     pub NewByteArray:              extern fn(*mut JNIEnv, jsize) -> jbyteArray,
-     pub NewCharArray:              extern fn(*mut JNIEnv, jsize) -> jcharArray,
-     pub NewShortArray:             extern fn(*mut JNIEnv, jsize) -> jshortArray,
-     pub NewIntArray:               extern fn(*mut JNIEnv, jsize) -> jintArray,
-     pub NewLongArray:              extern fn(*mut JNIEnv, jsize) -> jlongArray,
-     pub NewFloatArray:             extern fn(*mut JNIEnv, jsize) -> jfloatArray,
-     pub NewDoubleArray:                extern fn(*mut JNIEnv, jsize) -> jdoubleArray,
-     pub GetBooleanArrayElements:               extern fn(*mut JNIEnv, jbooleanArray, *mut jboolean) -> *mut jboolean,
-     pub GetByteArrayElements:              extern fn(*mut JNIEnv, jbyteArray, *mut jboolean) -> *mut jbyte,
-     pub GetCharArrayElements:              extern fn(*mut JNIEnv, jcharArray, *mut jboolean) -> *mut jchar,
-     pub GetShortArrayElements:             extern fn(*mut JNIEnv, jshortArray, *mut jboolean) -> *mut jshort,
-     pub GetIntArrayElements:               extern fn(*mut JNIEnv, jintArray, *mut jboolean) -> *mut jint,
-     pub GetLongArrayElements:              extern fn(*mut JNIEnv, jlongArray, *mut jboolean) -> *mut jlong,
-     pub GetFloatArrayElements:             extern fn(*mut JNIEnv, jfloatArray, *mut jboolean) -> *mut jfloat,
-     pub GetDoubleArrayElements:                extern fn(*mut JNIEnv, jdoubleArray, *mut jboolean) -> *mut jdouble,
-     pub ReleaseBooleanArrayElements:               extern fn(*mut JNIEnv, jbooleanArray, *mut jboolean, jint),
-     pub ReleaseByteArrayElements:              extern fn(*mut JNIEnv, jbyteArray, *mut jbyte, jint),
-     pub ReleaseCharArrayElements:              extern fn(*mut JNIEnv, jcharArray, *mut jchar, jint),
-     pub ReleaseShortArrayElements:             extern fn(*mut JNIEnv, jshortArray, *mut jshort, jint),
-     pub ReleaseIntArrayElements:               extern fn(*mut JNIEnv, jintArray, *mut jint, jint),
-     pub ReleaseLongArrayElements:              extern fn(*mut JNIEnv, jlongArray, *mut jlong, jint),
-     pub ReleaseFloatArrayElements:             extern fn(*mut JNIEnv, jfloatArray, *mut jfloat, jint),
-     pub ReleaseDoubleArrayElements:                extern fn(*mut JNIEnv, jdoubleArray, *mut jdouble, jint),
-     pub GetBooleanArrayRegion:             extern fn(*mut JNIEnv, jbooleanArray, jsize, jsize, *mut jboolean),
-     pub GetByteArrayRegion:                extern fn(*mut JNIEnv, jbyteArray, jsize, jsize, *mut jbyte),
-     pub GetCharArrayRegion:                extern fn(*mut JNIEnv, jcharArray, jsize, jsize, *mut jchar),
-     pub GetShortArrayRegion:               extern fn(*mut JNIEnv, jshortArray, jsize, jsize, *mut jshort),
-     pub GetIntArrayRegion:             extern fn(*mut JNIEnv, jintArray, jsize, jsize, *mut jint),
-     pub GetLongArrayRegion:                extern fn(*mut JNIEnv, jlongArray, jsize, jsize, *mut jlong),
-     pub GetFloatArrayRegion:               extern fn(*mut JNIEnv, jfloatArray, jsize, jsize, *mut jfloat),
-     pub GetDoubleArrayRegion:              extern fn(*mut JNIEnv, jdoubleArray, jsize, jsize, *mut jdouble),
-     pub SetBooleanArrayRegion:             extern fn(*mut JNIEnv, jbooleanArray, jsize, jsize, *const jboolean),
-     pub SetByteArrayRegion:                extern fn(*mut JNIEnv, jbyteArray, jsize, jsize, *const jbyte),
-     pub SetCharArrayRegion:                extern fn(*mut JNIEnv, jcharArray, jsize, jsize, *const jchar),
-     pub SetShortArrayRegion:               extern fn(*mut JNIEnv, jshortArray, jsize, jsize, *const jshort),
-     pub SetIntArrayRegion:             extern fn(*mut JNIEnv, jintArray, jsize, jsize, *const jint),
-     pub SetLongArrayRegion:                extern fn(*mut JNIEnv, jlongArray, jsize, jsize, *const jlong),
-     pub SetFloatArrayRegion:               extern fn(*mut JNIEnv, jfloatArray, jsize, jsize, *const jfloat),
-     pub SetDoubleArrayRegion:              extern fn(*mut JNIEnv, jdoubleArray, jsize, jsize, *const jdouble),
-     pub RegisterNatives:               extern fn(*mut JNIEnv, jclass, *const JNINativeMethod, jint) -> jint,
-     pub UnregisterNatives:             extern fn(*mut JNIEnv, jclass) -> jint,
-     pub MonitorEnter:              extern fn(*mut JNIEnv, jobject) -> jint,
-     pub MonitorExit:               extern fn(*mut JNIEnv, jobject) -> jint,
-     pub GetJavaVM:             extern fn(*mut JNIEnv, *mut *mut JavaVM) -> jint,
-     pub GetStringRegion:               extern fn(*mut JNIEnv, jstring, jsize, jsize, *mut jchar),
-     pub GetStringUTFRegion:                extern fn(*mut JNIEnv, jstring, jsize, jsize, *mut c_char),
-     pub GetPrimitiveArrayCritical:             extern fn(*mut JNIEnv, jarray, *mut jboolean) -> *mut c_void,
-     pub ReleasePrimitiveArrayCritical:             extern fn(*mut JNIEnv, jarray, *mut c_void, jint),
-     pub GetStringCritical:             extern fn(*mut JNIEnv, jstring, *mut jboolean) -> *const jchar,
-     pub ReleaseStringCritical:             extern fn(*mut JNIEnv, jstring, *const jchar),
-     pub NewWeakGlobalRef:              extern fn(*mut JNIEnv, jobject) -> jweak,
-     pub DeleteWeakGlobalRef:               extern fn(*mut JNIEnv, jweak),
-     pub ExceptionCheck:                extern fn(*mut JNIEnv) -> jboolean,
-     pub NewDirectByteBuffer:               extern fn(*mut JNIEnv, *mut c_void, jlong) -> jobject,
-     pub GetDirectBufferAddress:                extern fn(*mut JNIEnv, jobject) -> *mut c_void,
-     pub GetDirectBufferCapacity:               extern fn(*mut JNIEnv, jobject) -> jlong,
-     pub GetObjectRefType:              extern fn(*mut JNIEnv, jobject) -> jobjectRefType,
+    pub reserved0: *mut c_void,
+    pub reserved1: *mut c_void,
+    pub reserved2: *mut c_void,
+    pub reserved3: *mut c_void,
+    pub GetVersion: extern "C" fn(*mut JNIEnv) -> jint,
+    pub DefineClass:
+        extern "C" fn(*mut JNIEnv, *const c_char, jobject, *const jbyte, jsize) -> jclass,
+    pub FindClass: extern "C" fn(*mut JNIEnv, *const c_char) -> jclass,
+    pub FromReflectedMethod: extern "C" fn(*mut JNIEnv, jobject) -> jmethodID,
+    pub FromReflectedField: extern "C" fn(*mut JNIEnv, jobject) -> jfieldID,
+    pub ToReflectedMethod: extern "C" fn(*mut JNIEnv, jclass, jmethodID, jboolean) -> jobject,
+    pub GetSuperclass: extern "C" fn(*mut JNIEnv, jclass) -> jclass,
+    pub IsAssignableFrom: extern "C" fn(*mut JNIEnv, jclass, jclass) -> jboolean,
+    pub ToReflectedField: extern "C" fn(*mut JNIEnv, jclass, jfieldID, jboolean) -> jobject,
+    pub Throw: extern "C" fn(*mut JNIEnv, jthrowable) -> jint,
+    pub ThrowNew: extern "C" fn(*mut JNIEnv, jclass, *const c_char) -> jint,
+    pub ExceptionOccurred: extern "C" fn(*mut JNIEnv) -> jthrowable,
+    pub ExceptionDescribe: extern "C" fn(*mut JNIEnv),
+    pub ExceptionClear: extern "C" fn(*mut JNIEnv),
+    pub FatalError: extern "C" fn(*mut JNIEnv, *const c_char),
+    pub PushLocalFrame: extern "C" fn(*mut JNIEnv, jint) -> jint,
+    pub PopLocalFrame: extern "C" fn(*mut JNIEnv, jobject) -> jobject,
+    pub NewGlobalRef: extern "C" fn(*mut JNIEnv, jobject) -> jobject,
+    pub DeleteGlobalRef: extern "C" fn(*mut JNIEnv, jobject),
+    pub DeleteLocalRef: extern "C" fn(*mut JNIEnv, jobject),
+    pub IsSameObject: extern "C" fn(*mut JNIEnv, jobject, jobject) -> jboolean,
+    pub NewLocalRef: extern "C" fn(*mut JNIEnv, jobject) -> jobject,
+    pub EnsureLocalCapacity: extern "C" fn(*mut JNIEnv, jint) -> jint,
+    pub AllocObject: extern "C" fn(*mut JNIEnv, jclass) -> jobject,
+    pub NewObject: extern "C" fn(*mut JNIEnv, jclass, jmethodID, ...) -> jobject,
+    pub NewObjectV: extern "C" fn(*mut JNIEnv, jclass, jmethodID, *mut __va_list_tag) -> jobject,
+    pub NewObjectA: extern "C" fn(*mut JNIEnv, jclass, jmethodID, *mut jvalue) -> jobject,
+    pub GetObjectClass: extern "C" fn(*mut JNIEnv, jobject) -> jclass,
+    pub IsInstanceOf: extern "C" fn(*mut JNIEnv, jobject, jclass) -> jboolean,
+    pub GetMethodID: extern "C" fn(*mut JNIEnv, jclass, *const c_char, *const c_char) -> jmethodID,
+    pub CallObjectMethod: extern "C" fn(*mut JNIEnv, jobject, jmethodID, ...) -> jobject,
+    pub CallObjectMethodV:
+        extern "C" fn(*mut JNIEnv, jobject, jmethodID, *mut __va_list_tag) -> jobject,
+    pub CallObjectMethodA: extern "C" fn(*mut JNIEnv, jobject, jmethodID, *mut jvalue) -> jobject,
+    pub CallBooleanMethod: extern "C" fn(*mut JNIEnv, jobject, jmethodID, ...) -> jboolean,
+    pub CallBooleanMethodV:
+        extern "C" fn(*mut JNIEnv, jobject, jmethodID, *mut __va_list_tag) -> jboolean,
+    pub CallBooleanMethodA: extern "C" fn(*mut JNIEnv, jobject, jmethodID, *mut jvalue) -> jboolean,
+    pub CallByteMethod: extern "C" fn(*mut JNIEnv, jobject, jmethodID, ...) -> jbyte,
+    pub CallByteMethodV:
+        extern "C" fn(*mut JNIEnv, jobject, jmethodID, *mut __va_list_tag) -> jbyte,
+    pub CallByteMethodA: extern "C" fn(*mut JNIEnv, jobject, jmethodID, *mut jvalue) -> jbyte,
+    pub CallCharMethod: extern "C" fn(*mut JNIEnv, jobject, jmethodID, ...) -> jchar,
+    pub CallCharMethodV:
+        extern "C" fn(*mut JNIEnv, jobject, jmethodID, *mut __va_list_tag) -> jchar,
+    pub CallCharMethodA: extern "C" fn(*mut JNIEnv, jobject, jmethodID, *mut jvalue) -> jchar,
+    pub CallShortMethod: extern "C" fn(*mut JNIEnv, jobject, jmethodID, ...) -> jshort,
+    pub CallShortMethodV:
+        extern "C" fn(*mut JNIEnv, jobject, jmethodID, *mut __va_list_tag) -> jshort,
+    pub CallShortMethodA: extern "C" fn(*mut JNIEnv, jobject, jmethodID, *mut jvalue) -> jshort,
+    pub CallIntMethod: extern "C" fn(*mut JNIEnv, jobject, jmethodID, ...) -> jint,
+    pub CallIntMethodV: extern "C" fn(*mut JNIEnv, jobject, jmethodID, *mut __va_list_tag) -> jint,
+    pub CallIntMethodA: extern "C" fn(*mut JNIEnv, jobject, jmethodID, *mut jvalue) -> jint,
+    pub CallLongMethod: extern "C" fn(*mut JNIEnv, jobject, jmethodID, ...) -> jlong,
+    pub CallLongMethodV:
+        extern "C" fn(*mut JNIEnv, jobject, jmethodID, *mut __va_list_tag) -> jlong,
+    pub CallLongMethodA: extern "C" fn(*mut JNIEnv, jobject, jmethodID, *mut jvalue) -> jlong,
+    pub CallFloatMethod: extern "C" fn(*mut JNIEnv, jobject, jmethodID, ...) -> jfloat,
+    pub CallFloatMethodV:
+        extern "C" fn(*mut JNIEnv, jobject, jmethodID, *mut __va_list_tag) -> jfloat,
+    pub CallFloatMethodA: extern "C" fn(*mut JNIEnv, jobject, jmethodID, *mut jvalue) -> jfloat,
+    pub CallDoubleMethod: extern "C" fn(*mut JNIEnv, jobject, jmethodID, ...) -> jdouble,
+    pub CallDoubleMethodV:
+        extern "C" fn(*mut JNIEnv, jobject, jmethodID, *mut __va_list_tag) -> jdouble,
+    pub CallDoubleMethodA: extern "C" fn(*mut JNIEnv, jobject, jmethodID, *mut jvalue) -> jdouble,
+    pub CallVoidMethod: extern "C" fn(*mut JNIEnv, jobject, jmethodID, ...),
+    pub CallVoidMethodV: extern "C" fn(*mut JNIEnv, jobject, jmethodID, *mut __va_list_tag),
+    pub CallVoidMethodA: extern "C" fn(*mut JNIEnv, jobject, jmethodID, *mut jvalue),
+    pub CallNonvirtualObjectMethod:
+        extern "C" fn(*mut JNIEnv, jobject, jclass, jmethodID, ...) -> jobject,
+    pub CallNonvirtualObjectMethodV:
+        extern "C" fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut __va_list_tag) -> jobject,
+    pub CallNonvirtualObjectMethodA:
+        extern "C" fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut jvalue) -> jobject,
+    pub CallNonvirtualBooleanMethod:
+        extern "C" fn(*mut JNIEnv, jobject, jclass, jmethodID, ...) -> jboolean,
+    pub CallNonvirtualBooleanMethodV:
+        extern "C" fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut __va_list_tag) -> jboolean,
+    pub CallNonvirtualBooleanMethodA:
+        extern "C" fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut jvalue) -> jboolean,
+    pub CallNonvirtualByteMethod:
+        extern "C" fn(*mut JNIEnv, jobject, jclass, jmethodID, ...) -> jbyte,
+    pub CallNonvirtualByteMethodV:
+        extern "C" fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut __va_list_tag) -> jbyte,
+    pub CallNonvirtualByteMethodA:
+        extern "C" fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut jvalue) -> jbyte,
+    pub CallNonvirtualCharMethod:
+        extern "C" fn(*mut JNIEnv, jobject, jclass, jmethodID, ...) -> jchar,
+    pub CallNonvirtualCharMethodV:
+        extern "C" fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut __va_list_tag) -> jchar,
+    pub CallNonvirtualCharMethodA:
+        extern "C" fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut jvalue) -> jchar,
+    pub CallNonvirtualShortMethod:
+        extern "C" fn(*mut JNIEnv, jobject, jclass, jmethodID, ...) -> jshort,
+    pub CallNonvirtualShortMethodV:
+        extern "C" fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut __va_list_tag) -> jshort,
+    pub CallNonvirtualShortMethodA:
+        extern "C" fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut jvalue) -> jshort,
+    pub CallNonvirtualIntMethod:
+        extern "C" fn(*mut JNIEnv, jobject, jclass, jmethodID, ...) -> jint,
+    pub CallNonvirtualIntMethodV:
+        extern "C" fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut __va_list_tag) -> jint,
+    pub CallNonvirtualIntMethodA:
+        extern "C" fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut jvalue) -> jint,
+    pub CallNonvirtualLongMethod:
+        extern "C" fn(*mut JNIEnv, jobject, jclass, jmethodID, ...) -> jlong,
+    pub CallNonvirtualLongMethodV:
+        extern "C" fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut __va_list_tag) -> jlong,
+    pub CallNonvirtualLongMethodA:
+        extern "C" fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut jvalue) -> jlong,
+    pub CallNonvirtualFloatMethod:
+        extern "C" fn(*mut JNIEnv, jobject, jclass, jmethodID, ...) -> jfloat,
+    pub CallNonvirtualFloatMethodV:
+        extern "C" fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut __va_list_tag) -> jfloat,
+    pub CallNonvirtualFloatMethodA:
+        extern "C" fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut jvalue) -> jfloat,
+    pub CallNonvirtualDoubleMethod:
+        extern "C" fn(*mut JNIEnv, jobject, jclass, jmethodID, ...) -> jdouble,
+    pub CallNonvirtualDoubleMethodV:
+        extern "C" fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut __va_list_tag) -> jdouble,
+    pub CallNonvirtualDoubleMethodA:
+        extern "C" fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut jvalue) -> jdouble,
+    pub CallNonvirtualVoidMethod: extern "C" fn(*mut JNIEnv, jobject, jclass, jmethodID, ...),
+    pub CallNonvirtualVoidMethodV:
+        extern "C" fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut __va_list_tag),
+    pub CallNonvirtualVoidMethodA:
+        extern "C" fn(*mut JNIEnv, jobject, jclass, jmethodID, *mut jvalue),
+    pub GetFieldID: extern "C" fn(*mut JNIEnv, jclass, *const c_char, *const c_char) -> jfieldID,
+    pub GetObjectField: extern "C" fn(*mut JNIEnv, jobject, jfieldID) -> jobject,
+    pub GetBooleanField: extern "C" fn(*mut JNIEnv, jobject, jfieldID) -> jboolean,
+    pub GetByteField: extern "C" fn(*mut JNIEnv, jobject, jfieldID) -> jbyte,
+    pub GetCharField: extern "C" fn(*mut JNIEnv, jobject, jfieldID) -> jchar,
+    pub GetShortField: extern "C" fn(*mut JNIEnv, jobject, jfieldID) -> jshort,
+    pub GetIntField: extern "C" fn(*mut JNIEnv, jobject, jfieldID) -> jint,
+    pub GetLongField: extern "C" fn(*mut JNIEnv, jobject, jfieldID) -> jlong,
+    pub GetFloatField: extern "C" fn(*mut JNIEnv, jobject, jfieldID) -> jfloat,
+    pub GetDoubleField: extern "C" fn(*mut JNIEnv, jobject, jfieldID) -> jdouble,
+    pub SetObjectField: extern "C" fn(*mut JNIEnv, jobject, jfieldID, jobject),
+    pub SetBooleanField: extern "C" fn(*mut JNIEnv, jobject, jfieldID, jboolean),
+    pub SetByteField: extern "C" fn(*mut JNIEnv, jobject, jfieldID, jbyte),
+    pub SetCharField: extern "C" fn(*mut JNIEnv, jobject, jfieldID, jchar),
+    pub SetShortField: extern "C" fn(*mut JNIEnv, jobject, jfieldID, jshort),
+    pub SetIntField: extern "C" fn(*mut JNIEnv, jobject, jfieldID, jint),
+    pub SetLongField: extern "C" fn(*mut JNIEnv, jobject, jfieldID, jlong),
+    pub SetFloatField: extern "C" fn(*mut JNIEnv, jobject, jfieldID, jfloat),
+    pub SetDoubleField: extern "C" fn(*mut JNIEnv, jobject, jfieldID, jdouble),
+    pub GetStaticMethodID:
+        extern "C" fn(*mut JNIEnv, jclass, *const c_char, *const c_char) -> jmethodID,
+    pub CallStaticObjectMethod: extern "C" fn(*mut JNIEnv, jclass, jmethodID, ...) -> jobject,
+    pub CallStaticObjectMethodV:
+        extern "C" fn(*mut JNIEnv, jclass, jmethodID, *mut __va_list_tag) -> jobject,
+    pub CallStaticObjectMethodA:
+        extern "C" fn(*mut JNIEnv, jclass, jmethodID, *mut jvalue) -> jobject,
+    pub CallStaticBooleanMethod: extern "C" fn(*mut JNIEnv, jclass, jmethodID, ...) -> jboolean,
+    pub CallStaticBooleanMethodV:
+        extern "C" fn(*mut JNIEnv, jclass, jmethodID, *mut __va_list_tag) -> jboolean,
+    pub CallStaticBooleanMethodA:
+        extern "C" fn(*mut JNIEnv, jclass, jmethodID, *mut jvalue) -> jboolean,
+    pub CallStaticByteMethod: extern "C" fn(*mut JNIEnv, jclass, jmethodID, ...) -> jbyte,
+    pub CallStaticByteMethodV:
+        extern "C" fn(*mut JNIEnv, jclass, jmethodID, *mut __va_list_tag) -> jbyte,
+    pub CallStaticByteMethodA: extern "C" fn(*mut JNIEnv, jclass, jmethodID, *mut jvalue) -> jbyte,
+    pub CallStaticCharMethod: extern "C" fn(*mut JNIEnv, jclass, jmethodID, ...) -> jchar,
+    pub CallStaticCharMethodV:
+        extern "C" fn(*mut JNIEnv, jclass, jmethodID, *mut __va_list_tag) -> jchar,
+    pub CallStaticCharMethodA: extern "C" fn(*mut JNIEnv, jclass, jmethodID, *mut jvalue) -> jchar,
+    pub CallStaticShortMethod: extern "C" fn(*mut JNIEnv, jclass, jmethodID, ...) -> jshort,
+    pub CallStaticShortMethodV:
+        extern "C" fn(*mut JNIEnv, jclass, jmethodID, *mut __va_list_tag) -> jshort,
+    pub CallStaticShortMethodA:
+        extern "C" fn(*mut JNIEnv, jclass, jmethodID, *mut jvalue) -> jshort,
+    pub CallStaticIntMethod: extern "C" fn(*mut JNIEnv, jclass, jmethodID, ...) -> jint,
+    pub CallStaticIntMethodV:
+        extern "C" fn(*mut JNIEnv, jclass, jmethodID, *mut __va_list_tag) -> jint,
+    pub CallStaticIntMethodA: extern "C" fn(*mut JNIEnv, jclass, jmethodID, *mut jvalue) -> jint,
+    pub CallStaticLongMethod: extern "C" fn(*mut JNIEnv, jclass, jmethodID, ...) -> jlong,
+    pub CallStaticLongMethodV:
+        extern "C" fn(*mut JNIEnv, jclass, jmethodID, *mut __va_list_tag) -> jlong,
+    pub CallStaticLongMethodA: extern "C" fn(*mut JNIEnv, jclass, jmethodID, *mut jvalue) -> jlong,
+    pub CallStaticFloatMethod: extern "C" fn(*mut JNIEnv, jclass, jmethodID, ...) -> jfloat,
+    pub CallStaticFloatMethodV:
+        extern "C" fn(*mut JNIEnv, jclass, jmethodID, *mut __va_list_tag) -> jfloat,
+    pub CallStaticFloatMethodA:
+        extern "C" fn(*mut JNIEnv, jclass, jmethodID, *mut jvalue) -> jfloat,
+    pub CallStaticDoubleMethod: extern "C" fn(*mut JNIEnv, jclass, jmethodID, ...) -> jdouble,
+    pub CallStaticDoubleMethodV:
+        extern "C" fn(*mut JNIEnv, jclass, jmethodID, *mut __va_list_tag) -> jdouble,
+    pub CallStaticDoubleMethodA:
+        extern "C" fn(*mut JNIEnv, jclass, jmethodID, *mut jvalue) -> jdouble,
+    pub CallStaticVoidMethod: extern "C" fn(*mut JNIEnv, jclass, jmethodID, ...),
+    pub CallStaticVoidMethodV: extern "C" fn(*mut JNIEnv, jclass, jmethodID, *mut __va_list_tag),
+    pub CallStaticVoidMethodA: extern "C" fn(*mut JNIEnv, jclass, jmethodID, *mut jvalue),
+    pub GetStaticFieldID:
+        extern "C" fn(*mut JNIEnv, jclass, *const c_char, *const c_char) -> jfieldID,
+    pub GetStaticObjectField: extern "C" fn(*mut JNIEnv, jclass, jfieldID) -> jobject,
+    pub GetStaticBooleanField: extern "C" fn(*mut JNIEnv, jclass, jfieldID) -> jboolean,
+    pub GetStaticByteField: extern "C" fn(*mut JNIEnv, jclass, jfieldID) -> jbyte,
+    pub GetStaticCharField: extern "C" fn(*mut JNIEnv, jclass, jfieldID) -> jchar,
+    pub GetStaticShortField: extern "C" fn(*mut JNIEnv, jclass, jfieldID) -> jshort,
+    pub GetStaticIntField: extern "C" fn(*mut JNIEnv, jclass, jfieldID) -> jint,
+    pub GetStaticLongField: extern "C" fn(*mut JNIEnv, jclass, jfieldID) -> jlong,
+    pub GetStaticFloatField: extern "C" fn(*mut JNIEnv, jclass, jfieldID) -> jfloat,
+    pub GetStaticDoubleField: extern "C" fn(*mut JNIEnv, jclass, jfieldID) -> jdouble,
+    pub SetStaticObjectField: extern "C" fn(*mut JNIEnv, jclass, jfieldID, jobject),
+    pub SetStaticBooleanField: extern "C" fn(*mut JNIEnv, jclass, jfieldID, jboolean),
+    pub SetStaticByteField: extern "C" fn(*mut JNIEnv, jclass, jfieldID, jbyte),
+    pub SetStaticCharField: extern "C" fn(*mut JNIEnv, jclass, jfieldID, jchar),
+    pub SetStaticShortField: extern "C" fn(*mut JNIEnv, jclass, jfieldID, jshort),
+    pub SetStaticIntField: extern "C" fn(*mut JNIEnv, jclass, jfieldID, jint),
+    pub SetStaticLongField: extern "C" fn(*mut JNIEnv, jclass, jfieldID, jlong),
+    pub SetStaticFloatField: extern "C" fn(*mut JNIEnv, jclass, jfieldID, jfloat),
+    pub SetStaticDoubleField: extern "C" fn(*mut JNIEnv, jclass, jfieldID, jdouble),
+    pub NewString: extern "C" fn(*mut JNIEnv, *const jchar, jsize) -> jstring,
+    pub GetStringLength: extern "C" fn(*mut JNIEnv, jstring) -> jsize,
+    pub GetStringChars: extern "C" fn(*mut JNIEnv, jstring, *mut jboolean) -> *const jchar,
+    pub ReleaseStringChars: extern "C" fn(*mut JNIEnv, jstring, *const jchar),
+    pub NewStringUTF: extern "C" fn(*mut JNIEnv, *const c_char) -> jstring,
+    pub GetStringUTFLength: extern "C" fn(*mut JNIEnv, jstring) -> jsize,
+    pub GetStringUTFChars: extern "C" fn(*mut JNIEnv, jstring, *mut jboolean) -> *const c_char,
+    pub ReleaseStringUTFChars: extern "C" fn(*mut JNIEnv, jstring, *const c_char),
+    pub GetArrayLength: extern "C" fn(*mut JNIEnv, jarray) -> jsize,
+    pub NewObjectArray: extern "C" fn(*mut JNIEnv, jsize, jclass, jobject) -> jobjectArray,
+    pub GetObjectArrayElement: extern "C" fn(*mut JNIEnv, jobjectArray, jsize) -> jobject,
+    pub SetObjectArrayElement: extern "C" fn(*mut JNIEnv, jobjectArray, jsize, jobject),
+    pub NewBooleanArray: extern "C" fn(*mut JNIEnv, jsize) -> jbooleanArray,
+    pub NewByteArray: extern "C" fn(*mut JNIEnv, jsize) -> jbyteArray,
+    pub NewCharArray: extern "C" fn(*mut JNIEnv, jsize) -> jcharArray,
+    pub NewShortArray: extern "C" fn(*mut JNIEnv, jsize) -> jshortArray,
+    pub NewIntArray: extern "C" fn(*mut JNIEnv, jsize) -> jintArray,
+    pub NewLongArray: extern "C" fn(*mut JNIEnv, jsize) -> jlongArray,
+    pub NewFloatArray: extern "C" fn(*mut JNIEnv, jsize) -> jfloatArray,
+    pub NewDoubleArray: extern "C" fn(*mut JNIEnv, jsize) -> jdoubleArray,
+    pub GetBooleanArrayElements:
+        extern "C" fn(*mut JNIEnv, jbooleanArray, *mut jboolean) -> *mut jboolean,
+    pub GetByteArrayElements: extern "C" fn(*mut JNIEnv, jbyteArray, *mut jboolean) -> *mut jbyte,
+    pub GetCharArrayElements: extern "C" fn(*mut JNIEnv, jcharArray, *mut jboolean) -> *mut jchar,
+    pub GetShortArrayElements:
+        extern "C" fn(*mut JNIEnv, jshortArray, *mut jboolean) -> *mut jshort,
+    pub GetIntArrayElements: extern "C" fn(*mut JNIEnv, jintArray, *mut jboolean) -> *mut jint,
+    pub GetLongArrayElements: extern "C" fn(*mut JNIEnv, jlongArray, *mut jboolean) -> *mut jlong,
+    pub GetFloatArrayElements:
+        extern "C" fn(*mut JNIEnv, jfloatArray, *mut jboolean) -> *mut jfloat,
+    pub GetDoubleArrayElements:
+        extern "C" fn(*mut JNIEnv, jdoubleArray, *mut jboolean) -> *mut jdouble,
+    pub ReleaseBooleanArrayElements: extern "C" fn(*mut JNIEnv, jbooleanArray, *mut jboolean, jint),
+    pub ReleaseByteArrayElements: extern "C" fn(*mut JNIEnv, jbyteArray, *mut jbyte, jint),
+    pub ReleaseCharArrayElements: extern "C" fn(*mut JNIEnv, jcharArray, *mut jchar, jint),
+    pub ReleaseShortArrayElements: extern "C" fn(*mut JNIEnv, jshortArray, *mut jshort, jint),
+    pub ReleaseIntArrayElements: extern "C" fn(*mut JNIEnv, jintArray, *mut jint, jint),
+    pub ReleaseLongArrayElements: extern "C" fn(*mut JNIEnv, jlongArray, *mut jlong, jint),
+    pub ReleaseFloatArrayElements: extern "C" fn(*mut JNIEnv, jfloatArray, *mut jfloat, jint),
+    pub ReleaseDoubleArrayElements: extern "C" fn(*mut JNIEnv, jdoubleArray, *mut jdouble, jint),
+    pub GetBooleanArrayRegion:
+        extern "C" fn(*mut JNIEnv, jbooleanArray, jsize, jsize, *mut jboolean),
+    pub GetByteArrayRegion: extern "C" fn(*mut JNIEnv, jbyteArray, jsize, jsize, *mut jbyte),
+    pub GetCharArrayRegion: extern "C" fn(*mut JNIEnv, jcharArray, jsize, jsize, *mut jchar),
+    pub GetShortArrayRegion: extern "C" fn(*mut JNIEnv, jshortArray, jsize, jsize, *mut jshort),
+    pub GetIntArrayRegion: extern "C" fn(*mut JNIEnv, jintArray, jsize, jsize, *mut jint),
+    pub GetLongArrayRegion: extern "C" fn(*mut JNIEnv, jlongArray, jsize, jsize, *mut jlong),
+    pub GetFloatArrayRegion: extern "C" fn(*mut JNIEnv, jfloatArray, jsize, jsize, *mut jfloat),
+    pub GetDoubleArrayRegion: extern "C" fn(*mut JNIEnv, jdoubleArray, jsize, jsize, *mut jdouble),
+    pub SetBooleanArrayRegion:
+        extern "C" fn(*mut JNIEnv, jbooleanArray, jsize, jsize, *const jboolean),
+    pub SetByteArrayRegion: extern "C" fn(*mut JNIEnv, jbyteArray, jsize, jsize, *const jbyte),
+    pub SetCharArrayRegion: extern "C" fn(*mut JNIEnv, jcharArray, jsize, jsize, *const jchar),
+    pub SetShortArrayRegion: extern "C" fn(*mut JNIEnv, jshortArray, jsize, jsize, *const jshort),
+    pub SetIntArrayRegion: extern "C" fn(*mut JNIEnv, jintArray, jsize, jsize, *const jint),
+    pub SetLongArrayRegion: extern "C" fn(*mut JNIEnv, jlongArray, jsize, jsize, *const jlong),
+    pub SetFloatArrayRegion: extern "C" fn(*mut JNIEnv, jfloatArray, jsize, jsize, *const jfloat),
+    pub SetDoubleArrayRegion:
+        extern "C" fn(*mut JNIEnv, jdoubleArray, jsize, jsize, *const jdouble),
+    pub RegisterNatives: extern "C" fn(*mut JNIEnv, jclass, *const JNINativeMethod, jint) -> jint,
+    pub UnregisterNatives: extern "C" fn(*mut JNIEnv, jclass) -> jint,
+    pub MonitorEnter: extern "C" fn(*mut JNIEnv, jobject) -> jint,
+    pub MonitorExit: extern "C" fn(*mut JNIEnv, jobject) -> jint,
+    pub GetJavaVM: extern "C" fn(*mut JNIEnv, *mut *mut JavaVM) -> jint,
+    pub GetStringRegion: extern "C" fn(*mut JNIEnv, jstring, jsize, jsize, *mut jchar),
+    pub GetStringUTFRegion: extern "C" fn(*mut JNIEnv, jstring, jsize, jsize, *mut c_char),
+    pub GetPrimitiveArrayCritical: extern "C" fn(*mut JNIEnv, jarray, *mut jboolean) -> *mut c_void,
+    pub ReleasePrimitiveArrayCritical: extern "C" fn(*mut JNIEnv, jarray, *mut c_void, jint),
+    pub GetStringCritical: extern "C" fn(*mut JNIEnv, jstring, *mut jboolean) -> *const jchar,
+    pub ReleaseStringCritical: extern "C" fn(*mut JNIEnv, jstring, *const jchar),
+    pub NewWeakGlobalRef: extern "C" fn(*mut JNIEnv, jobject) -> jweak,
+    pub DeleteWeakGlobalRef: extern "C" fn(*mut JNIEnv, jweak),
+    pub ExceptionCheck: extern "C" fn(*mut JNIEnv) -> jboolean,
+    pub NewDirectByteBuffer: extern "C" fn(*mut JNIEnv, *mut c_void, jlong) -> jobject,
+    pub GetDirectBufferAddress: extern "C" fn(*mut JNIEnv, jobject) -> *mut c_void,
+    pub GetDirectBufferCapacity: extern "C" fn(*mut JNIEnv, jobject) -> jlong,
+    pub GetObjectRefType: extern "C" fn(*mut JNIEnv, jobject) -> jobjectRefType,
 }
 #[repr(C)]
 pub struct JNINativeMethod {
-     pub name:              *const c_char,
-     pub signature:             *const c_char,
-     pub fnPtr:             *mut c_void,
+    pub name: *const c_char,
+    pub signature: *const c_char,
+    pub fnPtr: *mut c_void,
 }
 pub const JNIWeakGlobalRefType: i32 = 3;
-extern { pub fn JNI_OnLoad(vm: *mut JavaVM, reserved: *mut c_void) -> jint; }
-extern { pub fn JNI_OnUnload(vm: *mut JavaVM, reserved: *mut c_void); }
+extern "C" {
+    pub fn JNI_OnLoad(vm: *mut JavaVM, reserved: *mut c_void) -> jint;
+}
+extern "C" {
+    pub fn JNI_OnUnload(vm: *mut JavaVM, reserved: *mut c_void);
+}
 pub type JavaVM = _JavaVM;
 #[repr(C)]
 pub struct JavaVMAttachArgs {
-     pub version:               jint,
-     pub name:              *const c_char,
-     pub group:             jobject,
+    pub version: jint,
+    pub name: *const c_char,
+    pub group: jobject,
 }
 #[repr(C)]
 pub struct JavaVMInitArgs {
-     pub version:               jint,
-     pub nOptions:              jint,
-     pub options:               *mut JavaVMOption,
-     pub ignoreUnrecognized:                jboolean,
+    pub version: jint,
+    pub nOptions: jint,
+    pub options: *mut JavaVMOption,
+    pub ignoreUnrecognized: jboolean,
 }
 #[repr(C)]
 pub struct JavaVMOption {
-     pub optionString:              *const c_char,
-     pub extraInfo:             *mut c_void,
+    pub optionString: *const c_char,
+    pub extraInfo: *mut c_void,
 }
 #[repr(C)]
 pub struct _JNIEnv {
-     pub functions:             *const JNINativeInterface,
+    pub functions: *const JNINativeInterface,
 }
 #[repr(C)]
 pub struct _JavaVM {
-     pub functions:             *const JNIInvokeInterface,
+    pub functions: *const JNIInvokeInterface,
 }
 // CLASS
 pub type class__jarray = c_void;
