@@ -230,19 +230,14 @@ static void* android_app_entry(void* param) {
     pthread_cond_broadcast(&android_app->cond);
     pthread_mutex_unlock(&android_app->mutex);
 
-    // TODO remove
-    LOGV("About to start main!");
-
     ANDROID_APP = android_app;
 
     char *arg = "android";
     main(1, &arg);
 
-    // TODO remove
-    LOGV("Main exited!");
-
     android_app_destroy(android_app);
-    return NULL;
+
+    exit(0);
 }
 
 static void *logging_thread(void *fd_as_ptr) {
@@ -386,15 +381,11 @@ static void android_app_free(struct android_app* android_app) {
 static void onDestroy(ANativeActivity* activity) {
     LOGV("Destroy: %p\n", activity);
     android_app_free((struct android_app*)activity->instance);
-    // TODO remove
-    LOGV("Destroy -- exiting");
 }
 
 static void onStart(ANativeActivity* activity) {
     LOGV("Start: %p\n", activity);
     android_app_set_activity_state((struct android_app*)activity->instance, APP_CMD_START);
-    // TODO remove
-    LOGV("onStart exiting");
 }
 
 static void onResume(ANativeActivity* activity) {
@@ -472,8 +463,6 @@ static void onInputQueueCreated(ANativeActivity* activity, AInputQueue* queue) {
 static void onInputQueueDestroyed(ANativeActivity* activity, AInputQueue* queue) {
     LOGV("InputQueueDestroyed: %p -- %p\n", activity, queue);
     android_app_set_input((struct android_app*)activity->instance, NULL);
-    // TODO remove
-    LOGV("InputQueueDestroyed -- exiting");
 }
 
 JNIEXPORT
@@ -495,7 +484,4 @@ void ANativeActivity_onCreate(ANativeActivity* activity, void* savedState,
     activity->callbacks->onInputQueueDestroyed = onInputQueueDestroyed;
 
     activity->instance = android_app_create(activity, savedState, savedStateSize);
-
-    // TODO remove
-    LOGV("Exited Create");
 }

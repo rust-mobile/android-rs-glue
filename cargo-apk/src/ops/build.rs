@@ -120,11 +120,16 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &ArgMatches
 
         // Compiling android_native_app_glue.c
         {
+            let mut file = File::create(build_target_dir.join("android_native_app_glue.c")).unwrap();
+            file.write_all(&include_bytes!("../../android_native_app_glue.c")[..]).unwrap();
+            let mut file = File::create(build_target_dir.join("android_native_app_glue.h")).unwrap();
+            file.write_all(&include_bytes!("../../android_native_app_glue.h")[..]).unwrap();
+        }
+        {
             drop(writeln!(workspace.config().shell().err(),
                           "Compiling android_native_app_glue.c"));
             let mut cmd = process(&gcc_path);
-            //cmd.arg(config.ndk_path.join("sources/android/native_app_glue/android_native_app_glue.c"))
-            cmd.arg(config.ndk_path.join("../android-rs-glue/cargo-apk/android_native_app_glue.c"))
+            cmd.arg(build_target_dir.join("android_native_app_glue.c"))
                .arg("-c");
             if config.release {
                 cmd.arg("-O3");
@@ -134,55 +139,6 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &ArgMatches
                .arg("-isystem").arg(&gcc_isystem)
                .exec()?;
         }
-
-        /*
-        // Compiling injected-glue
-        let injected_glue_lib = {
-            drop(writeln!(workspace.config().shell().err(), "Compiling injected-glue"));
-            let mut cmd = workspace.config().rustc(None)?.process();
-            cmd.arg(android_artifacts_dir.join("injected-glue/lib.rs"))
-               .arg("--crate-type").arg("rlib");
-            if config.release {
-                cmd.arg("-C")
-                   .arg("opt-level=3");
-            }
-            cmd.arg("--crate-name").arg("cargo_apk_injected_glue")
-               .arg("--target").arg(build_target)
-               .arg("--out-dir").arg(&build_target_dir);
-
-            cmd.exec()?;
-
-            let stdout = cmd.arg("--print").arg("file-names")
-                            .exec_with_output()?;
-            let stdout = String::from_utf8(stdout.stdout).unwrap();
-
-            build_target_dir.join(stdout.lines().next().unwrap())
-        };
-        */
-
-        /*
-        // Compiling glue_obj.rs
-        {
-            let mut file = File::create(build_target_dir.join("glue_obj.rs")).unwrap();
-            file.write_all(&include_bytes!("../../glue_obj.rs")[..]).unwrap();
-        }
-        
-        {
-            drop(writeln!(workspace.config().shell().err(), "Compiling glue_obj"));
-            let mut cmd = workspace.config().rustc(None)?.process();
-            cmd.arg(build_target_dir.join("glue_obj.rs"))
-               .arg("--crate-type").arg("staticlib");
-            if config.release {
-                cmd.arg("-C")
-                   .arg("opt-level=3");
-            }
-            cmd.arg("--target").arg(build_target)
-               .arg("--extern").arg(format!("cargo_apk_injected_glue={}", injected_glue_lib.to_string_lossy()))
-               .arg("--emit").arg("obj")
-               .arg("-o").arg(build_target_dir.join("glue_obj.o"))
-               .exec()?;
-        }
-        */
 
         // Directory where we will put the native libraries for gradle to pick them up.
         let native_libraries_dir = android_artifacts_dir.join(format!("app/lib/{}", abi));
@@ -206,17 +162,12 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &ArgMatches
 
             let extra_args = vec![
                 "-C".to_owned(), format!("linker={}", android_artifacts_dir.join(if cfg!(target_os = "windows") { "linker_exe.exe" } else { "linker_exe" }).to_string_lossy()),
-                //"--extern".to_owned(), format!("cargo_apk_injected_glue={}", injected_glue_lib.to_string_lossy()),
                 "-C".to_owned(),"link-arg=--cargo-apk-gcc".to_owned(),
                 "-C".to_owned(), format!("link-arg={}", gcc_path.as_os_str().to_str().unwrap().to_owned()),
                 "-C".to_owned(),"link-arg=--cargo-apk-gcc-sysroot".to_owned(),
                 "-C".to_owned(), format!("link-arg={}", gcc_sysroot_linker.as_os_str().to_str().unwrap().to_owned()),
                 "-C".to_owned(), "link-arg=--cargo-apk-native-app-glue".to_owned(),
                 "-C".to_owned(), format!("link-arg={}", build_target_dir.join("android_native_app_glue.o").into_os_string().into_string().unwrap()),
-                //"-C".to_owned(), "link-arg=--cargo-apk-glue-obj".to_owned(),
-                //"-C".to_owned(), format!("link-arg={}", build_target_dir.join("glue_obj.o").into_os_string().into_string().unwrap()),
-                //"-C".to_owned(), "link-arg=--cargo-apk-glue-lib".to_owned(),
-                //"-C".to_owned(), format!("link-arg={}", injected_glue_lib.into_os_string().into_string().unwrap()),
                 "-C".to_owned(), "link-arg=--cargo-apk-linker-output".to_owned(),
                 "-C".to_owned(), format!("link-arg={}", native_libraries_dir.join("libmain.so").into_os_string().into_string().unwrap()),
                 "-C".to_owned(), "link-arg=--cargo-apk-libs-path-output".to_owned(),
@@ -356,16 +307,6 @@ pub fn build(workspace: &Workspace, config: &AndroidConfig, options: &ArgMatches
 fn build_android_artifacts_dir(workspace: &Workspace, path: &Path, config: &AndroidConfig) -> Result<(), CargoError> {
     fs::create_dir_all(path.join("app").join("src").join("main")).unwrap();
 
-    /*{
-        fs::create_dir_all(path.join("injected-glue")).unwrap();
-
-        let mut lib = File::create(path.join("injected-glue/lib.rs")).unwrap();
-        lib.write_all(&include_bytes!("../../injected-glue/lib.rs")[..]).unwrap();
-
-        let mut ffi = File::create(path.join("injected-glue/ffi.rs")).unwrap();
-        ffi.write_all(&include_bytes!("../../injected-glue/ffi.rs")[..]).unwrap();
-    }*/
-
     build_linker(workspace, path)?;
     build_manifest(workspace, path, config)?;
     build_build_gradle_root(workspace, path, config)?;
@@ -430,7 +371,7 @@ fn build_java_src(_: &Workspace, path: &Path, config: &AndroidConfig, abi_libs: 
         for name in libs {
             // Strip off the 'lib' prefix and ".so" suffix.
             let line = format!("                System.loadLibrary(\"{}\");\n",
-                name.trim_left_matches("lib").trim_right_matches(".so"));
+                name.trim_start_matches("lib").trim_end_matches(".so"));
             libs_string.push_str(&*line);
         }
 

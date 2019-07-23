@@ -30,8 +30,6 @@ fn main() {
     if Command::new(Path::new(&args.cargo_apk_gcc))
         .args(&*passthrough)
         .arg(args.cargo_apk_native_app_glue)
-        //.arg(args.cargo_apk_glue_obj)
-        //.arg(args.cargo_apk_glue_lib)
         .arg("-llog").arg("-landroid")      // these two libraries are used by the injected-glue
         .arg("--sysroot").arg(args.cargo_apk_gcc_sysroot)
         .arg("-o").arg(args.cargo_apk_linker_output)
@@ -56,8 +54,6 @@ struct Args {
     cargo_apk_gcc: String,
     cargo_apk_gcc_sysroot: String,
     cargo_apk_native_app_glue: String,
-    //cargo_apk_glue_obj: String,
-    //cargo_apk_glue_lib: String,
     cargo_apk_linker_output: String,
     cargo_apk_libs_path_output: String,
     cargo_apk_libs_output: String,
@@ -73,8 +69,6 @@ fn parse_arguments() -> (Args, Vec<String>) {
     let mut cargo_apk_gcc: Option<String> = None;
     let mut cargo_apk_gcc_sysroot: Option<String> = None;
     let mut cargo_apk_native_app_glue: Option<String> = None;
-    //let mut cargo_apk_glue_obj: Option<String> = None;
-    //let mut cargo_apk_glue_lib: Option<String> = None;
     let mut cargo_apk_linker_output: Option<String> = None;
     let mut cargo_apk_libs_path_output: Option<String> = None;
     let mut cargo_apk_libs_output: Option<String> = None;
@@ -94,10 +88,6 @@ fn parse_arguments() -> (Args, Vec<String>) {
                         .expect("Missing cargo_apk_gcc_sysroot option in linker"),
                     cargo_apk_native_app_glue: cargo_apk_native_app_glue
                         .expect("Missing cargo_apk_native_app_glue option in linker"),
-                    //cargo_apk_glue_obj: cargo_apk_glue_obj
-                        //.expect("Missing cargo_apk_glue_obj option in linker"),
-                    //cargo_apk_glue_lib: cargo_apk_glue_lib
-                        //.expect("Missing cargo_apk_glue_lib option in linker"),
                     cargo_apk_linker_output: cargo_apk_linker_output
                         .expect("Missing cargo_apk_linker_output option in linker"),
                     cargo_apk_libs_path_output: cargo_apk_libs_path_output
@@ -120,12 +110,6 @@ fn parse_arguments() -> (Args, Vec<String>) {
             "--cargo-apk-native-app-glue" => {
                 cargo_apk_native_app_glue = Some(args.next().unwrap());
             },
-            //"--cargo-apk-glue-obj" => {
-                //cargo_apk_glue_obj = Some(args.next().unwrap());
-            //},
-            //"--cargo-apk-glue-lib" => {
-                //cargo_apk_glue_lib = Some(args.next().unwrap());
-            //},
             "--cargo-apk-linker-output" => {
                 cargo_apk_linker_output = Some(args.next().unwrap());
             },

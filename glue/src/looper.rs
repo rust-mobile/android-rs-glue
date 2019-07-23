@@ -145,4 +145,6 @@ impl ForeignLooper {
     pub fn ptr(&self) -> *mut ffi::ALooper {
         self.ptr
     }
+
+    // TODO wrap addFd, removeFd, maybe acquire/release
 }
