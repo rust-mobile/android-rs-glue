@@ -2,9 +2,9 @@
 
 # Usage
 
-## With docker
+## With Docker
 
-The easiest way to compile for Android is to use [docker](https://www.docker.com/) and the
+The easiest way to compile for Android is to use [Docker](https://www.docker.com/) and the
 [tomaka/cargo-apk](https://hub.docker.com/r/tomaka/cargo-apk/) image.
 
 In order to build an APK, simply do this:
@@ -30,17 +30,14 @@ After the build is finished, you should get an Android package in `target/androi
 
 Before you can compile for Android, you need to setup your environment. This needs to be done only once per system.
 
- - Install [`rustup`](http://rustup.rs).
+ - Install [`rustup`](https://rustup.rs/).
  - Run `rustup target add arm-linux-androideabi`, or any other target that you want to compile to.
-
- - Install the Java JDK (on Ubuntu, `sudo apt-get install openjdk-8-jdk`)
- - Install CMake (on Ubuntu, `sudo apt-get install cmake`)
+ - Install the Java JDK (on Ubuntu, `sudo apt-get install openjdk-8-jdk`).
+ - Install CMake (on Ubuntu, `sudo apt-get install cmake`).
  - [Install Gradle](https://gradle.org/install/).
-
- - Download and unzip [the Android NDK](http://developer.android.com/tools/sdk/ndk/index.html)
- - Download and unzip [the Android SDK](http://developer.android.com/sdk/index.html) (under *SDK Tools Only* at the bottom)
- - Install some components in the SDK: `./android-sdk/tools/bin/sdkmanager "platform-tools" "platforms;android-18" "build-tools;26.0.1"`
-
+ - Download and unzip [the Android NDK](https://developer.android.com/ndk).
+ - Download and unzip [the Android SDK](https://developer.android.com/studio).
+ - Install some components in the SDK: `./android-sdk/tools/bin/sdkmanager "platform-tools" "platforms;android-18" "build-tools;26.0.1"`.
  - Install `cargo-apk` with `cargo install cargo-apk`.
  - Set the environment variables `NDK_HOME` to the path of the NDK and `ANDROID_HOME` to the path of the SDK.
 
