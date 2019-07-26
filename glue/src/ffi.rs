@@ -1172,7 +1172,7 @@ extern "C" {
         data: *mut c_void,
     ) -> c_int;
 }
-pub type ALooper_callbackFunc = extern "C" fn(c_int, c_int, *mut c_void) -> c_int;
+pub type ALooper_callbackFunc = Option<extern "C" fn(c_int, c_int, *mut c_void) -> c_int>;
 extern "C" {
     pub fn ALooper_forThread() -> *mut ALooper;
 }

@@ -406,6 +406,21 @@ impl AMotionEvent {
         }
     }
 
+    /// The pointer at a given pointer index. Panics if the pointer index is out of bounds.
+    ///
+    /// If you need to loop over all the pointers, prefer the `.pointers()` method.
+    #[inline]
+    pub fn pointer_at_index(&self, index: usize) -> Pointer<'_> {
+        if index >= self.pointer_count() {
+            panic!("Pointer index {} is out of bounds", index);
+        }
+        Pointer {
+            event: self.ptr,
+            index,
+            _marker: std::marker::PhantomData,
+        }
+    }
+
     /// Returns the size of the history contained in this event.
     ///
     /// See [the NDK
@@ -413,6 +428,17 @@ impl AMotionEvent {
     #[inline]
     pub fn history_size(&self) -> usize {
         unsafe { ffi::AMotionEvent_getHistorySize(self.ptr) }
+    }
+
+    /// An iterator over the historical events contained in this event.
+    #[inline]
+    pub fn history(&self) -> HistoricalMotionEventsIter<'_> {
+        HistoricalMotionEventsIter {
+            event: self.ptr,
+            next_history_index: 0,
+            history_size: self.history_size(),
+            _marker: std::marker::PhantomData,
+        }
     }
 
     /// Returns the state of any modifier keys that were pressed during the event.
