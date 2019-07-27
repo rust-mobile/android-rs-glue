@@ -31,7 +31,11 @@ After the build is finished, you should get an Android package in `target/androi
 Before you can compile for Android, you need to setup your environment. This needs to be done only once per system.
 
  - Install [`rustup`](https://rustup.rs/).
- - Run `rustup target add arm-linux-androideabi`, or any other target that you want to compile to.
+ - Run `rustup target add <target>` for all supported targets to which you want to compile. Building will attempt to build for all supported targets unless the build targets are adjusted via `Cargo.toml`.
+    - `rustup target add armv7-linux-androideabi`
+    - `rustup target add aarch64-linux-android`
+    - `rustup target add i686-linux-android`
+    - `rustup target add x86_64-linux-android`
  - Install the Java JRE or JDK (on Ubuntu, `sudo apt-get install openjdk-8-jdk`).
  - Download and unzip [the Android NDK](https://developer.android.com/ndk).
  - Download and unzip [the Android SDK](https://developer.android.com/studio).
