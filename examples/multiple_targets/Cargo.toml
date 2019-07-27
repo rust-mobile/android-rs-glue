@@ -1,0 +1,19 @@
+[package]
+name = "android_primary_bin"
+version = "0.1.0"
+authors = ["Philip Alldredge <philip@philipalldredge.com>"]
+publish = false
+
+[dependencies.android_glue]
+path = "../../glue"
+
+[package.metadata.android]
+label = "Primary Binary"
+
+[[package.metadata.android.bin]]
+name = "secondary_bin"
+label = "Secondary Binary"
+
+[[package.metadata.android.example]]
+name = "example1"
+label = "Example 1"

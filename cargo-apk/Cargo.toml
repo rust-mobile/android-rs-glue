@@ -1,15 +1,20 @@
 [package]
 name = "cargo-apk"
 version = "0.4.3"
-authors = ["Pierre Krieger <pierre.krieger1708@gmail.com>"]
+authors = ["Pierre Krieger <pierre.krieger1708@gmail.com>", "Philip Alldredge <philip@philipalldredge.com>"]
 license = "MIT"
 description = "Cargo subcommand that allows you to build Android packages"
 repository = "https://github.com/rust-windowing/android-rs-glue/tree/master/cargo-apk"
+edition = "2018"
 
 [dependencies]
-cargo = "0.32.0"
-clap = "2.31"
-failure = "0.1.2"
-rustc-serialize = "0.3.19"
-term = "0.4.4"
-toml = "0.1.28"
+cargo = "0.37.0"
+clap = "2.33.0"
+itertools = "0.8.0"
+dirs = "2.0.1"
+failure = "0.1.5"
+serde = "1.0.97"
+toml = "0.5.1"
+
+[dev-dependencies]
+assert_cmd = "0.11.1"

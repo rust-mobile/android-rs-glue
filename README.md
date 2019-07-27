@@ -5,24 +5,24 @@
 ## With Docker
 
 The easiest way to compile for Android is to use [Docker](https://www.docker.com/) and the
-[tomaka/cargo-apk](https://hub.docker.com/r/tomaka/cargo-apk/) image.
+[philipalldredge/cargo-apk](https://hub.docker.com/r/philipalldredge/cargo-apk/) image.
 
 In order to build an APK, simply do this:
 
 ```
-docker run --rm -v <path-to-local-directory-with-Cargo.toml>:/root/src tomaka/cargo-apk cargo apk build
+docker run --rm -v <path-to-local-directory-with-Cargo.toml>:/root/src philipalldredge/cargo-apk cargo apk build
 ```
 
 For example if you're on Linux and you want to compile the project in the current working
 directory.
 
 ```
-docker run --rm -v "$(pwd):/root/src" -w /root/src tomaka/cargo-apk cargo apk build
+docker run --rm -v "$(pwd):/root/src" -w /root/src philipalldredge/cargo-apk cargo apk build
 ```
 
 Do not mount a volume on `/root` or you will erase the local installation of Cargo.
 
-After the build is finished, you should get an Android package in `target/android-artifacts/app/build/outputs/apk`.
+After the build is finished, you should get an Android package in `target/android-artifacts/debug/apk`.
 
 ## Manual usage
 
@@ -32,12 +32,10 @@ Before you can compile for Android, you need to setup your environment. This nee
 
  - Install [`rustup`](https://rustup.rs/).
  - Run `rustup target add arm-linux-androideabi`, or any other target that you want to compile to.
- - Install the Java JDK (on Ubuntu, `sudo apt-get install openjdk-8-jdk`).
- - Install CMake (on Ubuntu, `sudo apt-get install cmake`).
- - [Install Gradle](https://gradle.org/install/).
+ - Install the Java JRE or JDK (on Ubuntu, `sudo apt-get install openjdk-8-jdk`).
  - Download and unzip [the Android NDK](https://developer.android.com/ndk).
  - Download and unzip [the Android SDK](https://developer.android.com/studio).
- - Install some components in the SDK: `./android-sdk/tools/bin/sdkmanager "platform-tools" "platforms;android-18" "build-tools;26.0.1"`.
+ - Install some components in the SDK: `./android-sdk/tools/bin/sdkmanager "platform-tools" "platforms;android-29" "build-tools;29.0.0"`.
  - Install `cargo-apk` with `cargo install cargo-apk`.
  - Set the environment variables `NDK_HOME` to the path of the NDK and `ANDROID_HOME` to the path of the SDK.
 
@@ -46,7 +44,7 @@ Before you can compile for Android, you need to setup your environment. This nee
 In the project root for your Android crate, run `cargo apk build`. You can use the same options as
 with the regular `cargo build`.
 
-This will build an Android package in `target/android-artifacts/app/build/outputs/apk`.
+This will build an Android package in `target/android-artifacts/<debug|release>/apk`.
 
 ### Testing on an Android emulator
 
@@ -72,45 +70,52 @@ the stdlib.
 
 ## The build process
 
-The build process works by invoking `cargo rustc` and:
+The build process works by running rustc and:
 
-- Always compiles your crate as a shared library.
-- Injects the `android_native_app_glue` file provided by the Android NDK.
-- Injects some glue libraries in Rust, which ties the link between `android_native_app_glue` and
-  the `main` function of your crate.
+- Always compiles your crate as a static library.
+- Uses `ndk-build` provided by the NDK to to build a shared library.
+- Links to the `android_native_app_glue` library provided by the Android NDK.
+- Injects some glue libraries in Rust, which ties the link between `android_native_app_glue` and the `main` function of your crate.
 
 This first step outputs a shared library, and is run once per target architecture.
 
-The command then sets up an Android build environment, which includes some Java code, in
-`target/android-artifacts` and puts the shared libraries in it. Then it runs `gradle`.
+The command then builds the APK using the shared library, generated manifest, and tools from the Android SDK. 
+It signs the APK with the default debug keystore used by Android development tools. If the keystore doesn't exist, it creates it using the keytool from the JRE or JDK.
 
 # Supported `[package.metadata.android]` entries
 
 ```toml
-[package.metadata.android]
+# The target Android API level.
+# "android_version" is the compile SDK version. It defaults to 29.
+# (target_sdk_version defaults to the value of "android_version")
+# (min_sdk_version defaults to 18) It defaults to 18 because this is the minimum supported by rustc.
+android_version = 29
+target_sdk_version = 29
+min_sdk_version = 26
+
+# Specifies the array of targets to build for.
+# Defaults to "armv7-linux-androideabi", "aarch64-linux-android", "i686-linux-android".
+build_targets = [ "armv7-linux-androideabi", "aarch64-linux-android", "i686-linux-android", "x86_64-linux-android" ]
+
+#
+# The following settings can be customized on a per bin/example basis. See multiple_targets example
+#
 
 # The Java package name for your application.
 # Hyphens are converted to underscores.
-package_name = "com.author-name.my-android-app"
+package_name = "rust.cargo.apk.advanced"
 
 # The user-friendly name for your app, as displayed in the applications menu.
-label = "My Android App"
+label = "Advanced android-rs-glue example"
 
-# Path to your application's res/ folder. See `examples/use_icon/res`.
-res = "path/to/res_folder"
+# Path to your application's res/ folder.
+res = "res"
 
-# Virtual path your application's icon for any mipmap level. See `examples/use_icon/icon`.
-icon = "@mipmap/ic_laucher"
+# Virtual path your application's icon for any mipmap level.
+icon = "@mipmap/ic_launcher"
 
-# Path to the folder containing your application's assets. See `examples/use_assets/assets`.
-assets = "path/to/assets_folder"
-
-# The target Android API level.
-# It defaults to 18 because this is the minimum supported by rustc.
-# (target_sdk_version and min_sdk_version default to the value of "android_version")
-android_version = 18
-target_sdk_version = 18
-min_sdk_version = 18
+# Path to the folder containing your application's assets.
+assets = "assets"
 
 # If set to true, makes the app run in full-screen, by adding the following line
 # as an XML attribute to the manifest's <application> tag :
@@ -118,16 +123,10 @@ min_sdk_version = 18
 # Defaults to false.
 fullscreen = false
 
-# Specifies the array of targets to build for.
-# Defaults to "arm-linux-androideabi".
-# Other possible targets include "aarch64-linux-android", 
-# "armv7-linux-androideabi", "i686-linux-android" and "x86_64-linux-android".
-build_targets = [ "arm-linux-androideabi", "armv7-linux-androideabi" ]
-
 # The maximum supported OpenGL ES version , as claimed by the manifest. Defaults to 2.0.
 # See https://developer.android.com/guide/topics/graphics/opengl.html#manifest
-opengles_version_major = 2
-opengles_version_minor = 0
+opengles_version_major = 3
+opengles_version_minor = 2
 
 # Adds extra arbitrary XML attributes to the <application> tag in the manifest.
 # See https://developer.android.com/guide/topics/manifest/application-element.html
@@ -140,4 +139,24 @@ opengles_version_minor = 0
 [package.metadata.android.activity_attributes]
 "android:screenOrientation" = "unspecified"
 "android:uiOptions" = "none"
+
+[[package.metadata.android.feature]]
+name = "android.hardware.camera"
+
+[[package.metadata.android.feature]]
+name = "android.hardware.vulkan.level"
+version = "1"
+required = false
+
+# Request permissions. Note that android_version 23 and higher, Android requires the application
+# to request permissions at runtime. There is currently no way to do this using a pure NDK based application.
+[[package.metadata.android.permission]]
+name = "android.permission.WRITE_EXTERNAL_STORAGE"
+maxSdkVersion = "18"
+
+[[package.metadata.android.permission]]
+name = "android.permission.CAMERA"
+
+[dependencies.android_glue]
+path = "../../glue"
 ```

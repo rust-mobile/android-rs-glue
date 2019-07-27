@@ -1,0 +1,81 @@
+[package]
+name = "advanced"
+version = "0.1.0"
+authors = ["Philip Alldredge <philip@philipalldredge.com"]
+publish = false
+
+[package.metadata.android]
+# The target Android API level.
+# "android_version" is the compile SDK version. It defaults to 29.
+# (target_sdk_version defaults to the value of "android_version")
+# (min_sdk_version defaults to 18) It defaults to 18 because this is the minimum supported by rustc.
+android_version = 29
+target_sdk_version = 29
+min_sdk_version = 26
+
+# Specifies the array of targets to build for.
+# Defaults to "armv7-linux-androideabi", "aarch64-linux-android", "i686-linux-android".
+build_targets = [ "armv7-linux-androideabi", "aarch64-linux-android", "i686-linux-android", "x86_64-linux-android" ]
+
+#
+# The following settings can be customized on a per bin/example basis. See multiple_targets example
+#
+
+# The Java package name for your application.
+# Hyphens are converted to underscores.
+package_name = "rust.cargo.apk.advanced"
+
+# The user-friendly name for your app, as displayed in the applications menu.
+label = "Advanced android-rs-glue example"
+
+# Path to your application's res/ folder.
+res = "res"
+
+# Virtual path your application's icon for any mipmap level.
+icon = "@mipmap/ic_launcher"
+
+# Path to the folder containing your application's assets.
+assets = "assets"
+
+# If set to true, makes the app run in full-screen, by adding the following line
+# as an XML attribute to the manifest's <application> tag :
+#     android:theme="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen
+# Defaults to false.
+fullscreen = false
+
+# The maximum supported OpenGL ES version , as claimed by the manifest. Defaults to 2.0.
+# See https://developer.android.com/guide/topics/graphics/opengl.html#manifest
+opengles_version_major = 3
+opengles_version_minor = 2
+
+# Adds extra arbitrary XML attributes to the <application> tag in the manifest.
+# See https://developer.android.com/guide/topics/manifest/application-element.html
+[package.metadata.android.application_attributes]
+"android:debuggable" = "true"
+"android:hardwareAccelerated" = "true"
+
+# Adds extra arbitrary XML attributes to the <activity> tag in the manifest.
+# See https://developer.android.com/guide/topics/manifest/activity-element.html
+[package.metadata.android.activity_attributes]
+"android:screenOrientation" = "unspecified"
+"android:uiOptions" = "none"
+
+[[package.metadata.android.feature]]
+name = "android.hardware.camera"
+
+[[package.metadata.android.feature]]
+name = "android.hardware.vulkan.level"
+version = "1"
+required = false
+
+# Request permissions. Note that android_version 23 and higher, Android requires the application
+# to request permissions at runtime. There is currently no way to do this using a pure NDK based application.
+[[package.metadata.android.permission]]
+name = "android.permission.WRITE_EXTERNAL_STORAGE"
+maxSdkVersion = "18"
+
+[[package.metadata.android.permission]]
+name = "android.permission.CAMERA"
+
+[dependencies.android_glue]
+path = "../../glue"
