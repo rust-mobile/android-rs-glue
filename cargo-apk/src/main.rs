@@ -45,17 +45,17 @@ fn main() {
     let arg_target_dir = &subcommand_args.value_of_path("target-dir", &cargo_config);
 
     cargo_config.configure(
-        args.occurrences_of("verbose") as u32,
-        if args.is_present("quiet") {
+        subcommand_args.occurrences_of("verbose") as u32,
+        if subcommand_args.is_present("quiet") {
             Some(true)
         } else {
             None
         },
-        &args.value_of("color").map(|s| s.to_string()),
-        args.is_present("frozen"),
-        args.is_present("locked"),
+        &subcommand_args.value_of("color").map(|s| s.to_string()),
+        subcommand_args.is_present("frozen"),
+        subcommand_args.is_present("locked"),
         arg_target_dir,
-        &args.values_of_lossy("unstable-features")
+        &subcommand_args.values_of_lossy("unstable-features")
             .unwrap_or_default(),
     ).unwrap();
 
@@ -138,6 +138,11 @@ fn cli_build() -> App<'static, 'static> {
       .arg_manifest_path()
       .arg_message_format()
       .arg_build_plan()
+      .arg_verbose()
+      .arg_quiet()
+      .arg_color()
+      .arg_frozen()
+      .arg_locked()
       .after_help(
             "\
 All packages in the workspace are built if the `--all` flag is supplied. The
@@ -446,6 +451,29 @@ pub trait AppExt: Sized {
 
     fn arg_build_plan(self) -> Self {
         self._arg(opt("build-plan", "Output the build plan in JSON"))
+    }
+
+    fn arg_verbose(self) -> Self {
+        self._arg(opt("verbose", "Use verbose output")
+                  .short("v"))
+    }
+
+    fn arg_quiet(self) -> Self {
+        self._arg(opt("quiet", "No output printed to stdout")
+                  .short("q"))
+    }
+
+    fn arg_color(self) -> Self {
+        self._arg(opt("color", "Coloring: auto, always, never")
+                  .value_name("WHEN"))
+    }
+
+    fn arg_frozen(self) -> Self {
+        self._arg(opt("frozen", "Require Cargo.lock and cache are up to date"))
+    }
+
+    fn arg_locked(self) -> Self {
+        self._arg(opt("locked", "Require Cargo.lock is up to date"))
     }
 
     fn arg_new_opts(self) -> Self {
