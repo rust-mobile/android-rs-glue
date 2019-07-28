@@ -3,6 +3,7 @@ name = "android_primary_bin"
 version = "0.1.0"
 authors = ["Philip Alldredge <philip@philipalldredge.com>"]
 publish = false
+edition = "2018"
 
 [dependencies.android_glue]
 path = "../../glue"

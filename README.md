@@ -50,6 +50,13 @@ with the regular `cargo build`.
 
 This will build an Android package in `target/android-artifacts/<debug|release>/apk`.
 
+### Compiling Multiple Binaries
+
+`cargo apk build` supports building multiple binaries and examples using the same arguments as `cargo build`. It will produce an APK for each binary.
+
+Android packages for bin targets are placed in `target/android-artifacts/<debug|release>/apk/examples`.
+Android packages for example targets are placed in `target/android-artifacts/<debug|release>/apk/examples`.
+
 ### Testing on an Android emulator
 
 Start the emulator, then run:
@@ -110,16 +117,16 @@ build_targets = [ "armv7-linux-androideabi", "aarch64-linux-android", "i686-linu
 package_name = "rust.cargo.apk.advanced"
 
 # The user-friendly name for your app, as displayed in the applications menu.
-label = "Advanced android-rs-glue example"
+label = "My Android App"
 
 # Path to your application's res/ folder.
-res = "res"
+res = "path/to/res_folder"
 
 # Virtual path your application's icon for any mipmap level.
 icon = "@mipmap/ic_launcher"
 
 # Path to the folder containing your application's assets.
-assets = "assets"
+assets = "path/to/assets_folder"
 
 # If set to true, makes the app run in full-screen, by adding the following line
 # as an XML attribute to the manifest's <application> tag :
@@ -144,6 +151,11 @@ opengles_version_minor = 2
 "android:screenOrientation" = "unspecified"
 "android:uiOptions" = "none"
 
+# Adds a uses-feature element to the manifest
+# Supported keys: name, required, version
+# The glEsVersion attribute is not supported using this section. 
+# It can be specified using the opengles_version_major and opengles_version_minor values
+# See https://developer.android.com/guide/topics/manifest/uses-feature-element
 [[package.metadata.android.feature]]
 name = "android.hardware.camera"
 
@@ -152,15 +164,14 @@ name = "android.hardware.vulkan.level"
 version = "1"
 required = false
 
-# Request permissions. Note that android_version 23 and higher, Android requires the application
-# to request permissions at runtime. There is currently no way to do this using a pure NDK based application.
+# Adds a uses-permission element to the manifest.
+# Note that android_version 23 and higher, Android requires the application to request permissions at runtime.
+# There is currently no way to do this using a pure NDK based application.
+# See https://developer.android.com/guide/topics/manifest/uses-permission-element
 [[package.metadata.android.permission]]
 name = "android.permission.WRITE_EXTERNAL_STORAGE"
 maxSdkVersion = "18"
 
 [[package.metadata.android.permission]]
 name = "android.permission.CAMERA"
-
-[dependencies.android_glue]
-path = "../../glue"
 ```

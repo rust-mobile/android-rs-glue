@@ -62,10 +62,6 @@ pub const APP_CMD_PAUSE: i32 = 13;
 pub const APP_CMD_STOP: i32 = 14;
 pub const APP_CMD_DESTROY: i32 = 15;
 
-extern {
-    pub fn app_dummy();
-}
-
 pub const MODE_BUFFER: i32 = 3;
 pub const MODE_RANDOM: i32 = 1;
 pub const MODE_STREAMING: i32 = 2;

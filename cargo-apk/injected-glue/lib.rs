@@ -197,7 +197,6 @@ pub fn get_app<'a>() -> &'a mut ffi::android_app {
 pub fn android_main2<F>(app: *mut ffi::android_app, main_function: F)
     where F: FnOnce() + 'static + Send
 {
-    unsafe { ffi::app_dummy() };
     write_log("Entering android_main");
 
     unsafe { ANDROID_APP = app; };

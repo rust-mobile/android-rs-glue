@@ -3,6 +3,7 @@ name = "advanced"
 version = "0.1.0"
 authors = ["Philip Alldredge <philip@philipalldredge.com"]
 publish = false
+edition = "2018"
 
 [package.metadata.android]
 # The target Android API level.
@@ -60,6 +61,11 @@ opengles_version_minor = 2
 "android:screenOrientation" = "unspecified"
 "android:uiOptions" = "none"
 
+# Adds a uses-feature element to the manifest
+# Supported keys: name, required, version
+# The glEsVersion attribute is not supported using this section.
+# It can be specified using the opengles_version_major and opengles_version_minor values
+# See https://developer.android.com/guide/topics/manifest/uses-feature-element
 [[package.metadata.android.feature]]
 name = "android.hardware.camera"
 
@@ -68,14 +74,13 @@ name = "android.hardware.vulkan.level"
 version = "1"
 required = false
 
-# Request permissions. Note that android_version 23 and higher, Android requires the application
-# to request permissions at runtime. There is currently no way to do this using a pure NDK based application.
+# Adds a uses-permission element to the manifest.
+# Note that android_version 23 and higher, Android requires the application to request permissions at runtime.
+# There is currently no way to do this using a pure NDK based application.
+# See https://developer.android.com/guide/topics/manifest/uses-permission-element
 [[package.metadata.android.permission]]
 name = "android.permission.WRITE_EXTERNAL_STORAGE"
 maxSdkVersion = "18"
 
 [[package.metadata.android.permission]]
 name = "android.permission.CAMERA"
-
-[dependencies.android_glue]
-path = "../../glue"

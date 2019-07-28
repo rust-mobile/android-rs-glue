@@ -2,6 +2,7 @@
 name = "android_glue_example"
 version = "0.1.0"
 authors = ["Pierre Krieger <pierre.krieger1708@gmail.com>"]
+edition = "2018"
 
 [package.metadata.android]
 label = "Basic android-rs-glue example"
