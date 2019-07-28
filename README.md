@@ -55,6 +55,7 @@ This will build an Android package in `target/android-artifacts/<debug|release>/
 `cargo apk build` supports building multiple binaries and examples using the same arguments as `cargo build`. It will produce an APK for each binary.
 
 Android packages for bin targets are placed in `target/android-artifacts/<debug|release>/apk`.
+
 Android packages for example targets are placed in `target/android-artifacts/<debug|release>/apk/examples`.
 
 ### Testing on an Android emulator
