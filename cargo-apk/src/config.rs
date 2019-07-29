@@ -16,6 +16,9 @@ use std::path::PathBuf;
 use toml;
 
 pub struct AndroidConfig {
+    /// Name of the cargo package
+    pub cargo_package_name: String,
+
     /// Path to the manifest
     pub manifest_path: PathBuf,
     /// Path to the root of the Android SDK.
@@ -51,17 +54,19 @@ impl AndroidConfig {
     /// Builds the android target config based on the default target config and the specific target configs defined in the manifest
     pub fn resolve(&self, target: (TargetKind, String)) -> CargoResult<AndroidTargetConfig> {
         let primary_config = self.target_configs.get(&target);
-        let package_name = target.1;
+        let target_name = target.1;
+        let is_default_target = target_name == self.cargo_package_name;
+        let example = target.0 == TargetKind::ExampleBin;
 
         Ok(AndroidTargetConfig {
             package_name: primary_config
                 .and_then(|a| a.package_name.clone())
-                .or_else(|| self.default_target_config.package_name.clone())
-                .unwrap_or_else(|| format!("rust.{}", package_name)),
+                .or_else(|| if is_default_target { self.default_target_config.package_name.clone() } else { None } )
+                .unwrap_or_else(|| if example { format!("rust.{}.example.{}", self.cargo_package_name, target_name) } else { format!("rust.{}", target_name) } ),
             package_label: primary_config
                 .and_then(|a| a.label.clone())
-                .or_else(|| self.default_target_config.label.clone())
-                .unwrap_or_else(|| package_name.clone()),
+                .or_else(||  if is_default_target { self.default_target_config.label.clone() } else { None } )
+                .unwrap_or_else(|| target_name.clone()),
             package_icon: primary_config
                 .and_then(|a| a.icon.clone())
                 .or_else(|| self.default_target_config.icon.clone()),
@@ -333,6 +338,7 @@ pub fn load(
 
     // For the moment some fields of the config are dummies.
     Ok(AndroidConfig {
+        cargo_package_name: package.name().to_string(),
         manifest_path: package.manifest_path().to_owned(),
         sdk_path: Path::new(&sdk_path).to_owned(),
         ndk_path: Path::new(&ndk_path).to_owned(),
@@ -380,6 +386,7 @@ struct TomlMetadata {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct TomlAndroid {
     android_version: Option<u32>,
     target_sdk_version: Option<u32>,
@@ -394,6 +401,7 @@ struct TomlAndroid {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct TomlFeature {
     name: String,
     required: Option<bool>,
@@ -401,6 +409,7 @@ struct TomlFeature {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct TomlPermission {
     name: String,
     max_sdk_version: Option<u32>,
@@ -408,6 +417,7 @@ struct TomlPermission {
 
 /// Configuration specific to a single cargo target
 #[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct TomlAndroidSpecificTarget {
     name: String,
 

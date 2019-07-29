@@ -110,23 +110,34 @@ min_sdk_version = 26
 build_targets = [ "armv7-linux-androideabi", "aarch64-linux-android", "i686-linux-android", "x86_64-linux-android" ]
 
 #
-# The following settings can be customized on a per bin/example basis. See multiple_targets example
+# The following value can be customized on a per bin/example basis. See multiple_targets example
+# If a value is not specified for a secondary target, it will inherit the value defined in the `package.metadata.android`
+# section unless otherwise noted.
 #
 
 # The Java package name for your application.
 # Hyphens are converted to underscores.
+# Defaults to rust.<target_name> for binaries. 
+# Defaults to rust.<package_name>.example.<target_name> for examples.
+# For example: for a binary "my_app", the default package name will be "rust.my_app"
+# Secondary targets will not inherit the value defined in the root android configuration.
 package_name = "rust.cargo.apk.advanced"
 
 # The user-friendly name for your app, as displayed in the applications menu.
+# Defaults to the target name
+# Secondary targets will not inherit the value defined in the root android configuration.
 label = "My Android App"
 
-# Path to your application's res/ folder.
+# Path to your application's resources folder.
+# If not specified, resources will not be included in the APK
 res = "path/to/res_folder"
 
 # Virtual path your application's icon for any mipmap level.
+# If not specified, an icon will not be included in the APK.
 icon = "@mipmap/ic_launcher"
 
 # Path to the folder containing your application's assets.
+# If not specified, assets will not be included in the APK
 assets = "path/to/assets_folder"
 
 # If set to true, makes the app run in full-screen, by adding the following line
@@ -135,7 +146,8 @@ assets = "path/to/assets_folder"
 # Defaults to false.
 fullscreen = false
 
-# The maximum supported OpenGL ES version , as claimed by the manifest. Defaults to 2.0.
+# The maximum supported OpenGL ES version , as claimed by the manifest.
+# Defaults to 2.0.
 # See https://developer.android.com/guide/topics/graphics/opengl.html#manifest
 opengles_version_major = 3
 opengles_version_minor = 2

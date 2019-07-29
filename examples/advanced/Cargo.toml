@@ -19,7 +19,9 @@ min_sdk_version = 26
 build_targets = [ "armv7-linux-androideabi", "aarch64-linux-android", "i686-linux-android", "x86_64-linux-android" ]
 
 #
-# The following settings can be customized on a per bin/example basis. See multiple_targets example
+# The following value can be customized on a per bin/example basis. See multiple_targets example
+# If a value is not specified for a secondary target, it will inherit the value defined in the `package.metadata.android`
+# section unless otherwise noted.
 #
 
 # The Java package name for your application.
