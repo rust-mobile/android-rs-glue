@@ -308,7 +308,7 @@ fn build_manifest(
             .map_or(String::new(), |a| a.replace("\n", "\n            "))
     );
 
-    // Buidling activity attributes
+    // Build activity attributes
     let activity_attrs = format!(
         r#"
                 android:name="android.app.NativeActivity"
@@ -406,7 +406,7 @@ fn build_makefiles(
 # Define module for static library built by rustc
 include $(CLEAR_VARS)
 LOCAL_MODULE := rustlib
-LOCAL_SRC_FILES := ../../../$(TARGET_ARCH_ABI)/build/lib{target_name}.a
+LOCAL_SRC_FILES := ../../../$(TARGET_ARCH_ABI)/build/lib{target_library_name}.a
 include $(PREBUILT_STATIC_LIBRARY)
 
 # Build the application
@@ -421,6 +421,7 @@ NDK_LIBS_OUT := ./lib
 include $(BUILD_SHARED_LIBRARY)
 
 $(call import-module,android/native_app_glue)"#,
+        target_library_name = target.name().replace("-", "_"),
         target_name = target.name()
     )?;
 
