@@ -61,11 +61,29 @@ impl AndroidConfig {
         Ok(AndroidTargetConfig {
             package_name: primary_config
                 .and_then(|a| a.package_name.clone())
-                .or_else(|| if is_default_target { self.default_target_config.package_name.clone() } else { None } )
-                .unwrap_or_else(|| if example { format!("rust.{}.example.{}", self.cargo_package_name, target_name) } else { format!("rust.{}", target_name) } ),
+                .or_else(|| {
+                    if is_default_target {
+                        self.default_target_config.package_name.clone()
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or_else(|| {
+                    if example {
+                        format!("rust.{}.example.{}", self.cargo_package_name, target_name)
+                    } else {
+                        format!("rust.{}", target_name)
+                    }
+                }),
             package_label: primary_config
                 .and_then(|a| a.label.clone())
-                .or_else(||  if is_default_target { self.default_target_config.label.clone() } else { None } )
+                .or_else(|| {
+                    if is_default_target {
+                        self.default_target_config.label.clone()
+                    } else {
+                        None
+                    }
+                })
                 .unwrap_or_else(|| target_name.clone()),
             package_icon: primary_config
                 .and_then(|a| a.icon.clone())
