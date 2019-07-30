@@ -45,13 +45,13 @@ pub unsafe extern fn cargo_apk_injected_glue_add_sender(sender: *mut ()) {
 
 #[no_mangle]
 pub unsafe extern fn cargo_apk_injected_glue_add_sync_event_handler(handler: *mut ()) {
-    let handler: Box<Box<SyncEventHandler>> = Box::from_raw(handler as *mut _);
+    let handler: Box<Box<dyn SyncEventHandler>> = Box::from_raw(handler as *mut _);
     add_sync_event_handler(*handler);
 }
 
 #[no_mangle]
 pub unsafe extern fn cargo_apk_injected_glue_remove_sync_event_handler(handler: *mut ()) {
-    let handler: Box<*const SyncEventHandler> = Box::from_raw(handler as *mut _);
+    let handler: Box<*const dyn SyncEventHandler> = Box::from_raw(handler as *mut _);
     remove_sync_event_handler(*handler);
 }
 
@@ -97,7 +97,7 @@ struct Context {
     // Event listeners that receive async events using channels.
     senders:    Mutex<Vec<Sender<Event>>>,
     // Event listeners that receive sync events from the polling loop.
-    sync_event_handlers:  Mutex<Vec<Box<SyncEventHandler>>>,
+    sync_event_handlers:  Mutex<Vec<Box<dyn SyncEventHandler>>>,
     // Any missed events are stored here.
     missed:     Mutex<Vec<Event>>,
     // Better performance to track number of missed items.
@@ -195,7 +195,7 @@ pub fn get_app<'a>() -> &'a mut ffi::android_app {
 /// This is the function that must be called by `android_main`
 #[doc(hidden)]
 pub fn android_main2<F>(app: *mut ffi::android_app, main_function: F)
-    where F: FnOnce(isize, *const *const u8) + 'static + Send
+    where F: FnOnce() + 'static + Send
 {
     write_log("Entering android_main");
 
@@ -263,8 +263,8 @@ pub fn android_main2<F>(app: *mut ffi::android_app, main_function: F)
                                           buf.capacity() - 1 - cursor);
 
                         let len = if result == 0 { return ptr::null_mut(); }
-                                  else if result < 0 { return ptr::null_mut(); /* TODO: report problem */ }
-                                  else { result as usize + cursor };
+                        else if result < 0 { return ptr::null_mut(); /* TODO: report problem */ }
+                        else { result as usize + cursor };
 
                         buf.set_len(len);
 
@@ -306,13 +306,12 @@ pub fn android_main2<F>(app: *mut ffi::android_app, main_function: F)
         let main_function = Box::into_raw(Box::new(main_function));
 
         extern fn main_thread<F>(main_function: *mut c_void) -> *mut c_void
-            where F: FnOnce(isize, *const *const u8) + 'static + Send
+            where F: FnOnce() + 'static + Send
         {
             unsafe {
                 let main_function: Box<F> = Box::from_raw(main_function as *mut _);
-                let argv = [b"android\0".as_ptr()];
                 // TODO: catch panic? (only once stable)
-                (*main_function)(1, argv.as_ptr());
+                (*main_function)();
                 ptr::null_mut()
             }
         }
@@ -420,7 +419,7 @@ fn send_event(event: Event) {
 /// information, and finally send the event, which normally would be recieved by
 /// the main application thread IF it has registered a sender.
 pub extern fn inputs_callback(_: *mut ffi::android_app, event: *const ffi::AInputEvent)
-    -> i32
+                              -> i32
 {
     let etype = unsafe { ffi::AInputEvent_getType(event) };
     let action = unsafe { ffi::AMotionEvent_getAction(event) };
@@ -447,8 +446,8 @@ pub extern fn inputs_callback(_: *mut ffi::android_app, event: *const ffi::AInpu
             };
             let context = get_context();
             let idx = ((action & ffi::AMOTION_EVENT_ACTION_POINTER_INDEX_MASK)
-                       >> ffi::AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT)
-                      as usize;
+                >> ffi::AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT)
+                as usize;
 
             let pointer_id = unsafe { ffi::AMotionEvent_getPointerId(event, idx) };
             if action_code == ffi::AMOTION_EVENT_ACTION_DOWN {
@@ -531,13 +530,13 @@ pub fn add_sender(sender: Sender<Event>) {
 }
 
 /// Adds a SyncEventHandler which will process sync events from the polling loop.
-pub fn add_sync_event_handler(handler: Box<SyncEventHandler>) {
+pub fn add_sync_event_handler(handler: Box<dyn SyncEventHandler>) {
     let mut handlers = get_context().sync_event_handlers.lock().unwrap();
     handlers.push(handler);
 }
 
 /// Removes a SyncEventHandler.
-pub fn remove_sync_event_handler(handler: *const SyncEventHandler) {
+pub fn remove_sync_event_handler(handler: *const dyn SyncEventHandler) {
     let mut handlers = get_context().sync_event_handlers.lock().unwrap();
     handlers.retain(|ref b| b.as_ref() as *const _ != handler);
 }

@@ -1,23 +1,33 @@
+use super::BuildResult;
+use crate::config::AndroidConfig;
+use crate::ops::build;
 use cargo::core::Workspace;
-use cargo::util::errors::CargoError;
 use cargo::util::process_builder::process;
+use cargo::util::CargoResult;
 use clap::ArgMatches;
-use ops::build;
-use config::AndroidConfig;
 
-pub fn install(workspace: &Workspace, config: &AndroidConfig, options: &ArgMatches)
-               -> Result<(), CargoError>
-{
+pub fn install(
+    workspace: &Workspace,
+    config: &AndroidConfig,
+    options: &ArgMatches,
+) -> CargoResult<BuildResult> {
     let build_result = build::build(workspace, config, options)?;
 
     let adb = config.sdk_path.join("platform-tools/adb");
 
-    drop(writeln!(workspace.config().shell().err(), "Installing apk to the device"));
-    process(&adb)
-        .arg("install")
-        .arg("-r")      // TODO: let user choose
-        .arg(&build_result.apk_path)
-        .exec()?;
+    for apk_path in build_result.target_to_apk_map.values() {
+        drop(writeln!(
+            workspace.config().shell().err(),
+            "Installing apk '{}' to the device",
+            apk_path.file_name().unwrap().to_string_lossy()
+        ));
 
-    Ok(())
+        process(&adb)
+            .arg("install")
+            .arg("-r") // TODO: let user choose
+            .arg(apk_path)
+            .exec()?;
+    }
+
+    Ok(build_result)
 }

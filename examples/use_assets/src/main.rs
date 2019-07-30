@@ -1,5 +1,3 @@
-extern crate android_glue;
-
 mod fs;
 
 use std::io::BufRead;
