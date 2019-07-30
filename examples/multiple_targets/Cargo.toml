@@ -12,7 +12,7 @@ path = "../../glue"
 label = "Primary Binary"
 
 [[package.metadata.android.bin]]
-name = "secondary_bin"
+name = "secondary-bin"
 label = "Secondary Binary"
 
 [[package.metadata.android.example]]
