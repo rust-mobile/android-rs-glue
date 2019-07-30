@@ -82,7 +82,7 @@ required = false
 # See https://developer.android.com/guide/topics/manifest/uses-permission-element
 [[package.metadata.android.permission]]
 name = "android.permission.WRITE_EXTERNAL_STORAGE"
-max_sdk_version = "18"
+max_sdk_version = 18
 
 [[package.metadata.android.permission]]
 name = "android.permission.CAMERA"
