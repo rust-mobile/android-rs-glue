@@ -11,7 +11,6 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::convert::TryInto;
 use std::fmt;
 
-// TODO: update ffi to new-ish NDK version
 use crate::ffi;
 
 /// A `const AInputEvent *`
@@ -36,14 +35,28 @@ pub enum Source {
     Touchscreen = ffi::AINPUT_SOURCE_TOUCHSCREEN,
     Mouse = ffi::AINPUT_SOURCE_MOUSE,
     Stylus = ffi::AINPUT_SOURCE_STYLUS,
-    //BluetoothStylus = ffi::AINPUT_SOURCE_BLUETOOTH_STYLUS,
+    BluetoothStylus = ffi::AINPUT_SOURCE_BLUETOOTH_STYLUS,
     Trackball = ffi::AINPUT_SOURCE_TRACKBALL,
-    //MouseRelative = ffi::AINPUT_SOURCE_MOUSE_RELATIVE,
+    MouseRelative = ffi::AINPUT_SOURCE_MOUSE_RELATIVE,
     Touchpad = ffi::AINPUT_SOURCE_TOUCHPAD,
     TouchNavigation = ffi::AINPUT_SOURCE_TOUCH_NAVIGATION,
     Joystick = ffi::AINPUT_SOURCE_JOYSTICK,
-    //RotaryEncoder = ffi::AINPUT_SOURCE_ROTARY_ENCODER,
+    RotaryEncoder = ffi::AINPUT_SOURCE_ROTARY_ENCODER,
     Any = ffi::AINPUT_SOURCE_ANY,
+}
+
+/// An enum representing the class of an `AInputEvent` source
+///
+/// See [the NDK docs](https://developer.android.com/ndk/reference/group/input#anonymous-enum-35)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, TryFromPrimitive, IntoPrimitive)]
+#[repr(i32)]
+enum Class {
+    None = ffi::AINPUT_SOURCE_CLASS_NONE,
+    Button = ffi::AINPUT_SOURCE_CLASS_BUTTON,
+    Pointer = ffi::AINPUT_SOURCE_CLASS_POINTER,
+    Navigation = ffi::AINPUT_SOURCE_CLASS_NAVIGATION,
+    Position = ffi::AINPUT_SOURCE_CLASS_POSITION,
+    Joystick = ffi::AINPUT_SOURCE_CLASS_JOYSTICK,
 }
 
 impl AInputEvent {
@@ -194,12 +207,12 @@ pub enum MotionAction {
     Outside = ffi::AMOTION_EVENT_ACTION_OUTSIDE,
     PointerDown = ffi::AMOTION_EVENT_ACTION_POINTER_DOWN,
     PointerUp = ffi::AMOTION_EVENT_ACTION_POINTER_UP,
-    //HoverMove = ffi::AMOTION_EVENT_ACTION_HOVER_MOVE,
-    //Scroll = ffi::AMOTION_EVENT_ACTION_SCROLL,
+    HoverMove = ffi::AMOTION_EVENT_ACTION_HOVER_MOVE,
+    Scroll = ffi::AMOTION_EVENT_ACTION_SCROLL,
     HoverEnter = ffi::AMOTION_EVENT_ACTION_HOVER_ENTER,
     HoverExit = ffi::AMOTION_EVENT_ACTION_HOVER_EXIT,
-    //ButtonPress = ffi::AMOTION_EVENT_ACTION_BUTTON_PRESS,
-    //ButtonRelease = ffi::AMOTION_EVENT_ACTION_BUTTON_RELEASE,
+    ButtonPress = ffi::AMOTION_EVENT_ACTION_BUTTON_PRESS,
+    ButtonRelease = ffi::AMOTION_EVENT_ACTION_BUTTON_RELEASE,
 }
 
 /// An axis of a motion event.
@@ -234,9 +247,9 @@ pub enum Axis {
     Brake = ffi::AMOTION_EVENT_AXIS_BRAKE,
     Distance = ffi::AMOTION_EVENT_AXIS_DISTANCE,
     Tilt = ffi::AMOTION_EVENT_AXIS_TILT,
-    //Scroll = ffi::AMOTION_EVENT_AXIS_SCROLL,
-    //RelativeX = ffi::AMOTION_EVENT_AXIS_RELATIVE_X,
-    //RelativeY = ffi::AMOTION_EVENT_AXIS_RELATIVE_Y,
+    Scroll = ffi::AMOTION_EVENT_AXIS_SCROLL,
+    RelativeX = ffi::AMOTION_EVENT_AXIS_RELATIVE_X,
+    RelativeY = ffi::AMOTION_EVENT_AXIS_RELATIVE_Y,
     Generic1 = ffi::AMOTION_EVENT_AXIS_GENERIC_1,
     Generic2 = ffi::AMOTION_EVENT_AXIS_GENERIC_2,
     Generic3 = ffi::AMOTION_EVENT_AXIS_GENERIC_3,
@@ -282,7 +295,6 @@ impl ButtonState {
     pub fn forward(self) -> bool {
         self.0 & ffi::AMOTION_EVENT_BUTTON_FORWARD != 0
     }
-    /*
     #[inline]
     pub fn stylus_primary(self) -> bool {
         self.0 & ffi::AMOTION_EVENT_BUTTON_STYLUS_PRIMARY != 0
@@ -291,7 +303,6 @@ impl ButtonState {
     pub fn stylus_secondary(self) -> bool {
         self.0 & ffi::AMOTION_EVENT_BUTTON_STYLUS_SECONDARY != 0
     }
-    */
 }
 
 /// A bitfield representing which edges were touched by a motion event.
@@ -1193,7 +1204,6 @@ pub enum Keycode {
     TvMediaContextMenu = ffi::AKEYCODE_TV_MEDIA_CONTEXT_MENU,
     TvTimerProgramming = ffi::AKEYCODE_TV_TIMER_PROGRAMMING,
     Help = ffi::AKEYCODE_HELP,
-    /*
     NavigatePrevious = ffi::AKEYCODE_NAVIGATE_PREVIOUS,
     NavigateNext = ffi::AKEYCODE_NAVIGATE_NEXT,
     NavigateIn = ffi::AKEYCODE_NAVIGATE_IN,
@@ -1223,7 +1233,6 @@ pub enum Keycode {
     ThumbsUp = ffi::AKEYCODE_THUMBS_UP,
     ThumbsDown = ffi::AKEYCODE_THUMBS_DOWN,
     ProfileSwitch = ffi::AKEYCODE_PROFILE_SWITCH,
-    */
 }
 
 impl AKeyEvent {
