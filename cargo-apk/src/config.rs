@@ -85,6 +85,14 @@ impl AndroidConfig {
                     }
                 })
                 .unwrap_or_else(|| target_name.clone()),
+            version_code: primary_config
+                .and_then(|a| a.version_code)
+                .or_else(|| self.default_target_config.version_code)
+                .unwrap_or(1),
+            version_name: primary_config
+                .and_then(|a| a.version_name.clone())
+                .or_else(|| self.default_target_config.version_name.clone())
+                .unwrap_or_else(|| "1.0".into()),
             package_icon: primary_config
                 .and_then(|a| a.icon.clone())
                 .or_else(|| self.default_target_config.icon.clone()),
@@ -175,6 +183,12 @@ pub struct AndroidTargetConfig {
 
     /// Label for the package.
     pub package_label: String,
+
+    /// Internal version number for manifest.
+    pub version_code: i32,
+
+    /// Version number which is shown to users.
+    pub version_name: String,
 
     /// Name of the launcher icon.
     /// Versions of this icon with different resolutions have to reside in the res folder
@@ -447,6 +461,8 @@ struct TomlAndroidSpecificTarget {
 struct TomlAndroidTarget {
     package_name: Option<String>,
     label: Option<String>,
+    version_code: Option<i32>,
+    version_name: Option<String>,
     icon: Option<String>,
     assets: Option<String>,
     res: Option<String>,

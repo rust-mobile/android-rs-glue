@@ -31,6 +31,16 @@ package_name = "rust.cargo.apk.advanced"
 # The user-friendly name for your app, as displayed in the applications menu.
 label = "Advanced android-rs-glue example"
 
+# Internal version number used to determine whether one version is more recent than another. Must be an integer.
+# Defaults to 1
+# See https://developer.android.com/guide/topics/manifest/manifest-element
+version_code = 2
+
+# The version number shown to users.
+# Defaults to 1.0
+# See https://developer.android.com/guide/topics/manifest/manifest-element
+version_name = "2.0"
+
 # Path to your application's res/ folder.
 res = "res"
 
