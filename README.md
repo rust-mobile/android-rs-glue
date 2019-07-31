@@ -134,7 +134,7 @@ label = "My Android App"
 version_code = 2
 
 # The version number shown to users.
-# Defaults to 1.0
+# Defaults to the cargo package version number
 # See https://developer.android.com/guide/topics/manifest/manifest-element
 version_name = "2.0"
 
