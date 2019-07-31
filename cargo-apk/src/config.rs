@@ -19,6 +19,9 @@ pub struct AndroidConfig {
     /// Name of the cargo package
     pub cargo_package_name: String,
 
+    /// Version of the cargo package
+    pub cargo_package_version: String,
+
     /// Path to the manifest
     pub manifest_path: PathBuf,
     /// Path to the root of the Android SDK.
@@ -85,6 +88,14 @@ impl AndroidConfig {
                     }
                 })
                 .unwrap_or_else(|| target_name.clone()),
+            version_code: primary_config
+                .and_then(|a| a.version_code)
+                .or_else(|| self.default_target_config.version_code)
+                .unwrap_or(1),
+            version_name: primary_config
+                .and_then(|a| a.version_name.clone())
+                .or_else(|| self.default_target_config.version_name.clone())
+                .unwrap_or_else(|| self.cargo_package_version.clone()),
             package_icon: primary_config
                 .and_then(|a| a.icon.clone())
                 .or_else(|| self.default_target_config.icon.clone()),
@@ -175,6 +186,12 @@ pub struct AndroidTargetConfig {
 
     /// Label for the package.
     pub package_label: String,
+
+    /// Internal version number for manifest.
+    pub version_code: i32,
+
+    /// Version number which is shown to users.
+    pub version_name: String,
 
     /// Name of the launcher icon.
     /// Versions of this icon with different resolutions have to reside in the res folder
@@ -357,6 +374,7 @@ pub fn load(
     // For the moment some fields of the config are dummies.
     Ok(AndroidConfig {
         cargo_package_name: package.name().to_string(),
+        cargo_package_version: package.version().to_string(),
         manifest_path: package.manifest_path().to_owned(),
         sdk_path: Path::new(&sdk_path).to_owned(),
         ndk_path: Path::new(&ndk_path).to_owned(),
@@ -447,6 +465,8 @@ struct TomlAndroidSpecificTarget {
 struct TomlAndroidTarget {
     package_name: Option<String>,
     label: Option<String>,
+    version_code: Option<i32>,
+    version_name: Option<String>,
     icon: Option<String>,
     assets: Option<String>,
     res: Option<String>,

@@ -358,8 +358,8 @@ fn build_manifest(
         file, r#"<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
         package="{package}"
-        android:versionCode="1"
-        android:versionName="1.0">
+        android:versionCode="{version_code}"
+        android:versionName="{version_name}">
     <uses-sdk android:targetSdkVersion="{targetSdkVersion}" android:minSdkVersion="{minSdkVersion}" />
     <uses-feature android:glEsVersion="{glEsVersion}" android:required="true"></uses-feature>{uses_features}{uses_permissions}
     <application {application_attrs} >
@@ -373,6 +373,8 @@ fn build_manifest(
     </application>
 </manifest>"#,
         package = target_config.package_name.replace("-", "_"),
+        version_code = target_config.version_code,
+        version_name = target_config.version_name,
         targetSdkVersion = config.target_sdk_version,
         minSdkVersion = config.min_sdk_version,
         glEsVersion = format!("0x{:04}{:04}", target_config.opengles_version_major, target_config.opengles_version_minor),

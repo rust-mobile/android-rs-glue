@@ -128,6 +128,16 @@ package_name = "rust.cargo.apk.advanced"
 # Secondary targets will not inherit the value defined in the root android configuration.
 label = "My Android App"
 
+# Internal version number used to determine whether one version is more recent than another. Must be an integer.
+# Defaults to 1
+# See https://developer.android.com/guide/topics/manifest/manifest-element
+version_code = 2
+
+# The version number shown to users.
+# Defaults to the cargo package version number
+# See https://developer.android.com/guide/topics/manifest/manifest-element
+version_name = "2.0"
+
 # Path to your application's resources folder.
 # If not specified, resources will not be included in the APK
 res = "path/to/res_folder"
