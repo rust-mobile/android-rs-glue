@@ -33,8 +33,8 @@ jobs:
       - run:
           name: Publish final image
           command: |
-            docker login -u $DOCKERHUB_LOGIN -p $DOCKERHUB_PASSWORD
-            docker push IMAGE_NAME
+            echo "$DOCKERHUB_PASSWORD" | docker login -u $DOCKERHUB_LOGIN --password-stdin
+            docker push $IMAGE_NAME
 workflows:
   version: 2
   all:

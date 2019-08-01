@@ -5,19 +5,19 @@
 ## With Docker
 
 The easiest way to compile for Android is to use [Docker](https://www.docker.com/) and the
-[tomaka/cargo-apk](https://hub.docker.com/r/tomaka/cargo-apk/) image.
+[philipalldredge/cargo-apk](https://hub.docker.com/r/philipalldredge/cargo-apk/) image.
 
 In order to build an APK, simply do this:
 
 ```
-docker run --rm -v <path-to-local-directory-with-Cargo.toml>:/root/src tomaka/cargo-apk cargo apk build
+docker run --rm -v <path-to-local-directory-with-Cargo.toml>:/root/src philipalldredge/cargo-apk cargo apk build
 ```
 
 For example if you're on Linux and you want to compile the project in the current working
 directory.
 
 ```
-docker run --rm -v "$(pwd):/root/src" -w /root/src tomaka/cargo-apk cargo apk build
+docker run --rm -v "$(pwd):/root/src" -w /root/src philipalldredge/cargo-apk cargo apk build
 ```
 
 Do not mount a volume on `/root` or you will erase the local installation of Cargo.
