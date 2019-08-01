@@ -1,90 +1,48 @@
 version: 2
-
 jobs:
-
-  build-base-image:
-    working_directory: ~/android-rs-glue
+  build-and-test:
+    environment:
+      IMAGE_NAME: tomaka/cargo-apk
     docker:
-      - image: ubuntu:xenial
+      - image: docker:stable
     steps:
-      - run:
-          name: Install dependencies
-          command: |
-            apt-get update
-            apt-get install -yq curl
-      - run:
-          name: Install Docker client
-          command: |
-            set -x
-            VER="17.03.0-ce"
-            curl -L -o /tmp/docker-$VER.tgz https://get.docker.com/builds/Linux/x86_64/docker-$VER.tgz
-            tar -xz -C /tmp -f /tmp/docker-$VER.tgz
-            mv /tmp/docker/* /usr/bin
+      - checkout
       - setup_remote_docker
-      - checkout
       - run:
-          name: Build base image
-          command: |
-            docker build -t tomaka/rust-android -f .circleci/base.docker .
+          name: Build image
+          command: docker build -t $IMAGE_NAME:latest .
       - run:
-          name: Publish base image
-          command: |
-            docker login -u $DOCKERHUB_LOGIN -p $DOCKERHUB_PASSWORD || true
-            docker push tomaka/rust-android || true
-
-  test:
-    working_directory: ~/android-rs-glue
+          name: Archive image
+          command: docker save -o image.tar $IMAGE_NAME
+      - persist_to_workspace:
+              root: .
+              paths:
+                - ./image.tar
+  publish-docker-image:
+    environment:
+      IMAGE_NAME: tomaka/cargo-apk
     docker:
-      - image: tomaka/rust-android
+      - image: docker:stable
     steps:
-      - checkout
-      - run: cargo build --verbose --manifest-path glue/Cargo.toml
-      - run: cargo install --path cargo-apk
-      - run: cd examples/basic && cargo apk build && cd ..
-      - run: cd examples/use_assets && cargo apk build && cd ..
-      - run: cd examples/use_icon && cargo apk build && cd ..
-
-  build-final-image:
-    working_directory: ~/android-rs-glue
-    docker:
-      - image: ubuntu:xenial
-    steps:
-      - run:
-          name: Install dependencies
-          command: |
-            apt-get update
-            apt-get install -yq curl
-      - run:
-          name: Install Docker client
-          command: |
-            set -x
-            VER="17.03.0-ce"
-            curl -L -o /tmp/docker-$VER.tgz https://get.docker.com/builds/Linux/x86_64/docker-$VER.tgz
-            tar -xz -C /tmp -f /tmp/docker-$VER.tgz
-            mv /tmp/docker/* /usr/bin
+      - attach_workspace:
+          at: /tmp/workspace
       - setup_remote_docker
-      - checkout
       - run:
-          name: Build final image
-          command: |
-            docker build -t tomaka/cargo-apk .
+          name: Load image
+          command: docker load -i /tmp/workspace/image.tar
       - run:
           name: Publish final image
           command: |
             docker login -u $DOCKERHUB_LOGIN -p $DOCKERHUB_PASSWORD
-            docker push tomaka/cargo-apk
-
+            docker push IMAGE_NAME
 workflows:
   version: 2
   all:
     jobs:
-      - build-base-image
-      - test:
+      - build-and-test
+      - publish-docker-image:
           requires:
-            - build-base-image
-      - build-final-image:
-          requires:
-            - test
+            - build-and-test
           filters:
             branches:
               only: master

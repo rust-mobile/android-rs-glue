@@ -16,10 +16,10 @@ RUN mkdir ${ANDROID_HOME} && \
     unzip -q sdk-tools-linux-4333796.zip && \
     rm sdk-tools-linux-4333796.zip && \
     chown -R root:root /opt
-RUN yes | ${ANDROID_HOME}/tools/bin/sdkmanager "platform-tools"
-RUN yes | ${ANDROID_HOME}/tools/bin/sdkmanager "platforms;android-29"
-RUN yes | ${ANDROID_HOME}/tools/bin/sdkmanager "build-tools;29.0.0"
-RUN ${ANDROID_HOME}/tools/bin/sdkmanager --update
+RUN yes | ${ANDROID_HOME}/tools/bin/sdkmanager "platform-tools" | grep -v = || true
+RUN yes | ${ANDROID_HOME}/tools/bin/sdkmanager "platforms;android-29" | grep -v = || true
+RUN yes | ${ANDROID_HOME}/tools/bin/sdkmanager "build-tools;29.0.0"  | grep -v = || true
+RUN ${ANDROID_HOME}/tools/bin/sdkmanager --update | grep -v = || true
 
 # Install Android NDK
 RUN cd /usr/local && \
