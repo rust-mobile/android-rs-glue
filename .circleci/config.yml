@@ -1,13 +1,10 @@
-version: 2.1
-executors:
-  docker-builder:
+version: 2
+jobs:
+  build-and-test:
     environment:
       IMAGE_NAME: tomaka/cargo-apk
     docker:
       - image: docker:stable
-jobs:
-  build-and-test:
-    executor: docker-builder
     steps:
       - checkout
       - setup_remote_docker
@@ -22,7 +19,10 @@ jobs:
               paths:
                 - ./image.tar
   publish-docker-image:
-    executor: docker-builder
+    environment:
+      IMAGE_NAME: tomaka/cargo-apk
+    docker:
+      - image: docker:stable
     steps:
       - attach_workspace:
           at: /tmp/workspace
