@@ -24,7 +24,7 @@ pub fn install(
 
         process(&adb)
             .arg("install")
-            .arg("-r") // TODO: let user choose
+            .arg("-r")
             .arg(apk_path)
             .exec()?;
     }

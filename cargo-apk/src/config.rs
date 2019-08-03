@@ -15,6 +15,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use toml;
 
+#[derive(Clone)]
 pub struct AndroidConfig {
     /// Name of the cargo package
     pub cargo_package_name: String,
@@ -30,7 +31,7 @@ pub struct AndroidConfig {
     pub ndk_path: PathBuf,
 
     /// List of targets to build the app for. Eg. `armv7-linux-androideabi`.
-    pub build_targets: Vec<String>,
+    pub build_targets: Vec<AndroidBuildTarget>,
 
     /// Path to the android.jar for the selected android platform
     pub android_jar_path: PathBuf,
@@ -143,6 +144,19 @@ impl AndroidConfig {
                 .collect(),
         })
     }
+}
+
+/// Build targets supported by NDK
+#[derive(Debug, Copy, Clone, Deserialize)]
+pub enum AndroidBuildTarget {
+    #[serde(rename(deserialize = "armv7-linux-androideabi"))]
+    ArmV7a,
+    #[serde(rename(deserialize = "aarch64-linux-android"))]
+    Arm64V8a,
+    #[serde(rename(deserialize = "i686-linux-android"))]
+    X86,
+    #[serde(rename(deserialize = "x86_64-linux-android"))]
+    X86_64,
 }
 
 #[derive(Clone)]
@@ -388,9 +402,9 @@ pub fn load(
             .and_then(|a| a.build_targets.clone())
             .unwrap_or_else(|| {
                 vec![
-                    "armv7-linux-androideabi".to_owned(),
-                    "aarch64-linux-android".to_owned(),
-                    "i686-linux-android".to_owned(),
+                    AndroidBuildTarget::ArmV7a,
+                    AndroidBuildTarget::Arm64V8a,
+                    AndroidBuildTarget::X86,
                 ]
             }),
         default_target_config,
@@ -427,7 +441,7 @@ struct TomlAndroid {
     android_version: Option<u32>,
     target_sdk_version: Option<u32>,
     min_sdk_version: Option<u32>,
-    build_targets: Option<Vec<String>>,
+    build_targets: Option<Vec<AndroidBuildTarget>>,
 
     #[serde(flatten)]
     default_target_config: TomlAndroidTarget,

@@ -3,3 +3,4 @@
 fn main() {
     println!("Inner attributes test");
 }
+

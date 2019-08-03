@@ -1,18 +1,22 @@
 mod compile;
+mod targets;
+pub mod tempfile;
+mod util;
+
 use crate::config::{AndroidConfig, AndroidTargetConfig};
 use cargo::core::{Target, TargetKind, Workspace};
 use cargo::util::process_builder::process;
 use cargo::util::CargoResult;
 use clap::ArgMatches;
 use failure::format_err;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 use std::{env, fs};
 
-pub use compile::AndroidAbi;
+use crate::ops::build::compile::SharedLibraries;
 
 #[derive(Debug)]
 pub struct BuildResult {
@@ -25,35 +29,17 @@ pub fn build(
     config: &AndroidConfig,
     options: &ArgMatches,
 ) -> CargoResult<BuildResult> {
-    let root_build_dir = get_root_build_directory(workspace, config);
-    let (targets, abis) =
-        compile::build_static_libraries(workspace, config, options, &root_build_dir)?;
-    build_apks(config, &root_build_dir, &targets, &abis)
-}
-
-/// Returns the directory in which all cargo apk artifacts for the current
-/// debug/release configuration should be produced.
-fn get_root_build_directory(workspace: &Workspace, config: &AndroidConfig) -> PathBuf {
-    let android_artifacts_dir = workspace
-        .target_dir()
-        .join("android-artifacts")
-        .into_path_unlocked();
-
-    if config.release {
-        android_artifacts_dir.join("release")
-    } else {
-        android_artifacts_dir.join("debug")
-    }
+    let root_build_dir = util::get_root_build_directory(workspace, config);
+    let shared_libraries =
+        compile::build_shared_libraries(workspace, config, options, &root_build_dir)?;
+    build_apks(config, &root_build_dir, shared_libraries)
 }
 
 fn build_apks(
     config: &AndroidConfig,
     root_build_dir: &PathBuf,
-    targets: &HashSet<Target>,
-    abis: &[AndroidAbi],
+    shared_libraries: SharedLibraries,
 ) -> CargoResult<BuildResult> {
-    let abis_str = abis.join(" ");
-
     // Create directory to hold final APKs which are signed using the debug key
     let final_apk_dir = root_build_dir.join("apk");
     fs::create_dir_all(&final_apk_dir)?;
@@ -62,33 +48,9 @@ fn build_apks(
     let mut target_to_apk_map = BTreeMap::new();
 
     // Build an APK for each cargo target
-    for target in targets.iter() {
-        let target_directory = match target.kind() {
-            TargetKind::Bin => root_build_dir.join("bin"),
-            TargetKind::ExampleBin => root_build_dir.join("examples"),
-            _ => unreachable!("Unexpected target kind"),
-        };
-
-        let target_directory = target_directory.join(target.name());
+    for (target, shared_libraries) in shared_libraries.shared_libraries.iter_all() {
+        let target_directory = util::get_target_directory(root_build_dir, target)?;
         fs::create_dir_all(&target_directory)?;
-
-        // Run ndk-build
-        build_makefiles(&target_directory, target, &abis_str, config)?;
-
-        let mut ndk_build_cmd = if cfg!(target_os = "windows") {
-            let mut pb = process("cmd");
-            let ndk_build_path = config.ndk_path.join("build/ndk-build.cmd");
-            pb.arg("/C").arg(ndk_build_path);
-            pb
-        } else {
-            let ndk_build_path = config.ndk_path.join("build/ndk-build");
-            process(ndk_build_path)
-        };
-
-        ndk_build_cmd
-            .arg("NDK_LIBS_OUT=./lib")
-            .cwd(&target_directory)
-            .exec()?;
 
         // Determine Target Configuration
         let target_config = config.resolve((target.kind().to_owned(), target.name().to_owned()))?;
@@ -142,9 +104,22 @@ fn build_apks(
 
         aapt2_link_cmd.cwd(&target_directory).exec()?;
 
-        // Add binaries
-        for abi in abis {
-            let so_path = format!("lib/{}/lib{}.so", abi, target.name());
+        // Add shared libraries to the APK
+        for shared_library in shared_libraries {
+            // Copy the shared library to the appropriate location in the target directory and with the appropriate name
+            // Note: that the type of slash used matters. This path is passed to aapt and the shared library
+            // will not load if backslashes are used.
+            let so_path = format!(
+                "lib/{}/{}",
+                &shared_library.abi.android_abi(),
+                shared_library.filename
+            );
+
+            let target_shared_object_path = target_directory.join(&so_path);
+            fs::create_dir_all(target_shared_object_path.parent().unwrap())?;
+            fs::copy(&shared_library.path, target_shared_object_path)?;
+
+            // Add to the APK
             process(&aapt_path)
                 .arg("add")
                 .arg(&unaligned_apk_name)
@@ -211,25 +186,17 @@ fn build_apks(
         }
 
         // Sign the APK with the development certificate
-        let mut apksigner_cmd = if cfg!(target_os = "windows") {
-            let mut pb = process("cmd");
-            let apksigner_path = build_tools_path.join("apksigner.bat");
-            pb.arg("/C").arg(apksigner_path);
-            pb
-        } else {
-            let apksigner_path = build_tools_path.join("apksigner");
-            process(apksigner_path)
-        };
-
-        apksigner_cmd
-            .arg("sign")
-            .arg("--ks")
-            .arg(keystore_path)
-            .arg("--ks-pass")
-            .arg("pass:android")
-            .arg(&final_apk_path)
-            .cwd(&target_directory)
-            .exec()?;
+        util::script_process(
+            build_tools_path.join(format!("apksigner{}", util::EXECUTABLE_SUFFIX_BAT)),
+        )
+        .arg("sign")
+        .arg("--ks")
+        .arg(keystore_path)
+        .arg("--ks-pass")
+        .arg("pass:android")
+        .arg(&final_apk_path)
+        .cwd(&target_directory)
+        .exec()?;
 
         target_to_apk_map.insert(
             (target.kind().to_owned(), target.name().to_owned()),
@@ -383,62 +350,6 @@ fn build_manifest(
         application_attrs = application_attrs,
         activity_attrs = activity_attrs,
         target_name = target.name(),
-    )?;
-
-    Ok(())
-}
-
-fn build_makefiles(
-    target_directory: &Path,
-    target: &Target,
-    abis: &str,
-    config: &AndroidConfig,
-) -> CargoResult<()> {
-    let output_directory = target_directory.join("jni");
-    fs::create_dir_all(&output_directory)?;
-
-    // Write Android.mk
-    let file = output_directory.join("Android.mk");
-    let mut file = File::create(&file)?;
-
-    writeln!(
-        file,
-        r#"LOCAL_PATH := $(call my-dir)
-
-# Define module for static library built by rustc
-include $(CLEAR_VARS)
-LOCAL_MODULE := rustlib
-LOCAL_SRC_FILES := ../../../$(TARGET_ARCH_ABI)/build/lib{target_library_name}.a
-include $(PREBUILT_STATIC_LIBRARY)
-
-# Build the application
-include $(CLEAR_VARS)
-
-LOCAL_MODULE    := {target_name}
-LOCAL_SRC_FILES :=
-LOCAL_LDLIBS    := -llog -landroid
-LOCAL_STATIC_LIBRARIES := android_native_app_glue rustlib
-NDK_LIBS_OUT := ./lib
-
-include $(BUILD_SHARED_LIBRARY)
-
-$(call import-module,android/native_app_glue)"#,
-        target_library_name = target.name().replace("-", "_"),
-        target_name = target.name()
-    )?;
-
-    // Write Application.mk
-    let file = output_directory.join("Application.mk");
-    let mut file = File::create(&file)?;
-
-    let app_optim = if config.release { "release" } else { "debug" };
-
-    write!(
-        file,
-        r#"APP_ABI := {}
-APP_PLATFORM := android-{}
-APP_OPTIM := {}"#,
-        abis, config.min_sdk_version, app_optim
     )?;
 
     Ok(())
