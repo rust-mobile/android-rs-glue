@@ -118,8 +118,9 @@ impl<'a> Executor for StaticLibraryExecutor {
             let tmp_lib_filepath = original_src_filepath.parent().unwrap().join(format!(
                 "__cargo_apk_{}.tmp",
                 original_src_filepath
-                    .file_stem().map(|s| s.to_string_lossy().into_owned())
-                    .unwrap_or(String::new())
+                    .file_stem()
+                    .map(|s| s.to_string_lossy().into_owned())
+                    .unwrap_or_else(String::new)
             ));
 
             // Create the temporary file
@@ -322,8 +323,8 @@ struct TempFile {
 impl TempFile {
     /// Create a new `TempFile` using the contents provided by a closure.
     fn new<F>(path: PathBuf, write_contents: F) -> CargoResult<TempFile>
-        where
-            F: FnOnce(&mut File) -> CargoResult<()>,
+    where
+        F: FnOnce(&mut File) -> CargoResult<()>,
     {
         let tmp_file = TempFile { path };
 
