@@ -1,0 +1,8 @@
+[package]
+name = "android_glue_test_inner_attributes"
+version = "0.1.0"
+authors = ["Philip Alldredge <philip@philipalldredge.com>"]
+edition = "2018"
+publish = false
+
+
