@@ -322,6 +322,8 @@ struct TempFile {
 
 impl TempFile {
     /// Create a new `TempFile` using the contents provided by a closure.
+    /// If the file already exists, it will be overwritten and then deleted when the instance
+    /// is dropped.
     fn new<F>(path: PathBuf, write_contents: F) -> CargoResult<TempFile>
     where
         F: FnOnce(&mut File) -> CargoResult<()>,
