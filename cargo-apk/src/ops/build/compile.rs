@@ -8,7 +8,7 @@ use cargo::util::{CargoResult, ProcessBuilder};
 use clap::ArgMatches;
 use failure::format_err;
 use std::collections::HashSet;
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsString;
 use std::fmt;
 use std::fs;
 use std::fs::File;
@@ -115,16 +115,20 @@ impl<'a> Executor for StaticLibraryExecutor {
             // Generate source file that will be built
             //
             // Determine the name of the temporary file
-            let mut lib_src_file = tempfile::Builder::new()
-                .prefix("__cargo_apk_")
-                .suffix(".tmp")
-                .tempfile_in(original_src_filepath.parent().unwrap())?;
+            let tmp_lib_filepath = original_src_filepath.parent().unwrap().join(format!(
+                "__cargo_apk_{}.tmp",
+                original_src_filepath
+                    .file_stem()
+                    .map(|s| s.to_string_lossy().into_owned())
+                    .unwrap_or_else(String::new)
+            ));
 
             // Create the temporary file
             let original_contents = fs::read_to_string(original_src_filepath).unwrap();
-            writeln!(
-                lib_src_file,
-                r##"{original_contents}
+            let tmp_file = TempFile::new(tmp_lib_filepath, |lib_src_file| {
+                writeln!(
+                    lib_src_file,
+                    r##"{original_contents}
 
 #[no_mangle]
 #[inline(never)]
@@ -132,11 +136,11 @@ impl<'a> Executor for StaticLibraryExecutor {
 pub extern "C" fn android_main(app: *mut ()) {{
     cargo_apk_injected_glue::android_main2(app as *mut _, move || {{ let _ = main(); }});
 }}"##,
-                original_contents = original_contents
-            )?;
-            // This will close the file to allow other rustc to access it.
-            // The file will be deleted when it is dropped
-            let lib_src_filepath = lib_src_file.into_temp_path();
+                    original_contents = original_contents
+                )?;
+
+                Ok(())
+            })?;
 
             //
             // Replace source argument
@@ -154,7 +158,7 @@ pub extern "C" fn android_main(app: *mut ()) {{
             });
 
             if let Some(source_arg) = source_arg {
-                *source_arg = AsRef::<OsStr>::as_ref(&lib_src_filepath).to_owned();
+                *source_arg = tmp_file.path.clone().into();
             } else {
                 return Err(format_err!(
                     "Unable to replace source argument when buildin target '{}'",
@@ -308,4 +312,33 @@ fn get_abi(build_target: &str) -> CargoResult<&str> {
             build_target
         ));
     })
+}
+
+/// Temporary file implementation that allows creating a file with a specified path which
+/// will be deleted when dropped.
+struct TempFile {
+    path: PathBuf,
+}
+
+impl TempFile {
+    /// Create a new `TempFile` using the contents provided by a closure.
+    fn new<F>(path: PathBuf, write_contents: F) -> CargoResult<TempFile>
+    where
+        F: FnOnce(&mut File) -> CargoResult<()>,
+    {
+        let tmp_file = TempFile { path };
+
+        // Write the contents to the the temp file
+        let mut file = File::create(&tmp_file.path)?;
+        write_contents(&mut file)?;
+
+        Ok(tmp_file)
+    }
+}
+
+impl Drop for TempFile {
+    fn drop(&mut self) {
+        // Ignore failure to remove file
+        let _ = fs::remove_file(&self.path);
+    }
 }
