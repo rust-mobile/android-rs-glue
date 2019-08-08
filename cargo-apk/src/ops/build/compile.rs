@@ -125,7 +125,7 @@ impl<'a> Executor for StaticLibraryExecutor {
 
             // Create the temporary file
             let original_contents = fs::read_to_string(original_src_filepath).unwrap();
-            let tmp_file = TempFile::new(tmp_lib_filepath, |lib_src_file| {
+            let tmp_file = TempFile::new(tmp_lib_filepath.clone(), |lib_src_file| {
                 writeln!(
                     lib_src_file,
                     r##"{original_contents}
@@ -140,7 +140,9 @@ pub extern "C" fn android_main(app: *mut ()) {{
                 )?;
 
                 Ok(())
-            })?;
+            }).map_err(|e| format_err!(
+                "Unable to create temporary source file `{}`. Source directory must be writable. Cargo-apk creates temporary source files as part of the build process. {}.", tmp_lib_filepath.to_string_lossy(), e)
+            )?;
 
             //
             // Replace source argument

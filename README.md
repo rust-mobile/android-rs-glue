@@ -82,12 +82,13 @@ the stdlib.
 
 ## The build process
 
-The build process works by running rustc and:
+The build process works by:
 
-- Always compiles your crate as a static library.
-- Uses `ndk-build` provided by the NDK to to build a shared library.
-- Links to the `android_native_app_glue` library provided by the Android NDK.
-- Injects some glue libraries in Rust, which ties the link between `android_native_app_glue` and the `main` function of your crate.
+- Using rustc to always compile your crate as a static library by:
+    - Creating a temporary file in the same directory as your crate root. This temporary file serves as the crate root of the static library. It contains the contents of the original crate root along with an `android_main` implementation.
+    - Injecting some glue libraries in rust, which is used by `android_main` to perform initialization required by the `android_glue` crate and to call the `main` function of your crate.
+- Using `ndk-build` provided by the NDK to to build a shared library.
+- Linking to the `android_native_app_glue` library provided by the Android NDK. `android_native_app_glue` provides the entrypoint used by Android's `NativeActivity` that calls `android_main`.
 
 This first step outputs a shared library, and is run once per target architecture.
 
