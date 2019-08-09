@@ -26,11 +26,23 @@ fn check_use_icon_example() {
     build_example("use_icon");
 }
 
+#[test]
+fn check_inner_attributes_test() {
+    build_test("inner_attributes");
+}
+
 fn build_example(directory_name: &str) {
-    let example_path = format!("../examples/{}/", directory_name);
+    build_package(&format!("../examples/{}/", directory_name));
+}
+
+fn build_test(directory_name: &str) {
+    build_package(&format!("./tests/{}/", directory_name));
+}
+
+fn build_package(package_path: &str) {
     let mut cmd = Command::cargo_bin("cargo-apk").unwrap();
     cmd.arg("build");
     cmd.arg("--all-targets");
-    cmd.current_dir(example_path);
+    cmd.current_dir(package_path);
     cmd.assert().success();
 }

@@ -52,7 +52,6 @@ pub fn build_static_libraries(
 
         // Create
         let executor: Arc<dyn Executor> = Arc::new(StaticLibraryExecutor {
-            root_build_directory: root_build_dir.clone(),
             build_target_dir: build_target_dir.clone(),
             injected_glue_lib,
             targets: targets.clone(),
@@ -80,7 +79,6 @@ pub fn build_static_libraries(
 
 /// Executor which builds binary and example targets as static libraries
 struct StaticLibraryExecutor {
-    root_build_directory: PathBuf,
     build_target_dir: PathBuf,
     injected_glue_lib: PathBuf,
     targets: Arc<Mutex<HashSet<Target>>>,
@@ -116,19 +114,21 @@ impl<'a> Executor for StaticLibraryExecutor {
             //
             // Generate source file that will be built
             //
-            let src_gen = self
-                .root_build_directory
-                .join("src_gen")
-                .join(target.name());
-            fs::create_dir_all(&src_gen)?;
-            let lib_filepath = src_gen.join("lib.rs");
-            {
-                let mut lib_src_file = File::create(&lib_filepath)?;
+            // Determine the name of the temporary file
+            let tmp_lib_filepath = original_src_filepath.parent().unwrap().join(format!(
+                "__cargo_apk_{}.tmp",
+                original_src_filepath
+                    .file_stem()
+                    .map(|s| s.to_string_lossy().into_owned())
+                    .unwrap_or_else(String::new)
+            ));
 
+            // Create the temporary file
+            let original_contents = fs::read_to_string(original_src_filepath).unwrap();
+            let tmp_file = TempFile::new(tmp_lib_filepath.clone(), |lib_src_file| {
                 writeln!(
                     lib_src_file,
-                    r##"
-include!(r#"{original_src_path}"#);
+                    r##"{original_contents}
 
 #[no_mangle]
 #[inline(never)]
@@ -136,11 +136,13 @@ include!(r#"{original_src_path}"#);
 pub extern "C" fn android_main(app: *mut ()) {{
     cargo_apk_injected_glue::android_main2(app as *mut _, move || {{ let _ = main(); }});
 }}"##,
-                    original_src_path = original_src_filepath
-                        .to_str()
-                        .expect("Unable to convert original filepath")
+                    original_contents = original_contents
                 )?;
-            }
+
+                Ok(())
+            }).map_err(|e| format_err!(
+                "Unable to create temporary source file `{}`. Source directory must be writable. Cargo-apk creates temporary source files as part of the build process. {}.", tmp_lib_filepath.to_string_lossy(), e)
+            )?;
 
             //
             // Replace source argument
@@ -158,7 +160,7 @@ pub extern "C" fn android_main(app: *mut ()) {{
             });
 
             if let Some(source_arg) = source_arg {
-                *source_arg = lib_filepath.clone().into();
+                *source_arg = tmp_file.path.clone().into();
             } else {
                 return Err(format_err!(
                     "Unable to replace source argument when buildin target '{}'",
@@ -312,4 +314,35 @@ fn get_abi(build_target: &str) -> CargoResult<&str> {
             build_target
         ));
     })
+}
+
+/// Temporary file implementation that allows creating a file with a specified path which
+/// will be deleted when dropped.
+struct TempFile {
+    path: PathBuf,
+}
+
+impl TempFile {
+    /// Create a new `TempFile` using the contents provided by a closure.
+    /// If the file already exists, it will be overwritten and then deleted when the instance
+    /// is dropped.
+    fn new<F>(path: PathBuf, write_contents: F) -> CargoResult<TempFile>
+    where
+        F: FnOnce(&mut File) -> CargoResult<()>,
+    {
+        let tmp_file = TempFile { path };
+
+        // Write the contents to the the temp file
+        let mut file = File::create(&tmp_file.path)?;
+        write_contents(&mut file)?;
+
+        Ok(tmp_file)
+    }
+}
+
+impl Drop for TempFile {
+    fn drop(&mut self) {
+        // Ignore failure to remove file
+        let _ = fs::remove_file(&self.path);
+    }
 }
