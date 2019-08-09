@@ -84,15 +84,16 @@ the stdlib.
 
 The build process works by:
 
-- Using rustc to always compile your crate as a static library by:
+- Using rustc to always compile your crate as a shared library by:
+    - Creating a custom CMake toolchain file and setting environment variables which expose the appropriate NDK provided build tools for use with the `cc` and `cmake` crates.
     - Creating a temporary file in the same directory as your crate root. This temporary file serves as the crate root of the static library. It contains the contents of the original crate root along with an `android_main` implementation.
     - Injecting some glue libraries in rust, which is used by `android_main` to perform initialization required by the `android_glue` crate and to call the `main` function of your crate.
-- Using `ndk-build` provided by the NDK to to build a shared library.
-- Linking to the `android_native_app_glue` library provided by the Android NDK. `android_native_app_glue` provides the entrypoint used by Android's `NativeActivity` that calls `android_main`.
+    - Compiling a forked version of `android_native_app_glue`. `android_native_app_glue` is originally provided by the NDK. It provides the entrypoint used by Android's `NativeActivity` that calls `android_main`.
+    - Linking using the NDK provided linker.
 
 This first step outputs a shared library, and is run once per target architecture.
 
-The command then builds the APK using the shared library, generated manifest, and tools from the Android SDK. 
+The command then builds the APK using the shared libraries, generated manifest, and tools from the Android SDK. If the C++ standard library is used, it adds the appropriate shared library to the APK. 
 It signs the APK with the default debug keystore used by Android development tools. If the keystore doesn't exist, it creates it using the keytool from the JRE or JDK.
 
 # Supported `[package.metadata.android]` entries
@@ -199,3 +200,17 @@ max_sdk_version = 18
 [[package.metadata.android.permission]]
 name = "android.permission.CAMERA"
 ```
+
+# Environment Variables
+Cargo-apk sets environment variables which are used to expose the appropriate C and C++ build tools to build scripts. The primary intent is to support building crates which have build scripts which use the `cc` and `cmake` crates. 
+
+- CC : path to NDK provided `clang` wrapper for the appropriate target and android platform. 
+- CXX : path to NDK provided `clang++` wrapper for the appropriate target and android platform. 
+- AR : path to NDK provided `ar`
+- CXXSTDLIB : `c++` to use the full featured C++ standard library provided by the NDK.
+- CMAKE_TOOLCHAIN_FILE : the path to the generated CMake toolchain. This toolchain sets the ABI, overrides any target specified, and includes the toolchain provided by the NDK.
+- CMAKE_GENERATOR : `Unix Makefiles` to default to `Unix Makefiles` as opposed to using the CMake default which may not be appropriate depending on platform.
+- CMAKE_MAKE_PROGRAM: Path to NDK provided make.
+
+# C++ Standard Library Compatibility Issues
+When a crate links to the C++ standard library, the shared library version provided by the NDK is used. Unfortunately, dependency loading issues will cause the application to crash on older versions of android.  Once `lld` linker issues are resolved on all platforms, cargo apk will be updated to link to the static C++ library. This should resolve the compatibility issues.
