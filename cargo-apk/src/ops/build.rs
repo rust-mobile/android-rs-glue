@@ -3,6 +3,7 @@ mod targets;
 pub mod tempfile;
 mod util;
 
+use self::compile::SharedLibraries;
 use crate::config::{AndroidConfig, AndroidTargetConfig};
 use cargo::core::{Target, TargetKind, Workspace};
 use cargo::util::process_builder::process;
@@ -15,8 +16,6 @@ use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 use std::{env, fs};
-
-use crate::ops::build::compile::SharedLibraries;
 
 #[derive(Debug)]
 pub struct BuildResult {
