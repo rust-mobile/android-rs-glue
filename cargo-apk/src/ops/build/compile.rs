@@ -209,24 +209,21 @@ pub extern "C" fn android_main(app: *mut ()) {{
             }
 
             //
-            // Change target from bin to staticlib
-            //
-            for arg in &mut new_args {
-                if arg == "bin" {
-                    *arg = "dylib".into();
-                }
-            }
-
-            //
-            // Replace output directory with one inside the build target directory
+            // Create output directory inside the build target directory
             //
             let build_path = self.build_target_dir.join("build");
             fs::create_dir_all(&build_path).unwrap();
 
+            //
+            // Change crate-type from bin to dylib
+            // Replace output directory with the directory we created
+            //
             let mut iter = new_args.iter_mut().rev().peekable();
             while let Some(arg) = iter.next() {
                 if let Some(prev_arg) = iter.peek() {
-                    if *prev_arg == "--out-dir" {
+                    if *prev_arg == "--crate-type" && arg == "bin" {
+                        *arg = "dylib".into();
+                    } else if *prev_arg == "--out-dir" {
                         *arg = build_path.clone().into();
                     }
                 }
@@ -270,45 +267,36 @@ pub extern "C" fn android_main(app: *mut ()) {{
 
             // Add linker arguments
             // Specify linker
-            new_args.push("-C".into());
-            new_args.push(build_arg("linker=", linker_path));
+            new_args.push(build_arg("-Clinker=", linker_path));
 
             // Set linker flavor
-            new_args.push("-C".into());
-            new_args.push("linker-flavor=ld".into());
+            new_args.push("-Clinker-flavor=ld".into());
 
             // Set system root
-            new_args.push("-C".into());
-            new_args.push(build_arg("link-arg=--sysroot=", sysroot));
+            new_args.push(build_arg("-Clink-arg=--sysroot=", sysroot));
 
             // Add version specific libraries directory to search path
-            new_args.push("-C".into());
-            new_args.push(build_arg("link-arg=-L", version_specific_libraries_path));
+            new_args.push(build_arg("-Clink-arg=-L", version_specific_libraries_path));
 
             // Add version independent libraries directory to search path
-            new_args.push("-C".into());
             new_args.push(build_arg(
-                "link-arg=-L",
+                "-Clink-arg=-L",
                 &version_independent_libraries_path,
             ));
 
             // Add path to folder containing libgcc.a to search path
-            new_args.push("-C".into());
-            new_args.push(build_arg("link-arg=-L", gcc_lib_path));
+            new_args.push(build_arg("-Clink-arg=-L", gcc_lib_path));
 
             // Add android native glue
-            new_args.push("-C".into());
-            new_args.push(build_arg("link-arg=", &self.android_native_glue_object));
+            new_args.push(build_arg("-Clink-arg=", &self.android_native_glue_object));
 
             // Strip symbols for release builds
             if self.config.release {
-                new_args.push("-C".into());
-                new_args.push("link-arg=-strip-all".into());
+                new_args.push("-Clink-arg=-strip-all".into());
             }
 
             // Require position independent code
-            new_args.push("-C".into());
-            new_args.push("relocation-model=pic".into());
+            new_args.push("-Crelocation-model=pic".into());
 
             // Create new command
             let mut cmd = cmd.clone();
@@ -337,7 +325,16 @@ pub extern "C" fn android_main(app: *mut ()) {{
 
             // If the target uses the C++ standard library, add the appropriate shared library
             // to the list of shared libraries to be added to the APK
-            let uses_cpp_standard_library = new_args.contains(&OsString::from("c++"));
+            let mut iter = new_args.iter().peekable();
+            let mut uses_cpp_standard_library = false;
+            while let Some(arg) = iter.next() {
+                if let Some(next_arg) = iter.peek() {
+                    if arg == "-l" && *next_arg == "c++" {
+                        uses_cpp_standard_library = true;
+                    }
+                }
+            }
+
             if uses_cpp_standard_library {
                 let cpp_library_path = version_independent_libraries_path.join("libc++_shared.so");
                 shared_libraries.insert(
