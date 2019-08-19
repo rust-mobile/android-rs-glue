@@ -28,7 +28,12 @@ impl TempFile {
 
 impl Drop for TempFile {
     fn drop(&mut self) {
-        // Ignore failure to remove file
-        let _ = fs::remove_file(&self.path);
+        fs::remove_file(&self.path).unwrap_or_else(|e| {
+            eprintln!(
+                "Unable to remove temporary file: {}. {}",
+                &self.path.to_string_lossy(),
+                &e
+            );
+        })
     }
 }
