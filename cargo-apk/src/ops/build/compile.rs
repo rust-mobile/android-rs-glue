@@ -81,7 +81,7 @@ pub fn build_shared_libraries(
         // Configure compilation options so that we will build the desired build_target
         let mut opts =
             options.compile_options(workspace.config(), CompileMode::Build, Some(&workspace))?;
-        opts.build_config.requested_target = Some(build_target.rust_triple().to_owned()).clone();
+        opts.build_config.requested_target = Some(build_target.rust_triple().to_owned());
 
         // Create executor
         let config = Arc::new(config.clone());
@@ -203,7 +203,7 @@ pub extern "C" fn android_main(app: *mut ()) {{
                 *source_arg = path_arg.into_os_string();
             } else {
                 return Err(format_err!(
-                    "Unable to replace source argument when builtin target '{}'",
+                    "Unable to replace source argument when building target '{}'",
                     target.name()
                 ));
             }
