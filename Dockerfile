@@ -1,7 +1,7 @@
-FROM rust:latest
+FROM rust:stretch
 
 RUN apt-get update
-RUN apt-get install -yq openjdk-11-jre unzip wget cmake
+RUN apt-get install -yq openjdk-8-jre unzip wget cmake
 
 RUN rustup target add armv7-linux-androideabi
 RUN rustup target add aarch64-linux-android
