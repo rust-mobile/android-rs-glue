@@ -31,6 +31,21 @@ fn check_inner_attributes_test() {
     build_test("inner_attributes");
 }
 
+#[test]
+fn check_native_library_test() {
+    build_test("native-library");
+}
+
+#[test]
+fn check_cc_test() {
+    build_test("cc");
+}
+
+#[test]
+fn check_cmake_test() {
+    build_test("cmake");
+}
+
 fn build_example(directory_name: &str) {
     build_package(&format!("../examples/{}/", directory_name));
 }

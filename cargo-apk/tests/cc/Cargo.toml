@@ -1,0 +1,13 @@
+[package]
+name = "test_cc-rs"
+version = "0.1.0"
+authors = ["Philip Alldredge <philip@philipalldredge.com>"]
+description = "Simple test to ensure cargo-apk works with crates that use cc crate to build C and C++ static libraries."
+edition = "2018"
+publish = false
+
+[package.metadata.android]
+build_targets = [ "armv7-linux-androideabi", "aarch64-linux-android", "i686-linux-android", "x86_64-linux-android" ]
+
+[build-dependencies]
+cc = "1.0"
