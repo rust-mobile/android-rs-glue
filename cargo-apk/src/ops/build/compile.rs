@@ -215,14 +215,14 @@ pub extern "C" fn android_main(app: *mut ()) {{
             fs::create_dir_all(&build_path).unwrap();
 
             //
-            // Change crate-type from bin to dylib
+            // Change crate-type from bin to cdylib
             // Replace output directory with the directory we created
             //
             let mut iter = new_args.iter_mut().rev().peekable();
             while let Some(arg) = iter.next() {
                 if let Some(prev_arg) = iter.peek() {
                     if *prev_arg == "--crate-type" && arg == "bin" {
-                        *arg = "dylib".into();
+                        *arg = "cdylib".into();
                     } else if *prev_arg == "--out-dir" {
                         *arg = build_path.clone().into();
                     }
