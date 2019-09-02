@@ -60,10 +60,20 @@ pub enum MotionAction {
     Cancel,
 }
 
+#[derive(Debug)]
 pub enum AssetError {
     AssetMissing,
     EmptyBuffer,
 }
+
+impl std::fmt::Display for AssetError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self);
+        Ok(())
+    }
+}
+
+impl std::error::Error for AssetError {}
 
 // Trait used to dispatch sync events from the polling loop thread.
 pub trait SyncEventHandler {
