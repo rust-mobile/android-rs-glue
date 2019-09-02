@@ -2,13 +2,13 @@
 
 extern {
     fn cargo_apk_injected_glue_get_native_window() -> *const c_void;
-    fn cargo_apk_injected_glue_add_sender(sender: *mut ());
-    fn cargo_apk_injected_glue_add_sender_missing(sender: *mut ());
-    fn cargo_apk_injected_glue_add_sync_event_handler(sender: *mut ());
-    fn cargo_apk_injected_glue_remove_sync_event_handler(sender: *mut ());
+    fn cargo_apk_injected_glue_add_sender(sender: *mut c_void);
+    fn cargo_apk_injected_glue_add_sender_missing(sender: *mut c_void);
+    fn cargo_apk_injected_glue_add_sync_event_handler(sender: *mut c_void);
+    fn cargo_apk_injected_glue_remove_sync_event_handler(sender: *mut c_void);
     fn cargo_apk_injected_glue_set_multitouch(multitouch: bool);
-    fn cargo_apk_injected_glue_write_log(ptr: *const (), len: usize);
-    fn cargo_apk_injected_glue_load_asset(ptr: *const (), len: usize) -> *mut c_void;
+    fn cargo_apk_injected_glue_write_log(ptr: *const c_void, len: usize);
+    fn cargo_apk_injected_glue_load_asset(ptr: *const c_void, len: usize) -> *mut c_void;
     fn cargo_apk_injected_glue_wake_event_loop();
 }
 
@@ -68,8 +68,7 @@ pub enum AssetError {
 
 impl std::fmt::Display for AssetError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self);
-        Ok(())
+        write!(f, "{:?}", self)
     }
 }
 
