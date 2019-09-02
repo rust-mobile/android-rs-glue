@@ -325,7 +325,7 @@ pub fn execute_install(options: &ArgMatches, cargo_config: &CargoConfig) -> carg
         &workspace,
         &options.value_of("package").map(|s| s.to_owned()),
     )?;
-    android_config.release = options.is_present("release");
+    android_config.release = !options.is_present("debug");
 
     ops::install(&workspace, &android_config, &options)?;
     Ok(())

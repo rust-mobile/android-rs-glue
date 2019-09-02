@@ -420,8 +420,9 @@ static void onInputQueueDestroyed(ANativeActivity* activity, AInputQueue* queue)
     android_app_set_input((struct android_app*)activity->instance, NULL);
 }
 
-JNIEXPORT
-void ANativeActivity_onCreate(ANativeActivity* activity, void* savedState,
+// Called by ANativeActivity_onCreate which will be exported and will call this function.
+// Needed because this symbol will not be globally exported.
+void native_app_glue_onCreate(ANativeActivity* activity, void* savedState,
                               size_t savedStateSize) {
     LOGV("Creating: %p\n", activity);
     activity->callbacks->onDestroy = onDestroy;

@@ -641,3 +641,22 @@ pub fn load_asset(filename: &str) -> Result<Vec<u8>, AssetError> {
     };
     Ok(vec)
 }
+
+// Exported function which is called be Android's NativeActivity
+#[no_mangle]
+pub unsafe extern "C" fn ANativeActivity_onCreate(
+    activity: *mut c_void,
+    saved_state: *mut c_void,
+    saved_state_size: usize,
+) {
+    native_app_glue_onCreate(activity, saved_state, saved_state_size);
+}
+
+extern "C" {
+    #[allow(non_snake_case)]
+    fn native_app_glue_onCreate(
+        activity: *mut c_void,
+        saved_state: *mut c_void,
+        saved_state_size: usize,
+    );
+}
