@@ -27,8 +27,8 @@ do_package() {
 }
 
 check_symbols() {
-    (find "$1/target/android-artifacts/release/bin" -name *.so && \
-     find "$1/target/android-artifacts/debug/bin" -name *.so) | \
+    (find "$1/target/android-artifacts/release/bin" -name *.so -not -name libc++_shared.so && \
+     find "$1/target/android-artifacts/debug/bin" -name *.so -not -name libc++_shared.so) | \
         while read f ; do
             nm -Dg --defined-only "$f" | cut -f3 -d' ' | grep -qxF ANativeActivity_onCreate || return 1
         done
