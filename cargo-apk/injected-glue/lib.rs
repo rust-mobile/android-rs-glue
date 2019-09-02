@@ -295,9 +295,10 @@ pub fn android_main2<F>(app: *mut ffi::android_app, main_function: F)
                 }
             }
 
-            let mut thread = mem::uninitialized();
-            let result = pthread_create(&mut thread, ptr::null(), logging_thread,
+            let mut thread = mem::MaybeUninit::uninit();
+            let result = pthread_create(thread.as_mut_ptr(), ptr::null(), logging_thread,
                                         pfd[0] as usize as *mut c_void);
+            let thread = thread.assume_init();
             assert_eq!(result, 0);
             let result = pthread_detach(thread);
             assert_eq!(result, 0);
@@ -344,14 +345,14 @@ pub fn android_main2<F>(app: *mut ffi::android_app, main_function: F)
                 break;
             }
 
-            let mut events = mem::uninitialized();
-            let mut source: *mut ffi::android_poll_source = mem::uninitialized();
+            let mut events = mem::MaybeUninit::uninit();
+            let mut source: mem::MaybeUninit<*mut ffi::android_poll_source> = mem::MaybeUninit::uninit();
 
             // A `-1` means to block forever, but any other positive value
             // specifies the number of milliseconds to block for, before
             // returning.
-            let code = ffi::ALooper_pollAll(-1, ptr::null_mut(), &mut events,
-                                            &mut source as *mut _ as *mut _);
+            let code = ffi::ALooper_pollAll(-1, ptr::null_mut(), events.as_mut_ptr(),
+                                            source.as_mut_ptr() as *mut _ as *mut _);
             if code == ffi::ALOOPER_POLL_WAKE {
                 send_event(Event::Wake)
             }
@@ -369,7 +370,7 @@ pub fn android_main2<F>(app: *mut ffi::android_app, main_function: F)
                 // the user will get a locked UI until the system terminates our
                 // process. So we continue processing events..
             }
-
+            let source = source.assume_init();
             // Processing the event
             if !source.is_null() {
                 ((*source).process)(ANDROID_APP, source);
