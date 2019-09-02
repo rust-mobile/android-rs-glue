@@ -644,18 +644,17 @@ pub fn load_asset(filename: &str) -> Result<Vec<u8>, AssetError> {
 
 // Exported function which is called be Android's NativeActivity
 #[no_mangle]
-#[inline(never)]
 pub unsafe extern "C" fn ANativeActivity_onCreate(
     activity: *mut c_void,
     saved_state: *mut c_void,
     saved_state_size: usize,
 ) {
-    ANativeActivity_onCreate2(activity, saved_state, saved_state_size);
+    native_app_glue_onCreate(activity, saved_state, saved_state_size);
 }
 
 extern "C" {
     #[allow(non_snake_case)]
-    fn ANativeActivity_onCreate2(
+    fn native_app_glue_onCreate(
         activity: *mut c_void,
         saved_state: *mut c_void,
         saved_state_size: usize,
