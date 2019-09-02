@@ -64,44 +64,36 @@ fn build_apks(
             .join("build-tools")
             .join(&config.build_tools_version);
         let aapt_path = build_tools_path.join("aapt");
-        let aapt2_path = build_tools_path.join("aapt2");
         let zipalign_path = build_tools_path.join("zipalign");
 
-        // Compile resources
-        let compiled_resources_filename = "resources.zip";
-        if let Some(res_path) = &target_config.res_path {
-            process(&aapt2_path)
-                .arg("compile")
-                .arg("--dir")
-                .arg(res_path)
-                .arg("-o")
-                .arg(compiled_resources_filename)
-                .cwd(&target_directory)
-                .exec()?;
+        // Create unaligned APK which includes resources and assets
+        let unaligned_apk_name = format!("{}_unaligned.apk", target.name());
+        let unaligned_apk_path = target_directory.join(&unaligned_apk_name);
+        if unaligned_apk_path.exists() {
+            std::fs::remove_file(unaligned_apk_path)
+                .map_err(|e| format_err!("Unable to delete APK file. {}", e))?;
         }
 
-        // Create unaligned APK which includes resources
-        let unaligned_apk_name = format!("{}_unaligned.apk", target.name());
-        let mut aapt2_link_cmd = process(&aapt2_path);
-        aapt2_link_cmd
-            .arg("link")
-            .arg("-o")
+        let mut aapt_package_cmd = process(&aapt_path);
+        aapt_package_cmd
+            .arg("package")
+            .arg("-F")
             .arg(&unaligned_apk_name)
-            .arg("--manifest")
+            .arg("-M")
             .arg("AndroidManifest.xml")
             .arg("-I")
             .arg(&config.android_jar_path);
 
-        if target_config.res_path.is_some() {
-            aapt2_link_cmd.arg(compiled_resources_filename);
+        if let Some(res_path) = target_config.res_path {
+            aapt_package_cmd.arg("-S").arg(res_path);
         }
 
         // Link assets
         if let Some(assets_path) = &target_config.assets_path {
-            aapt2_link_cmd.arg("-A").arg(assets_path);
+            aapt_package_cmd.arg("-A").arg(assets_path);
         }
 
-        aapt2_link_cmd.cwd(&target_directory).exec()?;
+        aapt_package_cmd.cwd(&target_directory).exec()?;
 
         // Add shared libraries to the APK
         for shared_library in shared_libraries {
