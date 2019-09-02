@@ -60,11 +60,7 @@ pub enum MotionAction {
     Cancel,
 }
 
-<<<<<<< HEAD
 #[derive(Clone, Copy, Debug)]
-=======
-#[derive(Debug)]
->>>>>>> a213eecde1b7b93fe0e6480b06c6494e1324896d
 pub enum AssetError {
     AssetMissing,
     EmptyBuffer,
