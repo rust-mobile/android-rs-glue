@@ -2,13 +2,13 @@
 
 extern {
     fn cargo_apk_injected_glue_get_native_window() -> *const c_void;
-    fn cargo_apk_injected_glue_add_sender(sender: *mut ());
-    fn cargo_apk_injected_glue_add_sender_missing(sender: *mut ());
-    fn cargo_apk_injected_glue_add_sync_event_handler(sender: *mut ());
-    fn cargo_apk_injected_glue_remove_sync_event_handler(sender: *mut ());
+    fn cargo_apk_injected_glue_add_sender(sender: *mut c_void);
+    fn cargo_apk_injected_glue_add_sender_missing(sender: *mut c_void);
+    fn cargo_apk_injected_glue_add_sync_event_handler(sender: *mut c_void);
+    fn cargo_apk_injected_glue_remove_sync_event_handler(sender: *mut c_void);
     fn cargo_apk_injected_glue_set_multitouch(multitouch: bool);
-    fn cargo_apk_injected_glue_write_log(ptr: *const (), len: usize);
-    fn cargo_apk_injected_glue_load_asset(ptr: *const (), len: usize) -> *mut c_void;
+    fn cargo_apk_injected_glue_write_log(ptr: *const c_void, len: usize);
+    fn cargo_apk_injected_glue_load_asset(ptr: *const c_void, len: usize) -> *mut c_void;
     fn cargo_apk_injected_glue_wake_event_loop();
 }
 
@@ -60,10 +60,19 @@ pub enum MotionAction {
     Cancel,
 }
 
+#[derive(Clone, Copy, Debug)]
 pub enum AssetError {
     AssetMissing,
     EmptyBuffer,
 }
+
+impl std::fmt::Display for AssetError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl std::error::Error for AssetError {}
 
 // Trait used to dispatch sync events from the polling loop thread.
 pub trait SyncEventHandler {
@@ -81,7 +90,7 @@ pub fn add_sender(sender: Sender<Event>) {
 
 /// Adds a SyncEventHandler which will receive sync events from the polling loop.
 #[inline]
-pub fn add_sync_event_handler(handler: Box<SyncEventHandler>) {
+pub fn add_sync_event_handler(handler: Box<dyn SyncEventHandler>) {
     unsafe {
         let handler = Box::into_raw(Box::new(handler)) as *mut _;
         cargo_apk_injected_glue_add_sync_event_handler(handler);
@@ -90,7 +99,7 @@ pub fn add_sync_event_handler(handler: Box<SyncEventHandler>) {
 
 /// Removes a SyncEventHandler.
 #[inline]
-pub fn remove_sync_event_handler(handler: *const SyncEventHandler) {
+pub fn remove_sync_event_handler(handler: *const dyn SyncEventHandler) {
     unsafe {
         let handler = Box::into_raw(Box::new(handler)) as *mut _;
         cargo_apk_injected_glue_remove_sync_event_handler(handler);
@@ -143,7 +152,7 @@ pub fn load_asset(filename: &str) -> Result<Vec<u8>, AssetError> {
     }
 }
 
-// Wakes the event poll asynchronously and sends a Event::Wake event to the senders. 
+// Wakes the event poll asynchronously and sends a Event::Wake event to the senders.
 // This method can be called on any thread. This method returns immediately.
 #[inline]
 pub fn wake_event_loop() {
