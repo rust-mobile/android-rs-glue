@@ -1,5 +1,3 @@
-[![Become a patron](https://c5.patreon.com/external/logo/become_a_patron_button.png)](https://www.patreon.com/tomaka)
-
 # Usage
 
 ## With Docker
