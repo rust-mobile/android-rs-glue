@@ -35,12 +35,29 @@ jobs:
           command: |
             echo "$DOCKERHUB_PASSWORD" | docker login -u $DOCKERHUB_LOGIN --password-stdin
             docker push $IMAGE_NAME
+  publish-crates-io:
+    working_directory: ~/android-rs-glue
+    environment:
+      IMAGE_NAME: tomaka/cargo-apk
+    docker:
+      - image: docker:stable
+    steps:
+      - run: apt-get -qq update && apt-get install -y git
+      - checkout
+      - run: cd ./cargo-apk && cargo publish --token $CRATESIO_TOKEN
+      - run: cd ./glue && cargo publish --token $CRATESIO_TOKEN
 workflows:
   version: 2
   all:
     jobs:
       - build-and-test
       - publish-docker-image:
+          requires:
+            - build-and-test
+          filters:
+            branches:
+              only: master
+      - publish-crates-io:
           requires:
             - build-and-test
           filters:
