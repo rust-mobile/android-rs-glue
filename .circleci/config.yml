@@ -44,7 +44,8 @@ jobs:
     steps:
       - run: apt-get -qq update && apt-get install -y git
       - checkout
-      - run: cargo publish --token $CRATESIO_TOKEN
+      - run: cd ./cargo-apk && cargo publish --token $CRATESIO_TOKEN
+      - run: cd ./glue && cargo publish --token $CRATESIO_TOKEN
 workflows:
   version: 2
   all:
