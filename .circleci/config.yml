@@ -42,7 +42,6 @@ jobs:
     docker:
       - image: docker:stable
     steps:
-      - run: apt-get -qq update && apt-get install -y git
       - checkout
       - run: cd ./cargo-apk && cargo publish --token $CRATESIO_TOKEN
       - run: cd ./glue && cargo publish --token $CRATESIO_TOKEN
