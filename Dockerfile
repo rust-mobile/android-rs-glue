@@ -31,11 +31,13 @@ ENV NDK_HOME /usr/local/android-ndk-r20
 # Copy contents to container. Should only use this on a clean directory
 COPY . /root/cargo-apk
 
-# Run tests
-RUN cd /root/cargo-apk/cargo-apk && cargo test --release
-
-# Install Binary and remove source and build files
+# Install binary
 RUN cargo install --path /root/cargo-apk/cargo-apk
+
+# Run tests
+RUN cd /root/cargo-apk/cargo-apk && ./tests/run_tests.sh
+
+# Remove source and build files
 RUN rm -rf /root/cargo-apk
 
 # Make directory for user code
