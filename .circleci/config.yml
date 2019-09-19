@@ -37,10 +37,8 @@ jobs:
             docker push $IMAGE_NAME
   publish-crates-io:
     working_directory: ~/android-rs-glue
-    environment:
-      IMAGE_NAME: tomaka/cargo-apk
     docker:
-      - image: docker:stable
+      - image: circleci/rust:buster
     steps:
       - checkout
       - run: cd ./cargo-apk && cargo publish --token $CRATESIO_TOKEN
