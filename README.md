@@ -1,3 +1,9 @@
+# Android Glue
+
+[![Crates.io](https://img.shields.io/crates/v/android-glue.svg?label=android-glue)](https://crates.io/crates/android-glue)
+[![Crates.io](https://img.shields.io/crates/v/cargo-apk?label=cargo-apk)](https://crates.io/crates/cargo-apk)
+[![CircleCI](https://circleci.com/gh/rust-windowing/android-rs-glue.svg?style=svg)](https://circleci.com/gh/rust-windowing/android-rs-glue)
+
 # Usage
 
 ## With Docker
