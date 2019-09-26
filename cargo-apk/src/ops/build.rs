@@ -141,9 +141,11 @@ fn build_apks(
         // Find or generate a debug keystore for signing the APK
         // We use the same debug keystore as used by the Android SDK. If it does not exist,
         // then we create it using keytool which is part of the JRE/JDK
-        let keystore_path = dirs::home_dir()
+        let android_directory = dirs::home_dir()
             .ok_or_else(|| format_err!("Unable to determine home directory"))?
-            .join(".android/debug.keystore");
+            .join(".android");
+        fs::create_dir_all(&android_directory)?;
+        let keystore_path = android_directory.join("debug.keystore");
         if !keystore_path.exists() {
             // Generate key
             let keytool_filename = if cfg!(target_os = "windows") {
