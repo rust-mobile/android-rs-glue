@@ -120,7 +120,7 @@ pub fn find_clang_cpp(
     .map_err(|_| format_err!("Unable to find NDK clang++"))
 }
 
-// Returns path toe ar tool.
+// Returns path to ar.
 pub fn find_ar(config: &AndroidConfig, build_target: AndroidBuildTarget) -> CargoResult<PathBuf> {
     let ar_path = llvm_toolchain_root(config).join("bin").join(format!(
         "{}-ar{}",
@@ -131,8 +131,28 @@ pub fn find_ar(config: &AndroidConfig, build_target: AndroidBuildTarget) -> Carg
         Ok(ar_path)
     } else {
         Err(format_err!(
-            "Unable to find AR file at `{}`",
+            "Unable to find ar at `{}`",
             ar_path.to_string_lossy()
+        ))
+    }
+}
+
+// Returns path to readelf
+pub fn find_readelf(
+    config: &AndroidConfig,
+    build_target: AndroidBuildTarget,
+) -> CargoResult<PathBuf> {
+    let readelf_path = llvm_toolchain_root(config).join("bin").join(format!(
+        "{}-readelf{}",
+        build_target.ndk_triple(),
+        EXECUTABLE_SUFFIX_EXE
+    ));
+    if readelf_path.exists() {
+        Ok(readelf_path)
+    } else {
+        Err(format_err!(
+            "Unable to find readelf at `{}`",
+            readelf_path.to_string_lossy()
         ))
     }
 }
