@@ -7,7 +7,7 @@ use cargo::core::compiler::Executor;
 use cargo::core::manifest::TargetSourcePath;
 use cargo::core::{PackageId, Target, TargetKind, Workspace};
 use cargo::util::command_prelude::ArgMatchesExt;
-use cargo::util::{CargoResult, ProcessBuilder};
+use cargo::util::{process, CargoResult, ProcessBuilder};
 use clap::ArgMatches;
 use failure::format_err;
 use multimap::MultiMap;
@@ -318,24 +318,25 @@ pub extern "C" fn android_main(app: *mut ()) {{
                 target.clone(),
                 SharedLibrary {
                     abi: self.build_target,
-                    path: library_path,
+                    path: library_path.clone(),
                     filename: format!("lib{}.so", target.name()),
                 },
             );
 
             // If the target uses the C++ standard library, add the appropriate shared library
             // to the list of shared libraries to be added to the APK
-            let mut iter = new_args.iter().peekable();
-            let mut uses_cpp_standard_library = false;
-            while let Some(arg) = iter.next() {
-                if let Some(next_arg) = iter.peek() {
-                    if arg == "-l" && *next_arg == "c++" {
-                        uses_cpp_standard_library = true;
-                    }
-                }
-            }
+            let readelf_path = util::find_readelf(&self.config, self.build_target)?;
+            let readelf_output = process(readelf_path)
+                .arg("-d")
+                .arg(&library_path)
+                .exec_with_output()?;
+            use std::io::BufRead;
+            let dynamically_links_to_cpp_standard_lib = readelf_output.stdout.lines().any(|l| {
+                let l = l.as_ref().unwrap();
+                l.contains("(NEEDED)") && l.contains("[libc++_shared.so]")
+            });
 
-            if uses_cpp_standard_library {
+            if dynamically_links_to_cpp_standard_lib {
                 let cpp_library_path = version_independent_libraries_path.join("libc++_shared.so");
                 shared_libraries.insert(
                     target.clone(),
