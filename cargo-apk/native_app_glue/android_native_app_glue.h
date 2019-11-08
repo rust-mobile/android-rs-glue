@@ -347,6 +347,8 @@ app_dummy();
  */
 extern void android_main(struct android_app* app);
 
+struct android_app* ANDROID_APP = NULL;
+
 #ifdef __cplusplus
 }
 #endif

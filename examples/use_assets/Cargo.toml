@@ -7,6 +7,11 @@ edition = "2018"
 [package.metadata.android]
 label = "Using assets android-rs-glue example"
 assets = "assets"
+build_targets = ["armv7-linux-androideabi"]
+android_version = 21
+
+[dependencies]
+android-ndk = "0.0.6"
 
 [dependencies.android_glue]
 path = "../../glue"

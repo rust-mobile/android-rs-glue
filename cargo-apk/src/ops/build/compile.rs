@@ -36,14 +36,16 @@ pub fn build_shared_libraries(
     options: &ArgMatches,
     root_build_dir: &PathBuf,
 ) -> CargoResult<SharedLibraries> {
-    let injected_glue_src_path = write_injected_glue_src(&root_build_dir)?;
     let android_native_glue_src_path = write_native_app_glue_src(&root_build_dir)?;
+    let injected_glue_src_path = if config.use_injected_glue {
+        Some(write_injected_glue_src(&root_build_dir)?)
+    } else {
+        None
+    };
 
     let shared_libraries: Arc<Mutex<MultiMap<Target, SharedLibrary>>> =
         Arc::new(Mutex::new(MultiMap::new()));
-    for build_target in config.build_targets.iter() {
-        let build_target = *build_target;
-
+    for &build_target in config.build_targets.iter() {
         // Directory that will contain files specific to this build target
         let build_target_dir = root_build_dir.join(build_target.android_abi());
         fs::create_dir_all(&build_target_dir).unwrap();
@@ -62,15 +64,19 @@ pub fn build_shared_libraries(
         std::env::set_var("CMAKE_GENERATOR", r#"Unix Makefiles"#);
         std::env::set_var("CMAKE_MAKE_PROGRAM", util::make_path(config));
 
-        // Build android_native_glue and injected-glue
-        let injected_glue_lib = build_injected_glue(
-            workspace,
-            config,
-            &injected_glue_src_path,
-            &build_target_dir,
-            build_target,
-        )?;
+        // Maybe build injected-glue
+        let injected_glue_lib = match injected_glue_src_path {
+            Some(ref path) => Some(build_injected_glue(
+                workspace,
+                &config,
+                path,
+                &build_target_dir,
+                build_target,
+            )?),
+            None => None,
+        };
 
+        // Build android_native_glue
         let android_native_glue_object = build_android_native_glue(
             config,
             &android_native_glue_src_path,
@@ -109,7 +115,7 @@ pub fn build_shared_libraries(
 struct SharedLibraryExecutor {
     config: Arc<AndroidConfig>,
     build_target_dir: PathBuf,
-    injected_glue_lib: PathBuf,
+    injected_glue_lib: Option<PathBuf>,
     android_native_glue_object: PathBuf,
     build_target: AndroidBuildTarget,
 
@@ -159,18 +165,45 @@ impl<'a> Executor for SharedLibraryExecutor {
             // Create the temporary file
             let original_contents = fs::read_to_string(original_src_filepath).unwrap();
             let tmp_file = TempFile::new(tmp_lib_filepath.clone(), |lib_src_file| {
-                writeln!(
-                    lib_src_file,
-                    r##"{original_contents}
-
+                let extra_code = if self.injected_glue_lib.is_some() {
+                    r##"
 #[no_mangle]
 #[inline(never)]
 #[allow(non_snake_case)]
-pub extern "C" fn android_main(app: *mut ()) {{
-    cargo_apk_injected_glue::android_main2(app as *mut _, move || {{ let _ = main(); }});
-}}"##,
-                    original_contents = original_contents
-                )?;
+pub extern "C" fn android_main(app: *mut ()) {
+    cargo_apk_injected_glue::android_main2(app as *mut _, move || { let _ = main(); });
+}"##
+                } else {
+                    r##"
+mod cargo_apk_glue_code {
+    use std::os::raw::c_void;
+
+    // Exported function which is called be Android's NativeActivity
+    #[no_mangle]
+    pub unsafe extern "C" fn ANativeActivity_onCreate(
+        activity: *mut c_void,
+        saved_state: *mut c_void,
+        saved_state_size: usize,
+    ) {
+        native_app_glue_onCreate(activity, saved_state, saved_state_size);
+    }
+
+    extern "C" {
+        #[allow(non_snake_case)]
+        fn native_app_glue_onCreate(
+            activity: *mut c_void,
+            saved_state: *mut c_void,
+            saved_state_size: usize,
+        );
+    }
+
+    #[no_mangle]
+    extern "C" fn android_main(_app: *mut c_void) {
+        let _ = super::main();
+    }
+}"##
+                };
+                writeln!( lib_src_file, "{}\n{}", original_contents, extra_code)?;
 
                 Ok(())
             }).map_err(|e| format_err!(
@@ -237,14 +270,14 @@ pub extern "C" fn android_main(app: *mut ()) {{
                 new_arg
             }
 
-            //
             // Inject crate dependency for injected glue
-            //
-            new_args.push("--extern".into());
-            new_args.push(build_arg(
-                "cargo_apk_injected_glue=",
-                self.injected_glue_lib.as_os_str(),
-            ));
+            if let Some(ref injected_glue) = self.injected_glue_lib {
+                new_args.push("--extern".into());
+                new_args.push(build_arg(
+                    "cargo_apk_injected_glue=",
+                    injected_glue.as_os_str(),
+                ));
+            }
 
             // Determine paths
             let tool_root = util::llvm_toolchain_root(&self.config);

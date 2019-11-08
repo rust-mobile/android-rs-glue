@@ -47,6 +47,9 @@ pub struct AndroidConfig {
     /// Should we build in release mode?
     pub release: bool,
 
+    /// Whether to include the injected-glue. Default: false
+    pub use_injected_glue: bool,
+
     /// Target configuration settings that are associated with a specific target
     default_target_config: TomlAndroidTarget,
 
@@ -361,6 +364,10 @@ pub fn load(
         .as_ref()
         .and_then(|a| a.min_sdk_version)
         .unwrap_or(18);
+    let use_injected_glue = manifest_content
+        .as_ref()
+        .and_then(|a| a.use_legacy_glue)
+        .unwrap_or(false);
 
     let default_target_config = manifest_content
         .as_ref()
@@ -395,6 +402,7 @@ pub fn load(
         android_jar_path,
         target_sdk_version,
         min_sdk_version,
+        use_injected_glue,
         build_tools_version,
         release: false,
         build_targets: manifest_content
@@ -442,6 +450,7 @@ struct TomlAndroid {
     target_sdk_version: Option<u32>,
     min_sdk_version: Option<u32>,
     build_targets: Option<Vec<AndroidBuildTarget>>,
+    use_legacy_glue: Option<bool>,
 
     #[serde(flatten)]
     default_target_config: TomlAndroidTarget,

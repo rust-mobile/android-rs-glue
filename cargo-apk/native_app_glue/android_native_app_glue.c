@@ -175,12 +175,12 @@ static void android_app_destroy(struct android_app* android_app) {
     LOGV("android_app_destroy!");
     free_saved_state(android_app);
     pthread_mutex_lock(&android_app->mutex);
-    if (android_app->inputQueue != NULL) {
+    if (!android_app->destroyRequested)
+        ANativeActivity_finish(android_app->activity);
+    if (android_app->inputQueue != NULL)
         AInputQueue_detachLooper(android_app->inputQueue);
-    }
     AConfiguration_delete(android_app->config);
     android_app->destroyed = 1;
-    pthread_cond_broadcast(&android_app->cond);
     pthread_mutex_unlock(&android_app->mutex);
     // Can't touch android_app object after this.
 }
@@ -230,10 +230,43 @@ static void* android_app_entry(void* param) {
     pthread_cond_broadcast(&android_app->cond);
     pthread_mutex_unlock(&android_app->mutex);
 
+    ANDROID_APP = android_app;
+
     android_main(android_app);
 
     android_app_destroy(android_app);
+
+    LOGV("thread exiting");
     return NULL;
+}
+
+static void *logging_thread(void *fd_as_ptr) {
+    int fd = (int) (size_t) fd_as_ptr;
+    LOGV("Logging thread started; fd is %d", fd);
+    char buffer[2048];
+    int cursor = 0;
+    while (1) {
+        int result = read(fd, (void *) buffer + cursor, 2047 - cursor);
+        if (result == 0) return NULL;
+        if (result < 0) {
+            LOGE("Logging thread: error reading from pipe: %s", strerror(errno));
+            return NULL;
+        }
+        int old_cursor = cursor;
+        cursor += result;
+        char *newline = (char *) memchr((void *) buffer + old_cursor, '\n', cursor);
+        if (newline) {
+            *newline = '\0';
+            __android_log_write(ANDROID_LOG_DEBUG, "RustStdoutStderr", buffer);
+            int new_start = newline + 1 - buffer;
+            memcpy((void *) buffer, (void *) newline + 1, cursor - new_start);
+            cursor -= new_start;
+        } else if (cursor == 2047) {
+            buffer[2047] = '\0';
+            __android_log_write(ANDROID_LOG_DEBUG, "RustStdoutStderr", buffer);
+            cursor = 0;
+        }
+    }
 }
 
 // --------------------------------------------------------------------
@@ -263,10 +296,19 @@ static struct android_app* android_app_create(ANativeActivity* activity,
     android_app->msgread = msgpipe[0];
     android_app->msgwrite = msgpipe[1];
 
-    pthread_attr_t attr; 
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-    pthread_create(&android_app->thread, &attr, android_app_entry, android_app);
+    int logpipe[2];
+    if (pipe(logpipe)) {
+        LOGE("could not create pipe: %s", strerror(errno));
+        return NULL;
+    }
+    dup2(logpipe[1], STDOUT_FILENO);
+    dup2(logpipe[1], STDERR_FILENO);
+
+    pthread_t log_thread;
+    pthread_create(&log_thread, NULL, logging_thread, (void *) (size_t) logpipe[0]);
+    pthread_detach(log_thread);
+
+    pthread_create(&android_app->thread, NULL, android_app_entry, android_app);
 
     // Wait for thread to start.
     pthread_mutex_lock(&android_app->mutex);
@@ -319,18 +361,16 @@ static void android_app_set_activity_state(struct android_app* android_app, int8
 }
 
 static void android_app_free(struct android_app* android_app) {
-    pthread_mutex_lock(&android_app->mutex);
     android_app_write_cmd(android_app, APP_CMD_DESTROY);
-    while (!android_app->destroyed) {
-        pthread_cond_wait(&android_app->cond, &android_app->mutex);
-    }
-    pthread_mutex_unlock(&android_app->mutex);
+    pthread_join(android_app->thread, NULL);
 
     close(android_app->msgread);
     close(android_app->msgwrite);
     pthread_cond_destroy(&android_app->cond);
     pthread_mutex_destroy(&android_app->mutex);
     free(android_app);
+
+    exit(0);
 }
 
 static void onDestroy(ANativeActivity* activity) {
