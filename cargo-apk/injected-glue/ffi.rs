@@ -17,6 +17,10 @@ use std::os::raw::c_longlong;
 /*
  * android_native_app_glue.h
  */
+extern "C" {
+    pub static ANDROID_APP: *mut android_app;
+}
+
 #[repr(C)]
 pub struct android_app {
     pub userData: *mut c_void,

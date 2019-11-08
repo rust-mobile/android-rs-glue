@@ -2,7 +2,6 @@ use std::cell::{Cell};
 use std::ffi::{CString};
 use std::mem;
 use std::os::raw::c_void;
-use std::os::raw::c_char;
 use std::os::raw::c_int;
 use std::os::raw::c_long;
 use std::ptr;
@@ -21,16 +20,14 @@ pub type pthread_mutexattr_t = c_long;
 pub type pthread_attr_t = c_void;       // FIXME: wrong
 
 extern {
-    fn pipe(_: *mut c_int) -> c_int;
-    fn dup2(fildes: c_int, fildes2: c_int) -> c_int;
-    fn read(fd: c_int, buf: *mut c_void, count: usize) -> isize;
     fn pthread_create(_: *mut pthread_t, _: *const pthread_attr_t,
                       _: extern fn(*mut c_void) -> *mut c_void, _: *mut c_void) -> c_int;
-    fn pthread_detach(thread: pthread_t) -> c_int;
 }
 
 #[doc(hidden)]
 pub mod ffi;
+
+pub use ffi::ANDROID_APP;
 
 #[no_mangle]
 pub unsafe extern fn cargo_apk_injected_glue_get_native_window() -> *const c_void {
@@ -84,12 +81,6 @@ pub unsafe extern fn cargo_apk_injected_glue_load_asset(ptr: *const (), len: usi
 pub unsafe extern fn cargo_apk_injected_glue_wake_event_loop() {
     ffi::ALooper_wake(get_app().looper);
 }
-
-/// This static variable  will store the android_app* on creation, and set it back to 0 at
-///  destruction.
-/// Apart from this, the static is never written, so there is no risk of race condition.
-#[no_mangle]
-pub static mut ANDROID_APP: *mut ffi::android_app = 0 as *mut ffi::android_app;
 
 /// This is the structure that serves as user data in the android_app*
 #[doc(hidden)]
@@ -199,7 +190,6 @@ pub fn android_main2<F>(app: *mut ffi::android_app, main_function: F)
 {
     write_log("Entering android_main");
 
-    unsafe { ANDROID_APP = app; };
     let app: &mut ffi::android_app = unsafe { &mut *app };
 
     // Creating the context that will be passed to the callback
@@ -238,71 +228,7 @@ pub fn android_main2<F>(app: *mut ffi::android_app, main_function: F)
     if terminated.0 {
         write_log("Creating application thread");
 
-        // The first step is to redirect stdout and stderr to the logs.
-        unsafe {
-            // We redirect stdout and stderr to a custom descriptor.
-            let mut pfd: [c_int; 2] = [0, 0];
-            pipe(pfd.as_mut_ptr());
-            dup2(pfd[1], 1);
-            dup2(pfd[1], 2);
-
-            // Then we spawn a thread whose only job is to read from the other side of the
-            // pipe and redirect to the logs.
-            extern fn logging_thread(descriptor: *mut c_void) -> *mut c_void {
-                unsafe {
-                    let descriptor = descriptor as usize as c_int;
-                    let mut buf: Vec<c_char> = Vec::with_capacity(512);
-                    let mut cursor = 0_usize;
-
-                    // TODO: shouldn't use Rust stdlib
-                    let tag = CString::new("RustAndroidGlueStdouterr").unwrap();
-                    let tag = tag.as_ptr();
-
-                    loop {
-                        let result = read(descriptor, buf.as_mut_ptr().offset(cursor as isize) as *mut _,
-                                          buf.capacity() - 1 - cursor);
-
-                        let len = if result == 0 { return ptr::null_mut(); }
-                        else if result < 0 { return ptr::null_mut(); /* TODO: report problem */ }
-                        else { result as usize + cursor };
-
-                        buf.set_len(len);
-
-                        if let Some(last_newline_pos) = buf.iter().rposition(|&c| c == b'\n' as c_char) {
-                            buf[last_newline_pos] = b'\0' as c_char;
-                            ffi::__android_log_write(3, tag, buf.as_ptr());
-                            if last_newline_pos < buf.len() - 1 {
-                                let last_newline_pos = last_newline_pos + 1;
-                                cursor = buf.len() - last_newline_pos;
-                                debug_assert!(cursor < buf.capacity());
-                                for j in 0..cursor as usize {
-                                    buf[j] = buf[last_newline_pos + j];
-                                }
-                                buf[cursor] = b'\0' as c_char;
-                                buf.set_len(cursor + 1);
-                            } else {
-                                cursor = 0;
-                            }
-                        } else {
-                            cursor = buf.len();
-                        }
-                        if cursor == buf.capacity() - 1 {
-                            ffi::__android_log_write(3, tag, buf.as_ptr());
-                            buf.set_len(0);
-                            cursor = 0;
-                        }
-                    }
-                }
-            }
-
-            let mut thread = mem::MaybeUninit::uninit();
-            let result = pthread_create(thread.as_mut_ptr(), ptr::null(), logging_thread,
-                                        pfd[0] as usize as *mut c_void);
-            let thread = thread.assume_init();
-            assert_eq!(result, 0);
-            let result = pthread_detach(thread);
-            assert_eq!(result, 0);
-        }
+        // Redirecting stdout and stderr to the logs is now handled by `native_app_glue`
 
         let main_function = Box::into_raw(Box::new(main_function));
 
@@ -380,7 +306,6 @@ pub fn android_main2<F>(app: *mut ffi::android_app, main_function: F)
 
     // Terminating the application. This kills the thread the Rust main thread.
     // TODO: consider waiting on thread?
-    unsafe { ANDROID_APP = 0 as *mut ffi::android_app };
 }
 
 /// Send a event to anything that has registered a sender. This is where events
@@ -570,10 +495,6 @@ pub fn add_sender_missing(sender: Sender<Event>) {
 
 /// Returns a handle to the native window.
 pub unsafe fn get_native_window() -> ffi::NativeWindowType {
-    if ANDROID_APP.is_null() {
-        panic!("The application was not initialized from android_main");
-    }
-
     loop {
         let value = (*ANDROID_APP).window;
         if !value.is_null() {
