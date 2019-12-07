@@ -7,10 +7,6 @@
 use android_ndk_sys::native_app_glue::android_app;
 use std::ptr::NonNull;
 
-#[link(name = "android")]
-#[link(name = "log")]
-extern "C" {}
-
 extern "C" {
     static ANDROID_APP: *mut android_app;
 }

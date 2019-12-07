@@ -18,9 +18,6 @@ min_sdk_version = 26
 # Defaults to "armv7-linux-androideabi", "aarch64-linux-android", "i686-linux-android".
 build_targets = [ "armv7-linux-androideabi", "aarch64-linux-android", "i686-linux-android", "x86_64-linux-android" ]
 
-# Whether to include the `injected-glue` library. Default: false
-use_legacy_glue = true
-
 #
 # The following value can be customized on a per bin/example basis. See multiple_targets example
 # If a value is not specified for a secondary target, it will inherit the value defined in the `package.metadata.android`
