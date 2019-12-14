@@ -33,6 +33,11 @@ extern {
 pub mod ffi;
 
 #[no_mangle]
+pub unsafe extern fn cargo_apk_injected_glue_get_native_activity() -> *const c_void {
+    get_native_activity() as *const _
+}
+
+#[no_mangle]
 pub unsafe extern fn cargo_apk_injected_glue_get_native_window() -> *const c_void {
     get_native_window() as *const _
 }
