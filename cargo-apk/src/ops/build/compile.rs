@@ -354,6 +354,25 @@ mod cargo_apk_glue_code {
         } else if mode == CompileMode::Test {
             // This occurs when --all-targets is specified
             eprintln!("Ignoring CompileMode::Test for target: {}", target.name());
+        } else if mode == CompileMode::Build {
+            let mut new_args = cmd.get_args().to_owned();
+
+            //
+            // Change crate-type from cdylib to rlib
+            //
+            let mut iter = new_args.iter_mut().rev().peekable();
+            while let Some(arg) = iter.next() {
+                if let Some(prev_arg) = iter.peek() {
+                    if *prev_arg == "--crate-type" && arg == "cdylib" {
+                        *arg = "rlib".into();
+                    }
+                }
+            }
+
+            let mut cmd = cmd.clone();
+            cmd.args_replace(&new_args);
+            cmd.exec_with_streaming(on_stdout_line, on_stderr_line, false)
+                .map(drop)?
         } else {
             cmd.exec_with_streaming(on_stdout_line, on_stderr_line, false)
                 .map(drop)?
