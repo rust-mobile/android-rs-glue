@@ -9,7 +9,7 @@ label = "Using assets android-rs-glue example"
 assets = "assets"
 
 [dependencies]
-android-ndk = "0.0.6"
+android-ndk = { git = "https://github.com/rust-windowing/android-ndk-rs" }
 
 [dependencies.android_glue]
 path = "../../glue"

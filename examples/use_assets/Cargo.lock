@@ -3,9 +3,9 @@
 [[package]]
 name = "android-ndk"
 version = "0.0.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+source = "git+https://github.com/rust-windowing/android-ndk-rs#ac2157b6449b50eee6fe8a08acb05003633879a3"
 dependencies = [
- "android-ndk-sys 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "android-ndk-sys 0.2.0 (git+https://github.com/rust-windowing/android-ndk-rs)",
  "jni 0.13.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "num_enum 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -13,20 +13,20 @@ dependencies = [
 [[package]]
 name = "android-ndk-sys"
 version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+source = "git+https://github.com/rust-windowing/android-ndk-rs#ac2157b6449b50eee6fe8a08acb05003633879a3"
 
 [[package]]
 name = "android_glue"
 version = "0.2.3"
 dependencies = [
- "android-ndk-sys 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "android-ndk-sys 0.2.0 (git+https://github.com/rust-windowing/android-ndk-rs)",
 ]
 
 [[package]]
 name = "android_glue_assets_example"
 version = "0.1.0"
 dependencies = [
- "android-ndk 0.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "android-ndk 0.0.6 (git+https://github.com/rust-windowing/android-ndk-rs)",
  "android_glue 0.2.3",
 ]
 
@@ -247,8 +247,8 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [metadata]
-"checksum android-ndk 0.0.6 (registry+https://github.com/rust-lang/crates.io-index)" = "7b3b3747db640f4777e971b8b8ef1562798c79e670c67ee6a242eda03ce492ef"
-"checksum android-ndk-sys 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3ec6ef28479835db378e2202b3911608e2269405e924fabb02ac3c8fb50284fe"
+"checksum android-ndk 0.0.6 (git+https://github.com/rust-windowing/android-ndk-rs)" = "<none>"
+"checksum android-ndk-sys 0.2.0 (git+https://github.com/rust-windowing/android-ndk-rs)" = "<none>"
 "checksum ascii 0.9.3 (registry+https://github.com/rust-lang/crates.io-index)" = "eab1c04a571841102f5345a8fc0f6bb3d31c315dec879b5c6e42e40ce7ffa34e"
 "checksum backtrace 0.3.38 (registry+https://github.com/rust-lang/crates.io-index)" = "690a62be8920ccf773ee00ef0968649b0e724cda8bd5b12286302b4ae955fdf5"
 "checksum backtrace-sys 0.1.31 (registry+https://github.com/rust-lang/crates.io-index)" = "82a830b4ef2d1124a711c71d263c5abdc710ef8e907bd508c88be475cebc422b"
