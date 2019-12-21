@@ -2,11 +2,11 @@ use super::tempfile::TempFile;
 use super::util;
 use crate::config::AndroidBuildTarget;
 use crate::config::AndroidConfig;
-use cargo::core::compiler::CompileMode;
 use cargo::core::compiler::Executor;
+use cargo::core::compiler::{CompileKind, CompileMode, CompileTarget};
 use cargo::core::manifest::TargetSourcePath;
 use cargo::core::{PackageId, Target, TargetKind, Workspace};
-use cargo::util::command_prelude::ArgMatchesExt;
+use cargo::util::command_prelude::{ArgMatchesExt, ProfileChecking};
 use cargo::util::{process, CargoResult, ProcessBuilder};
 use clap::ArgMatches;
 use failure::format_err;
@@ -68,9 +68,14 @@ pub fn build_shared_libraries(
         )?;
 
         // Configure compilation options so that we will build the desired build_target
-        let mut opts =
-            options.compile_options(workspace.config(), CompileMode::Build, Some(&workspace))?;
-        opts.build_config.requested_target = Some(build_target.rust_triple().to_owned());
+        let mut opts = options.compile_options(
+            workspace.config(),
+            CompileMode::Build,
+            Some(&workspace),
+            ProfileChecking::Unchecked,
+        )?;
+        opts.build_config.requested_kind =
+            CompileKind::Target(CompileTarget::new(build_target.rust_triple())?);
 
         // Create executor
         let config = Arc::new(config.clone());

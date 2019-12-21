@@ -8,14 +8,14 @@ repository = "https://github.com/rust-windowing/android-rs-glue/tree/master/carg
 edition = "2018"
 
 [dependencies]
-cargo = "0.37.0"
+cargo = "0.41.0"
 clap = "2.33.0"
-itertools = "0.8.0"
-dirs = "2.0.1"
-failure = "0.1.5"
-multimap = "0.5.0"
-serde = "1.0.97"
-toml = "0.5.1"
+itertools = "0.8.2"
+dirs = "2.0.2"
+failure = "0.1.6"
+multimap = "0.8.0"
+serde = "1.0.104"
+toml = "0.5.5"
 
 [dev-dependencies]
-assert_cmd = "0.11.1"
+assert_cmd = "0.12.0"
