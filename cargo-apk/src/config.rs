@@ -317,7 +317,16 @@ pub fn load(
 
             let meta = next.metadata().unwrap();
             if !meta.is_dir() {
-                continue;
+                if !meta.is_file() {
+                    // It seems, symlink is here, so we should follow it
+                    let meta = next.path().metadata().unwrap();
+
+                    if !meta.is_dir() {
+                        continue;
+                    }
+                } else {
+                    continue;
+                }
             }
 
             let file_name = next.file_name().into_string().unwrap();
