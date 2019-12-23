@@ -91,7 +91,6 @@ The build process works by:
 - Using rustc to always compile your crate as a shared library by:
     - Creating a custom CMake toolchain file and setting environment variables which expose the appropriate NDK provided build tools for use with the `cc` and `cmake` crates.
     - Creating a temporary file in the same directory as your crate root. This temporary file serves as the crate root of the static library. It contains the contents of the original crate root along with an `android_main` implementation.
-    - Injecting some glue libraries in rust, which is used by `android_main` to perform initialization required by the `android_glue` crate and to call the `main` function of your crate.
     - Compiling a forked version of `android_native_app_glue`. `android_native_app_glue` is originally provided by the NDK. It provides the entrypoint used by Android's `NativeActivity` that calls `android_main`.
     - Linking using the NDK provided linker.
 
@@ -115,8 +114,7 @@ min_sdk_version = 26
 # Defaults to "armv7-linux-androideabi", "aarch64-linux-android", "i686-linux-android".
 build_targets = [ "armv7-linux-androideabi", "aarch64-linux-android", "i686-linux-android", "x86_64-linux-android" ]
 
-#
-# The following value can be customized on a per bin/example basis. See multiple_targets example
+# The following values can be customized on a per bin/example basis. See multiple_targets example
 # If a value is not specified for a secondary target, it will inherit the value defined in the `package.metadata.android`
 # section unless otherwise noted.
 #

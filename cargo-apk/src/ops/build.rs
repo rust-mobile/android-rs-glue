@@ -315,7 +315,8 @@ fn build_manifest(
 
     // Write final AndroidManifest
     writeln!(
-        file, r#"<?xml version="1.0" encoding="utf-8"?>
+        file,
+        r#"<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
         package="{package}"
         android:versionCode="{version_code}"
@@ -337,7 +338,10 @@ fn build_manifest(
         version_name = target_config.version_name,
         targetSdkVersion = config.target_sdk_version,
         minSdkVersion = config.min_sdk_version,
-        glEsVersion = format!("0x{:04}{:04}", target_config.opengles_version_major, target_config.opengles_version_minor),
+        glEsVersion = format!(
+            "0x{:04}{:04}",
+            target_config.opengles_version_major, target_config.opengles_version_minor
+        ),
         uses_features = uses_features,
         uses_permissions = uses_permissions,
         application_attrs = application_attrs,

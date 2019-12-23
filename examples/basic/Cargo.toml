@@ -4,12 +4,5 @@ version = "0.1.0"
 authors = ["Pierre Krieger <pierre.krieger1708@gmail.com>"]
 edition = "2018"
 
-[package.metadata.android]
-label = "Basic android-rs-glue example"
-
-[[bin]]
-name = "example"
-path = "src/basic.rs"
-
-[dependencies.android_glue]
-path = "../../glue"
+[dependencies]
+android_glue = { path = "../../glue" }
