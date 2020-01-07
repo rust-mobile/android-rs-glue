@@ -1,5 +1,4 @@
-use cargo::core::{TargetKind, Workspace};
-use cargo::ops;
+use cargo::core::{Package, TargetKind};
 use cargo::util::CargoResult;
 use cargo::CliError;
 use failure::format_err;
@@ -10,7 +9,6 @@ use std::env;
 use std::fs;
 use std::fs::File;
 use std::io::Read;
-use std::iter::FromIterator;
 use std::path::Path;
 use std::path::PathBuf;
 use toml;
@@ -48,7 +46,7 @@ pub struct AndroidConfig {
     pub release: bool,
 
     /// Target configuration settings that are associated with a specific target
-    default_target_config: TomlAndroidTarget,
+    pub default_target_config: TomlAndroidTarget,
 
     /// Target specific configuration settings
     target_configs: BTreeMap<(TargetKind, String), TomlAndroidTarget>,
@@ -244,32 +242,7 @@ pub struct AndroidTargetConfig {
     pub permissions: Vec<AndroidPermission>,
 }
 
-pub fn load(
-    workspace: &Workspace,
-    flag_package: &Option<String>,
-) -> Result<AndroidConfig, CliError> {
-    // Find out the package requested by the user.
-    let package = {
-        let packages = Vec::from_iter(flag_package.iter().cloned());
-        let spec = ops::Packages::Packages(packages);
-
-        match spec {
-            ops::Packages::Default => unreachable!("cargo apk supports single package only"),
-            ops::Packages::All => unreachable!("cargo apk supports single package only"),
-            ops::Packages::OptOut(_) => unreachable!("cargo apk supports single package only"),
-            ops::Packages::Packages(xs) => match xs.len() {
-                0 => workspace.current()?,
-                1 => workspace
-                    .members()
-                    .find(|pkg| *pkg.name() == xs[0])
-                    .ok_or_else(|| {
-                        format_err!("package `{}` is not a member of the workspace", xs[0])
-                    })?,
-                _ => unreachable!("cargo apk supports single package only"),
-            },
-        }
-    };
-
+pub fn load(package: &Package) -> Result<AndroidConfig, CliError> {
     // Determine the name of the package and the Android-specific metadata from the Cargo.toml
     let manifest_content = {
         // Load Cargo.toml & parse
@@ -461,7 +434,7 @@ struct TomlAndroid {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
-struct TomlFeature {
+pub struct TomlFeature {
     name: String,
     required: Option<bool>,
     version: Option<String>,
@@ -469,7 +442,7 @@ struct TomlFeature {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
-struct TomlPermission {
+pub struct TomlPermission {
     name: String,
     max_sdk_version: Option<u32>,
 }
@@ -485,19 +458,19 @@ struct TomlAndroidSpecificTarget {
 }
 
 #[derive(Debug, Default, Clone, Deserialize)]
-struct TomlAndroidTarget {
-    package_name: Option<String>,
-    label: Option<String>,
-    version_code: Option<i32>,
-    version_name: Option<String>,
-    icon: Option<String>,
-    assets: Option<String>,
-    res: Option<String>,
-    fullscreen: Option<bool>,
-    application_attributes: Option<BTreeMap<String, String>>,
-    activity_attributes: Option<BTreeMap<String, String>>,
-    opengles_version_major: Option<u8>,
-    opengles_version_minor: Option<u8>,
-    feature: Option<Vec<TomlFeature>>,
-    permission: Option<Vec<TomlPermission>>,
+pub struct TomlAndroidTarget {
+    pub package_name: Option<String>,
+    pub label: Option<String>,
+    pub version_code: Option<i32>,
+    pub version_name: Option<String>,
+    pub icon: Option<String>,
+    pub assets: Option<String>,
+    pub res: Option<String>,
+    pub fullscreen: Option<bool>,
+    pub application_attributes: Option<BTreeMap<String, String>>,
+    pub activity_attributes: Option<BTreeMap<String, String>>,
+    pub opengles_version_major: Option<u8>,
+    pub opengles_version_minor: Option<u8>,
+    pub feature: Option<Vec<TomlFeature>>,
+    pub permission: Option<Vec<TomlPermission>>,
 }

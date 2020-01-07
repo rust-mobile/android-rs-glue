@@ -5,6 +5,35 @@ use failure::format_err;
 use std::ffi::OsStr;
 use std::path::PathBuf;
 
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct BuildTarget {
+    name: String,
+    kind: TargetKind,
+}
+
+impl BuildTarget {
+    pub fn new(name: String, kind: TargetKind) -> Self {
+        Self { name, kind }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn kind(&self) -> &TargetKind {
+        &self.kind
+    }
+}
+
+impl From<&Target> for BuildTarget {
+    fn from(target: &Target) -> Self {
+        Self {
+            name: target.name().to_owned(),
+            kind: target.kind().to_owned(),
+        }
+    }
+}
+
 /// Returns the directory in which all cargo apk artifacts for the current
 /// debug/release configuration should be produced.
 pub fn get_root_build_directory(workspace: &Workspace, config: &AndroidConfig) -> PathBuf {
@@ -21,7 +50,10 @@ pub fn get_root_build_directory(workspace: &Workspace, config: &AndroidConfig) -
 }
 
 /// Returns the sub directory within the root build directory for the specified target.
-pub fn get_target_directory(root_build_dir: &PathBuf, target: &Target) -> CargoResult<PathBuf> {
+pub fn get_target_directory(
+    root_build_dir: &PathBuf,
+    target: &BuildTarget,
+) -> CargoResult<PathBuf> {
     let target_directory = match target.kind() {
         TargetKind::Bin => root_build_dir.join("bin"),
         TargetKind::ExampleBin => root_build_dir.join("examples"),

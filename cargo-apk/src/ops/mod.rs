@@ -1,4 +1,4 @@
-mod build;
+pub mod build;
 mod install;
 mod run;
 

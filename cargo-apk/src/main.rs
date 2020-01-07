@@ -1,15 +1,12 @@
-use cargo::core::Workspace;
-use cargo::util::process_builder::process;
-use cargo::util::Config as CargoConfig;
-use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
-use failure::format_err;
-
+use cargo::core::{Package, Workspace};
 use cargo::util::command_prelude::opt;
 use cargo::util::command_prelude::AppExt;
 use cargo::util::command_prelude::ArgMatchesExt;
-
-mod config;
-mod ops;
+use cargo::util::process_builder::process;
+use cargo::util::Config as CargoConfig;
+use cargo_apk::{config, ops};
+use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
+use failure::format_err;
 
 fn main() {
     let mut cargo_config = CargoConfig::default().unwrap();
@@ -301,15 +298,25 @@ fn cli_logcat() -> App<'static, 'static> {
         .arg_message_format()
 }
 
+fn package<'a>(options: &ArgMatches, workspace: &'a Workspace) -> &'a Package {
+    if let Some(package) = options.value_of("package") {
+        workspace
+            .members()
+            .find(|pkg| pkg.name().as_str() == package)
+            .expect("Package not a member of workspace")
+    } else {
+        workspace
+            .current()
+            .expect("cargo apk supports single package only")
+    }
+}
+
 pub fn execute_build(options: &ArgMatches, cargo_config: &CargoConfig) -> cargo::CliResult {
     let root_manifest = options.root_manifest(&cargo_config)?;
-
     let workspace = Workspace::new(&root_manifest, &cargo_config)?;
+    let package = package(options, &workspace);
 
-    let mut android_config = config::load(
-        &workspace,
-        &options.value_of("package").map(|s| s.to_owned()),
-    )?;
+    let mut android_config = config::load(package)?;
     android_config.release = options.is_present("release");
 
     ops::build(&workspace, &android_config, &options)?;
@@ -318,13 +325,10 @@ pub fn execute_build(options: &ArgMatches, cargo_config: &CargoConfig) -> cargo:
 
 pub fn execute_install(options: &ArgMatches, cargo_config: &CargoConfig) -> cargo::CliResult {
     let root_manifest = options.root_manifest(&cargo_config)?;
-
     let workspace = Workspace::new(&root_manifest, &cargo_config)?;
+    let package = package(options, &workspace);
 
-    let mut android_config = config::load(
-        &workspace,
-        &options.value_of("package").map(|s| s.to_owned()),
-    )?;
+    let mut android_config = config::load(package)?;
     android_config.release = !options.is_present("debug");
 
     ops::install(&workspace, &android_config, &options)?;
@@ -333,13 +337,10 @@ pub fn execute_install(options: &ArgMatches, cargo_config: &CargoConfig) -> carg
 
 pub fn execute_run(options: &ArgMatches, cargo_config: &CargoConfig) -> cargo::CliResult {
     let root_manifest = options.root_manifest(&cargo_config)?;
-
     let workspace = Workspace::new(&root_manifest, &cargo_config)?;
+    let package = package(options, &workspace);
 
-    let mut android_config = config::load(
-        &workspace,
-        &options.value_of("package").map(|s| s.to_owned()),
-    )?;
+    let mut android_config = config::load(package)?;
     android_config.release = options.is_present("release");
 
     ops::run(&workspace, &android_config, &options)?;
@@ -348,13 +349,10 @@ pub fn execute_run(options: &ArgMatches, cargo_config: &CargoConfig) -> cargo::C
 
 pub fn execute_logcat(options: &ArgMatches, cargo_config: &CargoConfig) -> cargo::CliResult {
     let root_manifest = options.root_manifest(&cargo_config)?;
-
     let workspace = Workspace::new(&root_manifest, &cargo_config)?;
+    let package = package(options, &workspace);
 
-    let android_config = config::load(
-        &workspace,
-        &options.value_of("package").map(|s| s.to_owned()),
-    )?;
+    let android_config = config::load(package)?;
 
     drop(writeln!(
         workspace.config().shell().err(),
