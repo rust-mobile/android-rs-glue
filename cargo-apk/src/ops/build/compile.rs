@@ -441,7 +441,7 @@ fn libs_search_paths_from_args(args: &[std::ffi::OsString]) -> Vec<PathBuf> {
     args.iter().filter_map(|arg| {
         if is_search_path {
             is_search_path = false;
-            arg.to_str().and_then(|arg| if arg.starts_with("native=") {
+            arg.to_str().and_then(|arg| if arg.starts_with("native=") || arg.starts_with("dependency=") {
                 Some(arg.split("=").last().unwrap().into())
             } else {
                 None
