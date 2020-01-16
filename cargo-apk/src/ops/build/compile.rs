@@ -18,7 +18,7 @@ use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
 
 pub struct SharedLibrary {
     pub abi: AndroidBuildTarget,
@@ -332,37 +332,59 @@ mod cargo_apk_glue_code {
             // to the list of shared libraries to be added to the APK
             let readelf_path = util::find_readelf(&self.config, self.build_target)?;
 
-            // Extract all needed shared libraries
-            let needed_dylibs = list_needed_dylibs(&readelf_path, &library_path)?;
-
-            // Find android platform shared libraries
-            let android_dylibs = list_android_dylibs(&version_specific_libraries_path)?;
-
-            // Filter out android platform libs from all needed libs
-            let extra_dylibs = &needed_dylibs - &android_dylibs;
-
             // Gets libraries search paths from compiler
             let mut libs_search_paths = libs_search_paths_from_args(cmd.get_args());
 
             // Add path for searching version independent libraries like 'libc++_shared.so'
             libs_search_paths.push(version_independent_libraries_path);
 
+            // Add target/ARCH/PROFILE/deps directory for searching dylib/cdylib
+            libs_search_paths.push(self.build_target_dir.join("deps"));
+
             // FIXME: Add extra libraries search paths (from "LD_LIBRARY_PATH")
             libs_search_paths.extend(dylib_path());
 
-            // Find and add found shared libraries
-            for lib in &extra_dylibs {
-                if let Some(path) = find_library_path(&libs_search_paths, &lib) {
+            // Find android platform shared libraries
+            let android_dylibs = list_android_dylibs(&version_specific_libraries_path)?;
+
+            // The map of [library]: is_processed
+            let mut found_dylibs =
+                // Add android platform libraries as processed to avoid packaging it
+                android_dylibs.into_iter().map(|dylib| (dylib, true))
+                .collect::<HashMap<_, _>>();
+
+            // Extract all needed shared libraries from main
+            for dylib in list_needed_dylibs(&readelf_path, &library_path)? {
+                // Insert new libraries only
+                found_dylibs.entry(dylib).or_insert(false);
+            }
+
+            while let Some(dylib) = found_dylibs.iter()
+                .find(|(_, is_processed)| !*is_processed)
+                .map(|(dylib, _)| dylib.clone())
+            {
+                // Mark library as processed
+                *found_dylibs.get_mut(&dylib).unwrap() = true;
+
+                // Find library in known path
+                if let Some(path) = find_library_path(&libs_search_paths, &dylib) {
+                    // Extract all needed shared libraries recursively
+                    for dylib in list_needed_dylibs(&readelf_path, &path)? {
+                        // Insert new libraries only
+                        found_dylibs.entry(dylib).or_insert(false);
+                    }
+
+                    // Add found library
                     shared_libraries.insert(
                         target.clone(),
                         SharedLibrary {
                             abi: self.build_target,
                             path,
-                            filename: lib.clone(),
+                            filename: dylib.clone(),
                         },
                     );
                 } else {
-                    on_stderr_line(&format!("Warning: Shared library \"{}\" not found.", &lib))?;
+                    on_stderr_line(&format!("Warning: Shared library \"{}\" not found.", &dylib))?;
                 }
             }
         } else if mode == CompileMode::Test {
