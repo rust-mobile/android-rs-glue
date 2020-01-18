@@ -7,7 +7,7 @@ use cargo::core::compiler::{CompileKind, CompileMode, CompileTarget};
 use cargo::core::manifest::TargetSourcePath;
 use cargo::core::{PackageId, Target, TargetKind, Workspace};
 use cargo::util::command_prelude::{ArgMatchesExt, ProfileChecking};
-use cargo::util::{process, CargoResult, ProcessBuilder};
+use cargo::util::{process, CargoResult, ProcessBuilder, dylib_path};
 use clap::ArgMatches;
 use failure::format_err;
 use multimap::MultiMap;
@@ -18,6 +18,7 @@ use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use std::collections::{HashSet, HashMap};
 
 pub struct SharedLibrary {
     pub abi: AndroidBuildTarget,
@@ -109,7 +110,7 @@ struct SharedLibraryExecutor {
     shared_libraries: Arc<Mutex<MultiMap<Target, SharedLibrary>>>,
 }
 
-impl<'a> Executor for SharedLibraryExecutor {
+impl Executor for SharedLibraryExecutor {
     fn exec(
         &self,
         cmd: ProcessBuilder,
@@ -280,7 +281,7 @@ mod cargo_apk_glue_code {
             new_args.push(build_arg("-Clink-arg=--sysroot=", sysroot));
 
             // Add version specific libraries directory to search path
-            new_args.push(build_arg("-Clink-arg=-L", version_specific_libraries_path));
+            new_args.push(build_arg("-Clink-arg=-L", &version_specific_libraries_path));
 
             // Add version independent libraries directory to search path
             new_args.push(build_arg(
@@ -330,26 +331,61 @@ mod cargo_apk_glue_code {
             // If the target uses the C++ standard library, add the appropriate shared library
             // to the list of shared libraries to be added to the APK
             let readelf_path = util::find_readelf(&self.config, self.build_target)?;
-            let readelf_output = process(readelf_path)
-                .arg("-d")
-                .arg(&library_path)
-                .exec_with_output()?;
-            use std::io::BufRead;
-            let dynamically_links_to_cpp_standard_lib = readelf_output.stdout.lines().any(|l| {
-                let l = l.as_ref().unwrap();
-                l.contains("(NEEDED)") && l.contains("[libc++_shared.so]")
-            });
 
-            if dynamically_links_to_cpp_standard_lib {
-                let cpp_library_path = version_independent_libraries_path.join("libc++_shared.so");
-                shared_libraries.insert(
-                    target.clone(),
-                    SharedLibrary {
-                        abi: self.build_target,
-                        path: cpp_library_path,
-                        filename: "libc++_shared.so".into(),
-                    },
-                );
+            // Gets libraries search paths from compiler
+            let mut libs_search_paths = libs_search_paths_from_args(cmd.get_args());
+
+            // Add path for searching version independent libraries like 'libc++_shared.so'
+            libs_search_paths.push(version_independent_libraries_path);
+
+            // Add target/ARCH/PROFILE/deps directory for searching dylib/cdylib
+            libs_search_paths.push(self.build_target_dir.join("deps"));
+
+            // FIXME: Add extra libraries search paths (from "LD_LIBRARY_PATH")
+            libs_search_paths.extend(dylib_path());
+
+            // Find android platform shared libraries
+            let android_dylibs = list_android_dylibs(&version_specific_libraries_path)?;
+
+            // The map of [library]: is_processed
+            let mut found_dylibs =
+                // Add android platform libraries as processed to avoid packaging it
+                android_dylibs.into_iter().map(|dylib| (dylib, true))
+                .collect::<HashMap<_, _>>();
+
+            // Extract all needed shared libraries from main
+            for dylib in list_needed_dylibs(&readelf_path, &library_path)? {
+                // Insert new libraries only
+                found_dylibs.entry(dylib).or_insert(false);
+            }
+
+            while let Some(dylib) = found_dylibs.iter()
+                .find(|(_, is_processed)| !*is_processed)
+                .map(|(dylib, _)| dylib.clone())
+            {
+                // Mark library as processed
+                *found_dylibs.get_mut(&dylib).unwrap() = true;
+
+                // Find library in known path
+                if let Some(path) = find_library_path(&libs_search_paths, &dylib) {
+                    // Extract all needed shared libraries recursively
+                    for dylib in list_needed_dylibs(&readelf_path, &path)? {
+                        // Insert new libraries only
+                        found_dylibs.entry(dylib).or_insert(false);
+                    }
+
+                    // Add found library
+                    shared_libraries.insert(
+                        target.clone(),
+                        SharedLibrary {
+                            abi: self.build_target,
+                            path,
+                            filename: dylib.clone(),
+                        },
+                    );
+                } else {
+                    on_stderr_line(&format!("Warning: Shared library \"{}\" not found.", &dylib))?;
+                }
             }
         } else if mode == CompileMode::Test {
             // This occurs when --all-targets is specified
@@ -380,6 +416,77 @@ mod cargo_apk_glue_code {
 
         Ok(())
     }
+}
+
+/// List all linked shared libraries
+fn list_needed_dylibs(readelf_path: &Path, library_path: &Path) -> CargoResult<HashSet<String>> {
+    let readelf_output = process(readelf_path)
+        .arg("-d")
+        .arg(&library_path)
+        .exec_with_output()?;
+    use std::io::BufRead;
+    Ok(readelf_output.stdout.lines().filter_map(|l| {
+        let l = l.as_ref().unwrap();
+        if l.contains("(NEEDED)") {
+            if let Some(lib) = l.split("Shared library: [").last() {
+                if let Some(lib) = lib.split("]").next() {
+                    return Some(lib.into());
+                }
+            }
+        }
+        None
+    }).collect())
+}
+
+/// List Android shared libraries
+fn list_android_dylibs(version_specific_libraries_path: &Path) -> CargoResult<HashSet<String>> {
+    fs::read_dir(version_specific_libraries_path)?
+        .filter_map(|entry| {
+            entry.map(|entry| {
+                if entry.path().is_file() {
+                    if let Some(file_name) = entry.file_name().to_str() {
+                        if file_name.ends_with(".so") {
+                            return Some(file_name.into());
+                        }
+                    }
+                }
+                None
+            }).transpose()
+        })
+        .collect::<Result<_, _>>()
+        .map_err(|err| err.into())
+}
+
+/// Get native library search paths from rustc args
+fn libs_search_paths_from_args(args: &[std::ffi::OsString]) -> Vec<PathBuf> {
+    let mut is_search_path = false;
+    args.iter().filter_map(|arg| {
+        if is_search_path {
+            is_search_path = false;
+            arg.to_str().and_then(|arg| if arg.starts_with("native=") || arg.starts_with("dependency=") {
+                Some(arg.split("=").last().unwrap().into())
+            } else {
+                None
+            })
+        } else {
+            if arg == "-L" {
+                is_search_path = true;
+            }
+            None
+        }
+    }).collect()
+}
+
+/// Resolves native library using search paths
+fn find_library_path<S: AsRef<Path>>(paths: &Vec<PathBuf>, library: S) -> Option<PathBuf> {
+    paths.iter().filter_map(|path| {
+        let lib_path = path.join(&library);
+        if lib_path.is_file() {
+            Some(lib_path)
+        } else {
+            None
+        }
+    }).nth(0)
 }
 
 /// Returns the path to the ".c" file for the android native app glue
