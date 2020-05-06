@@ -1,3 +1,5 @@
+deprecated in favor of https://github.com/rust-windowing/android-ndk-rs which works with winit master
+
 # Android Glue
 
 [![Crates.io](https://img.shields.io/crates/v/android-glue.svg?label=android-glue)](https://crates.io/crates/android-glue)
